@@ -1,12 +1,12 @@
 import graphviz
 
 def graphviz_run(nodes, edges):
-    G = graphviz.Digraph(filename='../Output/result_graph.gv')
+    G = graphviz.Digraph(filename='Output/result_graph.gv')
     for node in nodes:
-        G.node(node.name + '\n(' + node.volume + ')')
+        G.node(node.name + '\n(' + node.runtime + ')')
 
     for edge in edges:
-        G.edge(edge.source, edge.destination, edge.transfer_time)
+        G.edge(edge[0], edge[1], edge[2])
     G.view()
 
 #----------------------------------------------------#

@@ -190,88 +190,88 @@
   </job>
 <!-- part 3: list of control-flow dependencies (may be empty) -->
   <child ref="ID00005">
-    <parent ref="ID00001" transfertime="10"/>
-    <parent ref="ID00000" transfertime="12"/>
+    <parent ref="ID00001" transfertime="10.0"/>
+    <parent ref="ID00000" transfertime="12.0"/>
   </child>
   <child ref="ID00006">
-    <parent ref="ID00001" transfertime="16"/>
-    <parent ref="ID00000" transfertime="19"/>
+    <parent ref="ID00001" transfertime="16.0"/>
+    <parent ref="ID00000" transfertime="19.0"/>
   </child>
   <child ref="ID00007">
-    <parent ref="ID00001" transfertime="20"/>
-    <parent ref="ID00003" transfertime="9"/>
+    <parent ref="ID00001" transfertime="20.0"/>
+    <parent ref="ID00003" transfertime="9.0"/>
   </child>
   <child ref="ID00008">
-    <parent ref="ID00002" transfertime="6"/>
-    <parent ref="ID00000" transfertime="13"/>
+    <parent ref="ID00002" transfertime="6.0"/>
+    <parent ref="ID00000" transfertime="13.0"/>
   </child>
   <child ref="ID00009">
-    <parent ref="ID00002" transfertime="22"/>
-    <parent ref="ID00001" transfertime="13"/>
+    <parent ref="ID00002" transfertime="22.0"/>
+    <parent ref="ID00001" transfertime="13.0"/>
   </child>
   <child ref="ID00010">
-    <parent ref="ID00002" transfertime="15"/>
+    <parent ref="ID00002" transfertime="15.0"/>
   </child>
   <child ref="ID00011">
-    <parent ref="ID00001" transfertime="6"/>
-    <parent ref="ID00003" transfertime="13"/>
+    <parent ref="ID00001" transfertime="6.0"/>
+    <parent ref="ID00003" transfertime="13.0"/>
   </child>
   <child ref="ID00012">
-    <parent ref="ID00001" transfertime="9"/>
-    <parent ref="ID00004" transfertime="16"/>
+    <parent ref="ID00001" transfertime="9.0"/>
+    <parent ref="ID00004" transfertime="16.0"/>
   </child>
   <child ref="ID00013">
-    <parent ref="ID00004" transfertime="11"/>
-    <parent ref="ID00003" transfertime="4"/>
+    <parent ref="ID00004" transfertime="11.0"/>
+    <parent ref="ID00003" transfertime="4.0"/>
   </child>
   <child ref="ID00014">
-    <parent ref="ID00012" transfertime="14"/>
-    <parent ref="ID00013" transfertime="20"/>
-    <parent ref="ID00010" transfertime="11"/>
-    <parent ref="ID00011" transfertime="6"/>
-    <parent ref="ID00006" transfertime="14"/>
-    <parent ref="ID00005" transfertime="7"/>
-    <parent ref="ID00009" transfertime="3"/>
-    <parent ref="ID00008" transfertime="9"/>
-    <parent ref="ID00007" transfertime="16"/>
+    <parent ref="ID00012" transfertime="14.0"/>
+    <parent ref="ID00013" transfertime="20.0"/>
+    <parent ref="ID00010" transfertime="11.0"/>
+    <parent ref="ID00011" transfertime="6.0"/>
+    <parent ref="ID00006" transfertime="14.0"/>
+    <parent ref="ID00005" transfertime="7.0"/>
+    <parent ref="ID00009" transfertime="3.0"/>
+    <parent ref="ID00008" transfertime="9.0"/>
+    <parent ref="ID00007" transfertime="16.0"/>
   </child>
   <child ref="ID00015">
-    <parent ref="ID00014" transfertime="10"/>
+    <parent ref="ID00014" transfertime="10.0"/>
   </child>
   <child ref="ID00016">
-    <parent ref="ID00000" transfertime="5"/>
-    <parent ref="ID00015" transfertime="23"/>
+    <parent ref="ID00000" transfertime="5.0"/>
+    <parent ref="ID00015" transfertime="23.0"/>
   </child>
   <child ref="ID00017">
-    <parent ref="ID00001" transfertime="25"/>
-    <parent ref="ID00015" transfertime="19"/>
+    <parent ref="ID00001" transfertime="25.0"/>
+    <parent ref="ID00015" transfertime="19.0"/>
   </child>
   <child ref="ID00018">
-    <parent ref="ID00002" transfertime="15"/>
-    <parent ref="ID00015" transfertime="19"/>
+    <parent ref="ID00002" transfertime="15.0"/>
+    <parent ref="ID00015" transfertime="19.0"/>
   </child>
   <child ref="ID00019">
-    <parent ref="ID00003" transfertime="10"/>
-    <parent ref="ID00015" transfertime="21"/>
+    <parent ref="ID00003" transfertime="10.0"/>
+    <parent ref="ID00015" transfertime="21.0"/>
   </child>
   <child ref="ID00020">
-    <parent ref="ID00004" transfertime="22"/>
-    <parent ref="ID00015" transfertime="8"/>
+    <parent ref="ID00004" transfertime="22.0"/>
+    <parent ref="ID00015" transfertime="8.0"/>
   </child>
   <child ref="ID00021">
-    <parent ref="ID00020" transfertime="7"/>
-    <parent ref="ID00016" transfertime="12"/>
-    <parent ref="ID00017" transfertime="23"/>
-    <parent ref="ID00018" transfertime="11"/>
-    <parent ref="ID00019" transfertime="19"/>
+    <parent ref="ID00020" transfertime="7.0"/>
+    <parent ref="ID00016" transfertime="12.0"/>
+    <parent ref="ID00017" transfertime="23.0"/>
+    <parent ref="ID00018" transfertime="11.0"/>
+    <parent ref="ID00019" transfertime="19.0"/>
   </child>
   <child ref="ID00022">
-    <parent ref="ID00021" transfertime="16"/>
+    <parent ref="ID00021" transfertime="16.0"/>
   </child>
   <child ref="ID00023">
-    <parent ref="ID00022" transfertime="5"/>
+    <parent ref="ID00022" transfertime="5.0"/>
   </child>
   <child ref="ID00024">
-    <parent ref="ID00023" transfertime="20"/>
+    <parent ref="ID00023" transfertime="20.0"/>
   </child>
 </adag>
