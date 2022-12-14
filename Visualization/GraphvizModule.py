@@ -3,18 +3,13 @@ import graphviz
 def graphviz_run(nodes, edges):
     G = graphviz.Digraph(filename='Output/result_graph.gv')
     for node in nodes:
-        G.node(node.name + '\n(' + node.runtime + ')')
+        G.node(node.name + '\n(' + str(node.runtime) + ')', color=node.color)
 
     for edge in edges:
-        G.edge(edge[0], edge[1], edge[2])
-    G.view()
+        G.edge(edge.source_node.name + '\n(' + str(edge.source_node.runtime) + ')',
+               edge.destination_node.name + '\n(' + str(edge.destination_node.runtime) + ')',
+               str(edge.transfer_time))
 
-#----------------------------------------------------#
-    # with d.subgraph() as s:
-    #     s.attr(rank='same')
-    #     s.node('A')
-    #     s.node('X')
-    # d.edges(['AB', 'AC', 'CD', 'XY'])
-    # G.edges(edges)
+    G.view()
 
 
