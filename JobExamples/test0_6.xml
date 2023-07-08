@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- LEAD Mesoscale Meterology workflow (Figure 1 in Ramakrishnan and Gannon) -->
+<adag name="leadmm" jobCount="6" fileCount="0" childCount="4">
+<!--	<job id="p1" namespace="leadmm" name="LateralBoundaryInterpolator" runtime="2" cores="1">-->
+<!--	</job>-->
+<!--	<job id="p2" namespace="leadmm" name="3DInterpolator" runtime="3" cores="1">-->
+<!--	</job>-->
+<!--	<job id="p3" namespace="leadmm" name="WrfStatic" runtime="1" cores="1">-->
+<!--	</job>-->
+<!--	<job id="p4" namespace="leadmm" name="ARPS2WRF" runtime="2" cores="1">-->
+<!--	</job>-->
+<!--	<job id="p5" namespace="leadmm" name="WRF" runtime="1" cores="16">-->
+<!--	</job>-->
+<!--	<job id="p6" namespace="leadmm" name="WRF" runtime="2" cores="16">-->
+<!--	</job>-->
+	<job id="p1" runtime="2">
+	</job>
+	<job id="p2" runtime="3">
+	</job>
+	<job id="p3" runtime="1">
+	</job>
+	<job id="p4" runtime="2">
+	</job>
+	<job id="p5" runtime="1">
+	</job>
+	<job id="p6" runtime="2">
+	</job>
+	<child ref="p6">
+		<parent ref="p4" transfertime="1"/>
+		<parent ref="p5" transfertime="1"/>
+	</child>
+	<child ref="p5">
+		<parent ref="p1" transfertime="1"/>
+	</child>
+	<child ref="p4">
+		<parent ref="p1" transfertime="1"/>
+	</child>
+	<child ref="p3">
+		<parent ref="p2" transfertime="1"/>
+	</child>
+	<child ref="p2">
+		<parent ref="p1" transfertime="1"/>
+	</child>
+</adag>
