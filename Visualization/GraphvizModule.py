@@ -1,7 +1,7 @@
 import graphviz
 
 def graphviz_run(nodes, edges):
-    G = graphviz.Digraph(filename='Output/result_graph.gv')
+    G = graphviz.Digraph(filename='Output/graph_picture.gv')
     for node in nodes:
         G.node(node.name + '\n(' + str(node.runtime) + ')', color=node.color)
 
