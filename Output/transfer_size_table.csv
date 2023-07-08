@@ -1,0 +1,24 @@
+transfer_id,task_from,task_to,transfer_size
+0,"id = 1, name = p0, runtime = 72","id = 7, name = p6, runtime = 60",2209715.0
+1,"id = 10, name = p9, runtime = 60","id = 7, name = p6, runtime = 60",209715.0
+2,"id = 3, name = p2, runtime = 73","id = 9, name = p8, runtime = 67",209715.0
+3,"id = 2, name = p1, runtime = 57","id = 9, name = p8, runtime = 67",209715.0
+4,"id = 7, name = p6, runtime = 60","id = 9, name = p8, runtime = 67",539651072.0
+5,"id = 8, name = p7, runtime = 54","id = 9, name = p8, runtime = 67",2539651072.0
+6,"id = 7, name = p6, runtime = 60","id = 6, name = p5, runtime = 72",539651072.0
+7,"id = 2, name = p1, runtime = 57","id = 6, name = p5, runtime = 72",209715.0
+8,"id = 8, name = p7, runtime = 54","id = 6, name = p5, runtime = 72",2539651072.0
+9,"id = 2, name = p1, runtime = 57","id = 8, name = p7, runtime = 54",209715.0
+10,"id = 10, name = p9, runtime = 60","id = 8, name = p7, runtime = 54",209715.0
+11,"id = 5, name = p4, runtime = 60","id = 8, name = p7, runtime = 54",209715.0
+12,"id = 8, name = p7, runtime = 54","id = 11, name = p10, runtime = 62",2539651072.0
+13,"id = 0, name = entry, runtime = 0.0","id = 1, name = p0, runtime = 72",0.0
+14,"id = 0, name = entry, runtime = 0.0","id = 2, name = p1, runtime = 57",0.0
+15,"id = 0, name = entry, runtime = 0.0","id = 3, name = p2, runtime = 73",0.0
+16,"id = 0, name = entry, runtime = 0.0","id = 4, name = p3, runtime = 53",0.0
+17,"id = 0, name = entry, runtime = 0.0","id = 5, name = p4, runtime = 60",0.0
+18,"id = 0, name = entry, runtime = 0.0","id = 10, name = p9, runtime = 60",0.0
+19,"id = 4, name = p3, runtime = 53","id = 12, name = finish, runtime = 0.0",0.0
+20,"id = 6, name = p5, runtime = 72","id = 12, name = finish, runtime = 0.0",0.0
+21,"id = 9, name = p8, runtime = 67","id = 12, name = finish, runtime = 0.0",0.0
+22,"id = 11, name = p10, runtime = 62","id = 12, name = finish, runtime = 0.0",0.0
