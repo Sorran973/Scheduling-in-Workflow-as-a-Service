@@ -58,9 +58,7 @@ if __name__ == '__main__':
     criteria: Criteria = AverageResourceLoad(job.processor_number, job.T, 'max')
     job.schedule(criteria)
 
-    CSVWriter.write_current_processor_table(file_name='processor_table.csv', nodes=job.nodes, processor_table=job.processor_table)
-    CSVWriter.write_task_times_table(file_name='task_times_table.csv', nodes=job.nodes)
-    CSVWriter.write_transfer_size_table(file_name='transfer_size_table.csv', edges=job.edges)
+    CSVWriter.write_all_tables(job)
 
     # Job.global_timer = 5
     # Node.id = 0
