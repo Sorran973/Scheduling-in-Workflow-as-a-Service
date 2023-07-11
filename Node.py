@@ -6,7 +6,6 @@ class Node:
         self.id = Node.id
         self.name = name
         self.runtime = runtime
-        # self.volume = volume
         self.start_time = None
         self.finish_time = None
         self.visited = False

@@ -1,5 +1,6 @@
 import random
 
+import Criteria
 from Edge import Edge
 from File import File
 from Node import Node
@@ -10,7 +11,7 @@ import math
 import copy
 
 
-class Job:  # JobFlow
+class Job:
 
     global_timer = 0
 
@@ -18,17 +19,17 @@ class Job:  # JobFlow
         self.nodes = []
         self.node_dict = {} # [str(node_name) : obj(node)]
         self.edges = []
-        self.entry_edges = None # for setting edges between entry_node and his children
+        self.entry_edges: [int] # for setting edges between entry_node and his children
         self.finish_edges = None # -//- finish_node and his children
         self.dp = []        # dynamic programming table
         self.graphviz_nodes = []
         self.graphviz_edges = []
         self.critical_paths = []
         self.strategies = []
-        self.local_strategies = []
-        # self.T = 300
         self.processor_number = 5
         self.processor_table = []
+        self.T: int
+        self.criteria = None
         # self.T = 300            # p0    p1    p2    p3    p4    p5    p6    p7    p8    p9    p10
         # self.processor_table = [[72.0, 57.0, 73.0, 54.0, 60.0, 72.0, 60.0, 54.0, 67.0, 60.0, 62.0],
         #                         [78.0, 58.0, 85.0, 68.0, 75.0, 79.0, 75.0, 54.0, 74.0, 67.0, 67.0],
@@ -50,7 +51,6 @@ class Job:  # JobFlow
         self.find_all_critical_paths()
         self.check_duplicate_critical_paths()
         self.create_processor_table()
-        self.schedule()
         print(self.T)
 
 
@@ -80,9 +80,8 @@ class Job:  # JobFlow
             for parent in parents:
                 node_from = self.node_dict.get(parent.get('ref'))
                 node_to = self.node_dict.get(edge.get('ref'))
-                transfer_time = float(parent.get('transfertime'))
                 transfer_size = node_from.output_size
-                self.add_edge(Edge(node_from, node_to, transfer_time, transfer_size))
+                self.add_edge(Edge(node_from, node_to, transfer_size))
 
         # Add entry and finish edges
         self.complete_graph()
@@ -91,11 +90,13 @@ class Job:  # JobFlow
         self.nodes.append(node)
         self.graphviz_nodes.append(node)
         self.node_dict[node.name] = node
+
     def set_dp(self):
         n = len(self.nodes)
         self.dp = [[0.0] * (n) for i in range(n)]
         self.entry_edges = [0 for i in range(n)]
         self.finish_edges = [0 for i in range(n)]
+
     def add_edge(self, edge):
         self.edges.append(edge)
         self.graphviz_edges.append(edge)
@@ -112,26 +113,32 @@ class Job:  # JobFlow
 
         # sorting of all critical paths based on process time (length) in descending order
         self.nodes[0].critical_paths.sort(key=self.sort_for_critical_paths, reverse=True)
+
+        print("All critical paths:")
         for c_p in self.nodes[0].critical_paths:
             print(c_p[0], c_p[1])
 
-        # set T from the critical path
+        # set T based on the critical path
         t = self.round_up(self.nodes[0].critical_paths[0][0])
-        self.T = random.randint(t, t*2)
-        # self.T = 1000
+        # self.T = random.randint(t, t*2)
+        self.T = 78
         c_p = self.nodes[0].critical_paths[0][1]
         for i in range(0, len(c_p), 2): # because critical_path consists of nodes and edges
             c_p[i].color = 'red'
 
     def complete_graph(self): # add entry and finish edges
         n = len(self.nodes)
+        entry_node = self.nodes[0]
         for i in range(1, n-1):
+            next_node = self.nodes[i]
             if self.entry_edges[i] == 0:
-                self.add_edge(Edge(self.nodes[0], self.nodes[i], 0.0, 0.0))
+                self.add_edge(Edge(entry_node, next_node, next_node.input_size))
 
+        finish_node = self.nodes[-1]
         for i in range(1, n-1):
+            previous_node = self.nodes[i]
             if self.finish_edges[i] == 0:
-                self.add_edge(Edge(self.nodes[i], self.nodes[-1], 0.0, 0.0))
+                self.add_edge(Edge(previous_node, finish_node, previous_node.output_size))
 
     def dfs(self, node, dp):
         node.visited = True
@@ -184,10 +191,11 @@ class Job:  # JobFlow
                 processor_value.append(round(self.nodes[j].runtime * i, 2))
             self.processor_table.append(processor_value)
 
-    def schedule(self):
+    def schedule(self, criteria):
+
+        self.criteria = criteria
 
         for critical_path in self.critical_paths:
-            flag = False
             self.local_strategies = []
             layer = Layer()
 
@@ -208,16 +216,13 @@ class Job:  # JobFlow
                 local_c_p = copy.copy(c_p)
                 local_Z1 = Z1
                 common_nodes = self.common_member(strategy.time, c_p)
-                if not common_nodes:
-                    flag = True
-                else:
+
+                if common_nodes:
                     for node in common_nodes:
                         local_Z1 -= strategy.time[node.id-1]
                         local_c_p.remove(node)
 
-                if local_Z1 < 0:
-                    r = 5
-                if len(local_c_p) > 0: # if all nodes are already calculated
+                if len(local_c_p) > 0: # if not all nodes are already calculated
                     layer = self.next_layer_calc(local_Z1, local_c_p, 0) # direct pass
                     self.set_node_times(c_p, local_c_p, layer) # reverse pass
 
@@ -226,7 +231,7 @@ class Job:  # JobFlow
             if not layer.CF_layer: # if all nodes are already calculated
                 continue
 
-            l = len(self.nodes) - 2 # - entry and finish nodes
+            l = len(self.nodes) - 2 # without entry and finish nodes
             time = [-math.inf] * l
             criteria = [-math.inf] * l
 
@@ -274,28 +279,24 @@ class Job:  # JobFlow
 
         if node_index == len(c_p)-1: # if the layer is the last one
             t_node = reserve
-            if t_node < 0:
-                r = 5
             # C_node = self.criteria_func(c_p[node_index].id - 1, t_node)
             index = self.find_index(t_node, c_p[node_index].id - 1)
-            C_node = self.criteria_func(self.processor_table[index][c_p[node_index].id - 1])
+            # C_node = self.criteria_func(self.processor_table[index][c_p[node_index].id - 1])
+            C_node = self.criteria.main_criteria(self.processor_table[index][c_p[node_index].id - 1])
             CF_node = C_node
 
             return Layer(c_p[node_index].id, CF_node, [[C_node, t_node, None, None]], [])
 
         else:
-            # Z_next_node = [reserve - self.processor_table[i][c_p[node_index].id - 1]
-            #                for i in range(len(self.processor_table))
-            #                if (reserve - self.processor_table[i][c_p[node_index].id - 1]) >=
-            #                self.processor_table[0][c_p[node_index+1].id - 1]]
             Z_next_node = []
+            Z_min = 0
             for i in range(len(self.processor_table)):
-                a = reserve - self.processor_table[i][c_p[node_index].id - 1]
-                b = 0
-                for j in range(node_index + 1, len(c_p)): # rest reserve on the fastest processors
-                    b += self.processor_table[0][c_p[j].id - 1]
-                if a >= b:
-                    Z_next_node.append(a)
+                z = reserve - self.processor_table[i][c_p[node_index].id - 1]
+                # rest reserve on the fastest processors
+                for j in range(node_index + 1, len(c_p)):
+                    Z_min += self.processor_table[0][c_p[j].id - 1]
+                if z >= Z_min:
+                    Z_next_node.append(z)
                 else:
                     break
 
@@ -304,19 +305,16 @@ class Job:  # JobFlow
 
             t_node = [self.processor_table[i][c_p[node_index].id - 1] for i in range(0, len(Z_next_node))]
 
+            # add Z on the fastest processors
             if len(Z_next_node) == len(self.processor_table):
-                Z_min = 0
-                # Z_next_node.pop()
-                # t_node.pop()
-                for i in range(node_index + 1, len(c_p)):
-                    Z_min += self.processor_table[0][c_p[i].id - 1]
                 Z_next_node.append(Z_min)
                 t_node += [reserve - Z_min]
 
             C_node = []
             for i in range(0, len(t_node)):
                 index = self.find_index(t_node[i], c_p[node_index].id - 1)
-                C_node.append(self.criteria_func(self.processor_table[index][c_p[node_index].id-1]))
+                C_node.append(self.criteria.main_criteria(self.processor_table[index][c_p[node_index].id-1]))
+                # C_node.append(self.criteria_func(self.processor_table[index][c_p[node_index].id-1]))
                 # C_node.append(self.criteria_func(c_p[node_index].id - 1, t_node[i]))
 
             # recursion
@@ -336,8 +334,9 @@ class Job:  # JobFlow
             # min_value = min(CF_node)
             if not CF_node:
                 return []
-            min_value = max(CF_node)
-            indices = [index for index, value in enumerate(CF_node) if value == min_value]
+            # desired_value = max(CF_node)
+            desired_value = self.criteria.cf_criteria(CF_node)
+            indices = [index for index, value in enumerate(CF_node) if value == desired_value]
 
             options = []
             new_previous_layers = []
@@ -346,7 +345,7 @@ class Job:  # JobFlow
                     Z_next_node[index]])
                 new_previous_layers.append(previous_layers[index])
 
-            current_layer = Layer(c_p[node_index].id, min_value, options, new_previous_layers)
+            current_layer = Layer(c_p[node_index].id, desired_value, options, new_previous_layers)
 
             return current_layer
 

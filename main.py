@@ -1,53 +1,48 @@
 from CSVWriter import CSVWriter
-from Job import Node, Job, Edge
+from Job import Job
 from Parser import Parser
 from Visualization import GraphvizModule, PyvisModule, NetworkXModule
+from Criteria import*
 from bs4 import BeautifulSoup
 import numpy as np
 
-'''
-Исходные данные: информационный граф G задания пользователя, набор вычислительных узлов R, стратегия st, определяющая 
-критериальные функции и направление оптимизации, крайний срок T или максимальный бюджет С выполнения задания. Для всех 
-вершин из G заданы априорные оценки времени выполнения соответствующей подзадачи на каждом узле, а для всех рёбер – 
-оценки соответствующего времени обмена данными.
-'''
 
 # TODO: compare Graphviz и NetworkX (deep)
 
-def pyvis_parse():
-    with open(XML_FILE) as source_file:
-        soup = BeautifulSoup(source_file, 'html.parser')
-    # print(soup.prettify())
-
-    vertices = []
-    links = []
-
-    nodes = soup.find_all('job')
-    edges = soup.find_all('child')
-
-    for node in nodes:
-        vertices.append(
-            # Node(node.get('id'), node.get('id'), node.get('runtime'))
-        )
-
-    for edge in edges:
-        parents = edge.find_all('parent')
-        for i in range(len(parents)):
-            links.append(
-                (
-                    # Edge(parents[i].get('ref'), edge.get('ref'), parents[i].get('transfertime'))
-                    # edge.find_all('parent')[i].get('ref'),
-                    # edge.get('ref')
-                )
-            )
-
-    # for vertex in vertices:
-    #     print(vertex)
-    #
-    # for link in links:
-    #     print(link)
-
-    PyvisModule.pyvis_run(vertices, links)
+# def pyvis_parse():
+#     with open(XML_FILE) as source_file:
+#         soup = BeautifulSoup(source_file, 'html.parser')
+#     # print(soup.prettify())
+#
+#     vertices = []
+#     links = []
+#
+#     nodes = soup.find_all('job')
+#     edges = soup.find_all('child')
+#
+#     for node in nodes:
+#         vertices.append(
+#             # Node(node.get('id'), node.get('id'), node.get('runtime'))
+#         )
+#
+#     for edge in edges:
+#         parents = edge.find_all('parent')
+#         for i in range(len(parents)):
+#             links.append(
+#                 (
+#                     # Edge(parents[i].get('ref'), edge.get('ref'), parents[i].get('transfertime'))
+#                     # edge.find_all('parent')[i].get('ref'),
+#                     # edge.get('ref')
+#                 )
+#             )
+#
+#     # for vertex in vertices:
+#     #     print(vertex)
+#     #
+#     # for link in links:
+#     #     print(link)
+#
+#     PyvisModule.pyvis_run(vertices, links)
 
 
 if __name__ == '__main__':
@@ -60,6 +55,8 @@ if __name__ == '__main__':
 
     soup_nodes, soup_edges = Parser.parse(XML_FILE)
     job = Job(soup_nodes, soup_edges)
+    criteria: Criteria = AverageResourceLoad(job.processor_number, job.T, 'max')
+    job.schedule(criteria)
 
     CSVWriter.write_current_processor_table(file_name='processor_table.csv', nodes=job.nodes, processor_table=job.processor_table)
     CSVWriter.write_task_times_table(file_name='task_times_table.csv', nodes=job.nodes)
