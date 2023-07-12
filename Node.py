@@ -11,13 +11,8 @@ class Node:
         self.visited = False
         self.in_critical_path = False
         self.edges = []
-        self.cp = [id]
-        self.cp_length = -1
         self.color = 'black'
         self.critical_paths = [] # all critical paths of the node (start from that node) = [length, [obj(nodes and edges)], ...]
-        self.result_time = None
-        self.result_processor = None
-        self.result_C = None
         self.input = []
         self.input_size = 0
         self.output = []

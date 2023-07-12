@@ -50,29 +50,28 @@
 	</job>
 	<job id="p10" namespace="leadmm" name="WRF" runtime="62" cores="16">
 		<uses file="p7.txt" link="input" size="2539651072"/>
-		<uses file="p10.txt" link="output" size="2539651072"/>
-	</job>
+		<uses file="p10.txt" link="output" siz</job>
 	<child ref="p6">
-		<parent ref="p0" transfertime="5"/>
-		<parent ref="p9" transfertime="5"/>
+		<parent ref="p0"/>
+		<parent ref="p9"/>
 	</child>
 	<child ref="p8">
-		<parent ref="p2" transfertime="5"/>
-		<parent ref="p1" transfertime="5"/>
-		<parent ref="p6" transfertime="5"/>
-		<parent ref="p7" transfertime="5"/>
+		<parent ref="p2"/>
+		<parent ref="p1"/>
+		<parent ref="p6"/>
+		<parent ref="p7"/>
 	</child>
 	<child ref="p5">
-		<parent ref="p6" transfertime="5"/>
-		<parent ref="p1" transfertime="5"/>
-		<parent ref="p7" transfertime="5"/>
+		<parent ref="p6"/>
+		<parent ref="p1"/>
+		<parent ref="p7"/>
 	</child>
 	<child ref="p7">
-		<parent ref="p1" transfertime="5"/>
-		<parent ref="p9" transfertime="5"/>
-		<parent ref="p4" transfertime="5"/>
+		<parent ref="p1"/>
+		<parent ref="p9"/>
+		<parent ref="p4"/>
 	</child>
 	<child ref="p10">
-		<parent ref="p7" transfertime="5"/>
+		<parent ref="p7"/>
 	</child>
 </adag>
