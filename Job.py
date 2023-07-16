@@ -5,6 +5,7 @@ from Edge import Edge
 from File import File
 from Node import Node
 from Layer import Layer
+from Parser import Parser
 from Strategy import Strategy
 
 import math
@@ -16,14 +17,14 @@ def round_up(n, decimals=0):
     return math.ceil(n * multiplier) / multiplier
 
 
-def dfs(node, dp):
+def dfs(node):
     node.visited = True
     node_edges = node.edges
 
     for node_edge in node_edges:
         node_child = node_edge.destination_node
         if not node_child.visited:
-            dfs(node_child, dp)
+            dfs(node_child)
 
         for critical_path in node_child.critical_paths:
             node.critical_paths.append((node.runtime + node_edge.transfer_time + critical_path[0],
@@ -39,21 +40,20 @@ def mark_whole_path(path):
         elem.in_critical_path = True
 
 
-def common_member(list_a, list_b):
+def common_member(list_a, list_b, first_id):
     result = []
     for node in list_b:
-        if list_a[node.id - 1] != -math.inf:
+        if list_a[node.id - first_id - 1] != -math.inf:
             result.append(node)
 
     return result
 
 
 class Job:
-    global_timer = 0
-    criteria: Criteria
 
-    def __init__(self, soup_nodes, soup_edges):
+    def __init__(self, XML_FILE, criteria, start_time=0):
         self.nodes = []
+        self.first_id: int
         self.node_dict = {}  # [str(node_name) : obj(node)]
         self.edges = []
         self.entry_edges: [int]  # for setting edges between entry_node and his children
@@ -66,27 +66,17 @@ class Job:
         self.num_of_processors = 5
         self.processor_table = []
         self.T: int
-        # self.T = 300            # p0    p1    p2    p3    p4    p5    p6    p7    p8    p9    p10
-        # self.processor_table = [[72.0, 57.0, 73.0, 54.0, 60.0, 72.0, 60.0, 54.0, 67.0, 60.0, 62.0],
-        #                         [78.0, 58.0, 85.0, 68.0, 75.0, 79.0, 75.0, 54.0, 74.0, 67.0, 67.0],
-        #                         [82.0, 78.0, 90.0, 73.0, 84.0, 88.0, 84.0, 75.0, 80.0, 69.0, 68.0],
-        #                         [88.0, 87.0, 93.0, 82.0, 86.0, 90.0, 89.0, 86.0, 87.0, 69.0, 80.0],
-        #                         [90.0, 89.0, 94.0, 83.0, 92.0, 91.0, 93.0, 92.0, 89.0, 83.0, 84.0],
-        #                         [94.0, 89.0, 94.0, 88.0, 92.0, 92.0, 93.0, 92.0, 89.0, 85.0, 87.0]]
-
-        # self.T = 15             # p1    p2    p3    p4   p5    p6
-        # self.processor_table = [[ 2.0,  3.0, 1.0,  2.0, 1.0,  2.0],
-        #                         [ 4.0,  6.0, 2.0,  4.0, 2.0,  4.0],
-        #                         [ 6.0,  9.0, 3.0,  6.0, 3.0,  6.0],
-        #                         [ 8.0, 12.0, 4.0,  8.0, 4.0,  8.0],
-        #                         [10.0, 15.0, 5.0, 10.0, 5.0, 10.0]]
+        self.criteria = criteria
+        self.global_timer = start_time
 
         # Steps
+        soup_nodes, soup_edges = Parser.parse(XML_FILE)
         self.create_graph(soup_nodes, soup_edges)
         self.find_all_critical_paths()
         self.check_duplicate_critical_paths()
         self.create_processor_table()
-        print(self.T)
+        self.criteria.set_parameters(self.num_of_processors, self.T)
+        # print(self.T)
 
     def create_graph(self, soup_nodes, soup_edges):
         # Add entry_node into graph
@@ -126,31 +116,33 @@ class Job:
         self.node_dict[node.name] = node
 
     def set_dp(self):
-        n = len(self.nodes)
-        self.dp = [[0.0] * (n) for i in range(n)]
-        self.entry_edges = [0 for i in range(n)]
-        self.finish_edges = [0 for i in range(n)]
+        self.num_of_nodes = len(self.nodes)
+        self.dp = [[0.0] * (self.num_of_nodes) for i in range(self.num_of_nodes)]
+        self.entry_edges = [0 for i in range(self.num_of_nodes)]
+        self.finish_edges = [0 for i in range(self.num_of_nodes)]
+        self.first_id = self.nodes[0].id
+
 
     def add_edge(self, edge):
         self.edges.append(edge)
         self.draw_edges.append(edge)
         edge.source_node.add_edge(edge)
-        self.dp[edge.source_node.id][edge.destination_node.id] = edge.transfer_time
+        # self.dp[edge.source_node.id][edge.destination_node.id] = edge.transfer_time
 
-        self.entry_edges[edge.destination_node.id] = 1
-        self.finish_edges[edge.source_node.id] = 1
+        self.entry_edges[edge.destination_node.id - self.first_id] = 1
+        self.finish_edges[edge.source_node.id - self.first_id] = 1
 
     def find_all_critical_paths(self):
         for node in self.nodes:
             if not node.visited:
-                dfs(node, self.dp)
+                dfs(node)
 
         # sorting of all critical paths based on process time (length) in descending order
         self.nodes[0].critical_paths.sort(key=sort_for_critical_paths, reverse=True)
 
-        print("All critical paths:")
-        for c_p in self.nodes[0].critical_paths:
-            print(c_p[0], c_p[1])
+        # print("All critical paths:")
+        # for c_p in self.nodes[0].critical_paths:
+        #     print(c_p[0], c_p[1])
 
         # set T based on the critical path
         self.T = round_up(self.nodes[0].critical_paths[0][0])
@@ -182,9 +174,9 @@ class Job:
                     self.critical_paths.append(c_p)
                     mark_whole_path(c_p)
 
-        print("\nAll critical paths without duplications:")
-        for c_p in self.critical_paths:
-            print(c_p[0], c_p[1])
+        # print("\nAll critical paths without duplications:")
+        # for c_p in self.critical_paths:
+        #     print(c_p[0], c_p[1])
 
     def create_processor_table(self):
         for i in range(1, self.num_of_processors + 1):
@@ -193,9 +185,7 @@ class Job:
                 processor_value.append(round(self.nodes[j].runtime * i, 2))
             self.processor_table.append(processor_value)
 
-    def schedule(self, criteria):
-
-        self.criteria = criteria
+    def schedule(self):
 
         for critical_path in self.critical_paths:
             self.local_strategies = []
@@ -218,11 +208,11 @@ class Job:
                 strategy = self.strategies[0]
                 local_c_p = copy.copy(c_p)
                 local_Z1 = Z1
-                common_nodes = common_member(strategy.time, c_p)
+                common_nodes = common_member(strategy.time, c_p, self.first_id)
 
                 if common_nodes:
                     for node in common_nodes:
-                        local_Z1 -= strategy.time[node.id - 1]
+                        local_Z1 -= strategy.time[node.id - self.first_id - 1]
                         local_c_p.remove(node)
 
                 if len(local_c_p) > 0:  # if not all nodes are already calculated
@@ -255,22 +245,22 @@ class Job:
                 else:
                     self.strategies.append(new_strategy)
 
-            print(self.strategies[0].time)
+            # print(self.strategies[0].time)
 
     def create_strategy(self, strategy, layer):
         if not layer.previous_layer:
-            strategy.change(layer.node_id, round(layer.option[0], 2), round(layer.option[1], 2))
+            strategy.change(layer.node_id - self.first_id, round(layer.option[0], 2), round(layer.option[1], 2))
             self.local_strategies.append(strategy)
         else:
-            strategy.change(layer.node_id, round(layer.option[0], 2), round(layer.option[1], 2))
+            strategy.change(layer.node_id - self.first_id, round(layer.option[0], 2), round(layer.option[1], 2))
             self.create_strategy(strategy, layer.previous_layer)
 
     def next_layer_calc(self, reserve, c_p, node_index):
 
         if node_index == len(c_p) - 1:  # if the layer is the last one
             t_node = reserve
-            index = self.find_index(t_node, c_p[node_index].id - 1)
-            C_node = self.criteria.main_criteria(self.processor_table[index][c_p[node_index].id - 1])
+            index = self.find_index(t_node, c_p[node_index].id - self.first_id - 1)
+            C_node = self.criteria.main_criteria(self.processor_table[index][c_p[node_index].id - self.first_id - 1])
             CF_node = C_node
 
             return Layer(c_p[node_index].id, CF_node, [C_node, t_node, None, None], None)
@@ -279,10 +269,10 @@ class Job:
             Z_next_node = []
             Z_min = 0
             for i in range(len(self.processor_table)):
-                z = reserve - self.processor_table[i][c_p[node_index].id - 1]
+                z = reserve - self.processor_table[i][c_p[node_index].id - self.first_id - 1]
                 # rest reserve on the fastest processors
                 for j in range(node_index + 1, len(c_p)):
-                    Z_min += self.processor_table[0][c_p[j].id - 1]
+                    Z_min += self.processor_table[0][c_p[j].id - self.first_id - 1]
                 if z >= Z_min:
                     Z_next_node.append(z)
                 else:
@@ -291,7 +281,7 @@ class Job:
             if not Z_next_node:
                 return
 
-            t_node = [self.processor_table[i][c_p[node_index].id - 1] for i in range(0, len(Z_next_node))]
+            t_node = [self.processor_table[i][c_p[node_index].id - self.first_id - 1] for i in range(0, len(Z_next_node))]
 
             # add Z on the fastest processors
             if len(Z_next_node) == len(self.processor_table):
@@ -300,8 +290,8 @@ class Job:
 
             C_node = []
             for i in range(0, len(t_node)):
-                index = self.find_index(t_node[i], c_p[node_index].id - 1)
-                C_node.append(self.criteria.main_criteria(self.processor_table[index][c_p[node_index].id - 1]))
+                index = self.find_index(t_node[i], c_p[node_index].id - self.first_id - 1)
+                C_node.append(self.criteria.main_criteria(self.processor_table[index][c_p[node_index].id - self.first_id - 1]))
 
             # recursion
             CF_next_node = []
@@ -339,14 +329,14 @@ class Job:
             node.finish_time = round(node.start_time + layer.option[1], 2)
 
         if layer.previous_layer:
-            self.set_next_node_times(node, self.nodes[layer.previous_layer.node_id], layer.previous_layer)
+            self.set_next_node_times(node, self.nodes[layer.previous_layer.node_id - self.first_id], layer.previous_layer)
 
     def set_next_node_times(self, previous_node, current_node, layer):
         current_node.start_time = previous_node.finish_time
         current_node.finish_time = round(current_node.start_time + layer.option[1], 2)
 
         if layer.previous_layer:
-            self.set_next_node_times(current_node, self.nodes[layer.previous_layer.node_id], layer.previous_layer)
+            self.set_next_node_times(current_node, self.nodes[layer.previous_layer.node_id - self.first_id], layer.previous_layer)
 
     def find_index(self, z, node_index):
         lo = 0

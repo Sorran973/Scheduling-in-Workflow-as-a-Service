@@ -13,11 +13,14 @@ class Criteria(ABC):
 
 class AverageResourceLoad(Criteria):
 
-    def __init__(self, job, CF_criteria):
-        self.num_of_processors = job.num_of_processors
-        self.T = job.T
+    def __init__(self, CF_criteria):
+        self.num_of_processors: int
+        self.T: int
         self.CF_criteria: str = CF_criteria
 
+    def set_parameters(self, num_of_processors, t):
+        self.num_of_processors = num_of_processors
+        self.T = t
 
     def main_criteria(self, perform_time):
         return round(perform_time / (self.num_of_processors * self.T), 2)
