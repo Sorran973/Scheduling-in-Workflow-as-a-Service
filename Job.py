@@ -58,7 +58,6 @@ class Job:
         self.edges = []
         self.entry_edges: [int]  # for setting edges between entry_node and his children
         self.finish_edges = None  # -//- finish_node and his children
-        self.dp = []  # dynamic programming table
         self.draw_nodes = []
         self.draw_edges = []
         self.critical_paths = []
@@ -96,8 +95,7 @@ class Job:
         self.add_node(Node('finish', 0.0))
         self.nodes[-1].critical_paths.append([0, [self.nodes[-1]]])
 
-        # Create dp_table
-        self.set_dp()
+        self.set_starting_values()
 
         for edge in soup_edges:  # edge = child and all his parent
             parents = edge.find_all('parent')
@@ -115,9 +113,8 @@ class Job:
         self.draw_nodes.append(node)
         self.node_dict[node.name] = node
 
-    def set_dp(self):
+    def set_starting_values(self):
         self.num_of_nodes = len(self.nodes)
-        self.dp = [[0.0] * (self.num_of_nodes) for i in range(self.num_of_nodes)]
         self.entry_edges = [0 for i in range(self.num_of_nodes)]
         self.finish_edges = [0 for i in range(self.num_of_nodes)]
         self.first_id = self.nodes[0].id
@@ -127,7 +124,6 @@ class Job:
         self.edges.append(edge)
         self.draw_edges.append(edge)
         edge.source_node.add_edge(edge)
-        # self.dp[edge.source_node.id][edge.destination_node.id] = edge.transfer_time
 
         self.entry_edges[edge.destination_node.id - self.first_id] = 1
         self.finish_edges[edge.source_node.id - self.first_id] = 1
