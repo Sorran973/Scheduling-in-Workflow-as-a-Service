@@ -1,6 +1,6 @@
 class Layer:
-    def __init__(self, node_id=[], CF_current_layer=[], options=[], previous_layers=[]):
+    def __init__(self, node_id=None, CF_of_layer=None, option=None, previous_layer=None):
         self.node_id = node_id
-        self.CF_layer = CF_current_layer
-        self.options = options
-        self.previous_layers = previous_layers
+        self.CF_of_layer = CF_of_layer
+        self.option = option
+        self.previous_layer = previous_layer
