@@ -11,7 +11,7 @@ class Criteria(ABC):
         pass
 
 
-class AverageResourceLoad(Criteria):
+class AverageResourceLoadCriteria(Criteria):
 
     def __init__(self, CF_criteria):
         self.num_of_processors: int

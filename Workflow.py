@@ -1,5 +1,3 @@
-import random
-
 from CSVWriter import CSVWriter
 
 

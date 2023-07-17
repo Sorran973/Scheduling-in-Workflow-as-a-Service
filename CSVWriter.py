@@ -1,39 +1,44 @@
 import csv
 
-class CSVWriter:
+PROCESSOR_TABLE_FILE = 'Output/processor_table.csv'
+TASK_TIME_TABLE_FILE = 'Output/task_time_table.csv'
+TRANSFER_SIZE_TABLE_FILE = 'Output/transfer_size_table.csv'
 
-    @staticmethod
-    def write_all_tables(job):
-        CSVWriter.write_processors_table(file_name='processors_table.csv', nodes=job.nodes, processor_table=job.processor_table)
-        CSVWriter.write_task_times_table(file_name='task_times_table.csv', nodes=job.nodes)
-        CSVWriter.write_transfer_sizes_table(file_name='transfer_sizes_table.csv', edges=job.edges)
+class CSVWriter:
 
     @staticmethod
     def write_headers():
 
-        f = open('Output/processors_table.csv', 'w')
+        f = open(PROCESSOR_TABLE_FILE, 'w')
         f.close()
 
-        with open('Output/task_times_table.csv', 'w') as f:
+        with open(TASK_TIME_TABLE_FILE, 'w') as f:
             fieldnames = ['task_id', 'task_name', 'start_time', 'finish_time']
 
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
 
-        with open('Output/transfer_sizes_table.csv', 'w') as f:
-            fieldnames = ['task_id', 'task_name', 'start_time', 'finish_time']
+        with open(TRANSFER_SIZE_TABLE_FILE, 'w') as f:
+            fieldnames = ['transfer_id', 'task_from', 'task_to', 'transfer_size']
 
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
 
 
     @staticmethod
-    def write_processors_table(file_name, nodes, processor_table):
+    def write_all_tables(job):
+        CSVWriter.write_processors_table(nodes=job.nodes, processor_table=job.processor_table)
+        CSVWriter.write_task_times_table(nodes=job.nodes)
+        CSVWriter.write_transfer_sizes_table(edges=job.edges)
+
+
+    @staticmethod
+    def write_processors_table(nodes, processor_table):
 
         del nodes[-1:]  # delete entry node
         del nodes[0:1]  # delete finish node
 
-        with open('Output/' + file_name, 'a', newline='') as f:
+        with open(PROCESSOR_TABLE_FILE, 'a', newline='') as f:
             fieldnames = []
             for node in nodes:
                 fieldnames.append(str(node.id) + "/" + node.name)
@@ -50,12 +55,9 @@ class CSVWriter:
             f.write('\n')
 
     @staticmethod
-    def write_task_times_table(file_name, nodes):
+    def write_task_times_table(nodes):
 
-        # del nodes[-1:]  # delete entry node
-        # del nodes[0:1]  # delete finish node
-
-        with open('Output/' + file_name, 'a') as f:
+        with open(TASK_TIME_TABLE_FILE, 'a') as f:
             fieldnames = ['task_id', 'task_name', 'start_time', 'finish_time']
 
             writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -69,9 +71,9 @@ class CSVWriter:
 
 
     @staticmethod
-    def write_transfer_sizes_table(file_name, edges):
+    def write_transfer_sizes_table(edges):
 
-        with open('Output/' + file_name, 'a',) as f:
+        with open(TRANSFER_SIZE_TABLE_FILE, 'a') as f:
             fieldnames = ['transfer_id', 'task_from', 'task_to', 'transfer_size']
 
             writer = csv.DictWriter(f, fieldnames=fieldnames)

@@ -12,7 +12,7 @@ if __name__ == '__main__':
     # XML_FILE = 'JobExamples/Epigenomics_25.xml'
     # XML_FILE2 = 'JobExamples/CyberShake_30.xml'
 
-    criteria: Criteria = AverageResourceLoad('max')
+    criteria: Criteria = AverageResourceLoadCriteria('max')
 
     workflow = Workflow()
     workflow.addJob(Job(XML_FILE, criteria))

@@ -1,6 +1,3 @@
-import random
-
-import Criteria
 from Edge import Edge
 from File import File
 from Node import Node
