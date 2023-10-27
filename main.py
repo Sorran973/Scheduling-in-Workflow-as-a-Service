@@ -1,25 +1,57 @@
-from Job import Job
-from Visualization import Drawer
-from Criteria import *
-from Visualization.Drawer import GraphvizDrawer
+from Visualization.GraphvizDrawer import GraphvizDrawer
+from Visualization.PyvisDrawer import PyvisDrawer
+
 from Workflow import Workflow
+import Drawer
+from Criteria import *
+from WorkflowSet import WorkflowSet
+
+
+# TODO: Каждой таске дать объем вычислений, а время работы на каждом типе вм вычислять не через матрицу, а делением на
+#  скорость работы вм
 
 
 if __name__ == '__main__':
     # XML_FILE = 'JobExamples/test1_11.xml'
-    # XML_FILE = 'JobExamples/Montage_25.xml'
-    XML_FILE = 'JobExamples/Montage_100.xml'
-    # XML_FILE = 'JobExamples/Epigenomics_25.xml'
-    # XML_FILE2 = 'JobExamples/CyberShake_30.xml'
+    MONTAGE50 = 'JobExamples/MONTAGE.n.50.0.dax'
+    MONTAGE100 = 'JobExamples/MONTAGE.n.100.0.dax'
+    MONTAGE500 = 'JobExamples/MONTAGE.n.500.0.dax'
+
+    CYBERSHAKE50 = 'JobExamples/CYBERSHAKE.n.50.0.dax'
+    CYBERSHAKE100 = 'JobExamples/CYBERSHAKE.n.100.0.dax'
+    CYBERSHAKE500 = 'JobExamples/CYBERSHAKE.n.500.0.dax'
+
+    GENOME50 = 'JobExamples/GENOME.n.50.0.dax'
+    GENOME100 = 'JobExamples/GENOME.n.100.0.dax'
+    GENOME500 = 'JobExamples/GENOME.n.500.0.dax'
+
+    LIGO50 = 'JobExamples/LIGO.n.50.0.dax'
+    LIGO100 = 'JobExamples/LIGO.n.100.0.dax'
+    LIGO500 = 'JobExamples/LIGO.n.500.0.dax'
+
+    SIPHT50 = 'JobExamples/SIPHT.n.50.0.dax'
+    SIPHT100 = 'JobExamples/SIPHT.n.100.0.dax'
+    SIPHT500 = 'JobExamples/SIPHT.n.500.0.dax'
+
+
 
     criteria: Criteria = AverageResourceLoadCriteria('max')
 
-    workflow = Workflow()
-    workflow.addJob(Job(XML_FILE, criteria))
-    workflow.addJob(Job(XML_FILE, criteria, 50))
-    workflow.addJob(Job(XML_FILE, criteria, 150))
-    workflow.addJob(Job(XML_FILE, criteria, 300))
-    workflow.schedule()
+    workflow_set = WorkflowSet()
+    # workflow_set.addWorkflow(Workflow(LIGO50, criteria))
 
-    drawer: Drawer = GraphvizDrawer()
-    drawer.draw(workflow.draw_nodes, workflow.draw_edges)
+
+    workflow_set.addWorkflow(Workflow(MONTAGE100, criteria, 10000))
+    workflow_set.addWorkflow(Workflow(CYBERSHAKE100, criteria, 15000))
+    workflow_set.addWorkflow(Workflow(SIPHT100, criteria))
+    workflow_set.addWorkflow(Workflow(LIGO100, criteria, 5000))
+    workflow_set.addWorkflow(Workflow(GENOME100, criteria))
+    workflow_set.schedule()
+
+    # drawer: Drawer = GraphvizDrawer()
+    # drawer.drawGraph(workflow_set.drawn_nodes, workflow_set.drawn_edges)
+    # drawer.drawTimes(workflow_set.drawn_nodes)
+
+    drawer: Drawer = PyvisDrawer()
+    drawer.drawGraph(workflow_set.drawn_nodes, workflow_set.drawn_edges)
+    drawer.drawTimes(workflow_set.drawn_nodes)
