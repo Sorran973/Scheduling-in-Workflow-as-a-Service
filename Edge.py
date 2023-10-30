@@ -15,4 +15,5 @@ class Edge:  # Data transfer
     def __str__(self):
         return str(self.source_node.id) + \
                " --> " + str(self.destination_node.id) + \
-               ", transfer_size = " + str(self.transfer_size)
+               ", transfer_size = " + str(self.transfer_size) + \
+               ", transfer_time = " + str(self.transfer_time)

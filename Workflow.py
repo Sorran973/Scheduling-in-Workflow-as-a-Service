@@ -46,6 +46,7 @@ def common_member(list_a, list_b, first_id):
     return result
 
 
+# volume =
 class Workflow:
 
     def __init__(self, XML_FILE, criteria, start_time=0):
@@ -61,6 +62,7 @@ class Workflow:
         self.strategies = []
         self.num_of_processors = 5
         self.processor_table = []
+        self.processor_table_performance = [3.0, 2.5, 2.0, 1.5, 1.0]
         self.T: int
         self.criteria = criteria
         self.global_timer = start_time
@@ -76,6 +78,7 @@ class Workflow:
 
     def create_graph(self, soup_nodes, soup_edges):
         # Add entry_node into graph
+        #TODO: try to eliminate entry node
         self.add_node(Node('entry', 0.0))
 
         for node in soup_nodes:
@@ -100,6 +103,7 @@ class Workflow:
                 node_from = self.node_dict.get(parent.get('ref'))
                 node_to = self.node_dict.get(edge.get('ref'))
                 transfer_size = node_from.output_size
+                # transfer_time = 10
                 self.add_edge(Edge(node_from, node_to, transfer_size))
 
         # Add entry and finish edges
@@ -172,10 +176,10 @@ class Workflow:
         #     print(c_p[0], c_p[1])
 
     def create_processor_table(self):
-        for i in range(1, self.num_of_processors + 1):
+        for i in range(0, self.num_of_processors):
             processor_value = []
             for j in range(1, len(self.nodes) - 1):
-                processor_value.append(round(self.nodes[j].runtime * i, 2))
+                processor_value.append(round(self.nodes[j].runtime / self.processor_table_performance[i], 2))
             self.processor_table.append(processor_value)
 
     def schedule(self):
@@ -183,14 +187,12 @@ class Workflow:
         for critical_path in self.critical_paths:
             self.local_strategies = []
             layer = Layer()
-
-            # does nothing (in this version)
             c_p = critical_path[1]
-            del c_p[-2:]  # delete entry node and edge
-            del c_p[0:2]  # delete finish node and edge
+            del c_p[-1:]  # delete finish node and edge
+            del c_p[0:1]  # delete entry node and edge
 
             Z1 = self.T
-            for i in range(len(c_p) - 2, 0, -2):  # delete edges
+            for i in range(len(c_p) - 1, -1, -2):  # delete edges
                 Z1 -= c_p[i].transfer_time
                 del c_p[i]
 

@@ -9,7 +9,7 @@ class PyvisDrawer(Drawer):
 
     GRAPH_OUTPUT = 'Output/pyvis_graph.html'
 
-    def drawGraph(self, nodes, edges):
+    def draw_graph(self, nodes, edges):
         # G = Network(directed=True)
         G = nx.DiGraph()
 
@@ -28,14 +28,14 @@ class PyvisDrawer(Drawer):
 
 
 
-        network = Network(height="750px", width="100%", directed = True,
+        network = Network(height="750px", width="50%", directed = True,
                           bgcolor="#222222", font_color="white", layout = True)
         network.show_buttons(filter_=['layout', 'interaction', 'manipulation', 'physics'])
         network.from_nx(G)
         network.show(self.GRAPH_OUTPUT)
 
 
-    def drawTimes(self, nodes):
+    def draw_gantt(self, nodes):
 
         arr_color = ['tab:blue', 'tab:orange', 'tab:red', 'tab:green', 'tab:purple', 'tab:brown', 'tab:pink',
                      'tab:gray', 'tab:olive', 'tab:cyan']
@@ -54,8 +54,8 @@ class PyvisDrawer(Drawer):
                     ax.broken_barh([(node.start_time, node.finish_time - node.start_time)], (num_nodes, 0.8), facecolors=arr_color[i])
                     num_nodes -= 1
 
-                    yticks.append(num_nodes + 1)
-                    y_labels.append(node.id)
+                    yticks.append(num_nodes + 2)
+                    y_labels.append(node.id - 1)
             i += 1
 
 
@@ -68,38 +68,3 @@ class PyvisDrawer(Drawer):
 
         plt.show()
         fig.savefig(self.GANTT_OUTPUT, format="pdf")
-
-#--------------------------------------------------------#
-    # G = nx.DiGraph()
-
-    # G.add_nodes_from([
-    #     (0, {"size": 50}),
-    #     (1, {"label": "Fuck", "title": "10"}),
-    #     (2, {"weight": 5, "utility": 10}),
-    #     (3, {"weight": 5, "utility": 10}),
-    #     (4, {"weight": 5, "utility": 10}),
-    #     (5, {"weight": 5, "utility": 10})
-    # ])
-
-
-    # G.add_node(0, size=25, label='test', title='name1', group=1)
-    # G.add_node(1, size=15, label='test2', title='name2', group=2)
-
-    # for node in nodes:
-    #     G.add_node(node.index, label=node.name, title=node.volume)
-
-    # g.add_nodes([1, 2, 3], value=[10, 100, 400],
-    #             title=['I am node 1', 'node 2 here', 'and im node 3'],
-    #             x=[21.4, 54.2, 11.2],
-    #             y=[100.2, 23.54, 32.1],
-    #             label=['NODE 1', 'NODE 2', 'NODE 3'],
-    #             color=['#00ff1e', '#162347', '#dd4b39'])
-
-
-    # G.add_edges_from([
-    #     (0, 1, {"label": "1", "title": "2/0"})
-    # ])
-    # G.add_edge(0, 1, weight=100, label=10, title='2 / 0')
-
-    # network = Network('500px', '500px')
-    # network.from_nx(G)

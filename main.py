@@ -7,12 +7,9 @@ from Criteria import *
 from WorkflowSet import WorkflowSet
 
 
-# TODO: Каждой таске дать объем вычислений, а время работы на каждом типе вм вычислять не через матрицу, а делением на
-#  скорость работы вм
-
-
 if __name__ == '__main__':
-    # XML_FILE = 'JobExamples/test1_11.xml'
+    XML_FILE = 'JobExamples/test1_11.xml'
+
     MONTAGE50 = 'JobExamples/MONTAGE.n.50.0.dax'
     MONTAGE100 = 'JobExamples/MONTAGE.n.100.0.dax'
     MONTAGE500 = 'JobExamples/MONTAGE.n.500.0.dax'
@@ -38,6 +35,7 @@ if __name__ == '__main__':
     criteria: Criteria = AverageResourceLoadCriteria('max')
 
     workflow_set = WorkflowSet()
+    # workflow_set.addWorkflow(Workflow(XML_FILE, criteria))
     # workflow_set.addWorkflow(Workflow(LIGO50, criteria))
 
 
@@ -53,5 +51,5 @@ if __name__ == '__main__':
     # drawer.drawTimes(workflow_set.drawn_nodes)
 
     drawer: Drawer = PyvisDrawer()
-    drawer.drawGraph(workflow_set.drawn_nodes, workflow_set.drawn_edges)
-    drawer.drawTimes(workflow_set.drawn_nodes)
+    drawer.draw_graph(workflow_set.drawn_nodes, workflow_set.drawn_edges)
+    drawer.draw_gantt(workflow_set.drawn_nodes)

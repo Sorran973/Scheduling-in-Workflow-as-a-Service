@@ -50,7 +50,8 @@
 	</job>
 	<job id="p10" namespace="leadmm" name="WRF" runtime="62" cores="16">
 		<uses file="p7.txt" link="input" size="2539651072"/>
-		<uses file="p10.txt" link="output" siz</job>
+		<uses file="p10.txt" link="output" size="1518521"/>
+	</job>
 	<child ref="p6">
 		<parent ref="p0"/>
 		<parent ref="p9"/>

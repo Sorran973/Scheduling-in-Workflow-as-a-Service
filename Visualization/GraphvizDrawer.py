@@ -7,7 +7,7 @@ class GraphvizDrawer(Drawer):
 
     GRAPH_OUTPUT = 'Output/graph.gv'
 
-    def drawGraph(self, nodes, edges):
+    def draw_graph(self, nodes, edges):
 
         G = graphviz.Digraph(filename=self.GRAPH_OUTPUT)
         for arr in nodes:
@@ -34,7 +34,7 @@ class GraphvizDrawer(Drawer):
 
         G.view()
 
-    def drawTimes(self, nodes):
+    def draw_gantt(self, nodes):
 
         fig, ax = plt.subplots()
 

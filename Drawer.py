@@ -6,9 +6,9 @@ class Drawer(ABC):
     GANTT_OUTPUT = 'Output/gantt_chart.pdf'
 
     @abstractmethod
-    def drawGraph(self, nodes, edges):
+    def draw_graph(self, nodes, edges):
         pass
 
     @abstractmethod
-    def drawTimes(self, nodes):
+    def draw_gantt(self, nodes):
         pass
