@@ -2,7 +2,7 @@ class Edge:  # Data transfer
 
     id = 0
 
-    def __init__(self, source_node, destination_node, transfer_size, transfer_time=0):
+    def __init__(self, source_node, destination_node, transfer_size, transfer_time):
         self.id = Edge.id
         self.source_node = source_node
         self.destination_node = destination_node

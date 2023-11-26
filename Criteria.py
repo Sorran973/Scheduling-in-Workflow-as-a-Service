@@ -18,9 +18,9 @@ class AverageResourceLoadCriteria(Criteria):
         self.T: int
         self.CF_criteria: str = CF_criteria
 
-    def set_parameters(self, num_of_processors, t):
+    def set_parameters(self, num_of_processors, workflow_time):
         self.num_of_processors = num_of_processors
-        self.T = t
+        self.T = workflow_time
 
     def main_criteria(self, perform_time):
         return round(perform_time / (self.num_of_processors * self.T), 2)

@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import networkx as nx
 
-def networkx_run(nodes, edges):
+def networkx_run():
     # G = nx.DiGraph()
     #
     # for node in nodes:
@@ -64,5 +64,3 @@ def networkx_run(nodes, edges):
     nx.draw(G, node_size=300, width=3)
     plt.margins(0.2)
     plt.show()
-
-

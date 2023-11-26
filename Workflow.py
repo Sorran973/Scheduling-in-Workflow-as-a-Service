@@ -24,7 +24,7 @@ def dfs(node):
             dfs(node_child)
 
         for critical_path in node_child.critical_paths:
-            node.critical_paths.append((node.runtime + node_edge.transfer_time + critical_path[0],
+            node.critical_paths.append((round(node.runtime + node_edge.transfer_time + critical_path[0], 2),
                                         [node, node_edge] + critical_path[1]))
 
 
@@ -49,7 +49,7 @@ def common_member(list_a, list_b, first_id):
 # volume =
 class Workflow:
 
-    def __init__(self, XML_FILE, criteria, start_time=0):
+    def __init__(self, XML_FILE, criteria, task_volume_multiplier, data_volume_multiplier, start_time=0):
         self.nodes = []
         self.first_id: int
         self.node_dict = {}  # [str(node_name) : obj(node)]
@@ -63,6 +63,9 @@ class Workflow:
         self.num_of_processors = 5
         self.processor_table = []
         self.processor_table_performance = [3.0, 2.5, 2.0, 1.5, 1.0]
+        self.data_transfer_channel = 10
+        self.volume_multiplier = task_volume_multiplier
+        self.data_volume_multiplier = data_volume_multiplier
         self.T: int
         self.criteria = criteria
         self.global_timer = start_time
@@ -70,29 +73,31 @@ class Workflow:
         # Steps
         soup_nodes, soup_edges = Parser.parse(XML_FILE)
         self.create_graph(soup_nodes, soup_edges)
+        self.create_processor_table()
         self.find_all_critical_paths()
         self.check_duplicate_critical_paths()
-        self.create_processor_table()
+
         self.criteria.set_parameters(self.num_of_processors, self.T)
-        # print(self.T)
 
     def create_graph(self, soup_nodes, soup_edges):
         # Add entry_node into graph
         #TODO: try to eliminate entry node
-        self.add_node(Node('entry', 0.0))
+        self.add_node(Node('entry', 0.0, 0.0))
 
         for node in soup_nodes:
             name = node.get('id')
-            runtime = node.get('runtime')
-            current_node = Node(name, float(runtime))
+            volume = round(float(node.get('runtime')) * self.volume_multiplier)
+            current_node = Node(name, volume, round_up(volume/self.processor_table_performance[0]))
             self.add_node(current_node)
 
             uses = node.find_all('uses')
             for use in uses:
-                current_node.add_file(File(use.get('file'), use.get('link'), float(use.get('size'))))
+                current_node.add_file(File(use.get('file'), use.get('link'),
+                                           round_up(float(use.get('size')) * self.data_volume_multiplier / 1000000)))
+            current_node.calculate_transfer_time(self.data_transfer_channel)
 
         # Add finish_node into graph
-        self.add_node(Node('finish', 0.0))
+        self.add_node(Node('finish', 0.0, 0.0))
         self.nodes[-1].critical_paths.append([0, [self.nodes[-1]]])
 
         self.set_starting_values()
@@ -103,8 +108,8 @@ class Workflow:
                 node_from = self.node_dict.get(parent.get('ref'))
                 node_to = self.node_dict.get(edge.get('ref'))
                 transfer_size = node_from.output_size
-                # transfer_time = 10
-                self.add_edge(Edge(node_from, node_to, transfer_size))
+                transfer_time = node_from.output_time
+                self.add_edge(Edge(node_from, node_to, transfer_size, transfer_time))
 
         # Add entry and finish edges
         self.complete_graph()
@@ -137,14 +142,9 @@ class Workflow:
         # sorting of all critical paths based on process time (length) in descending order
         self.nodes[0].critical_paths.sort(key=sort_for_critical_paths, reverse=True)
 
-        # print("All critical paths:")
-        # for c_p in self.nodes[0].critical_paths:
-        #     print(c_p[0], c_p[1])
-
         # set T based on the critical path
         self.T = round_up(self.nodes[0].critical_paths[0][0])
-        # self.T = random.randint(t, t*2)
-        # self.T = 78
+        # self.T = 1360
         c_p = self.nodes[0].critical_paths[0][1]
         for i in range(0, len(c_p), 2):  # without edges
             c_p[i].color = 'red'
@@ -155,15 +155,15 @@ class Workflow:
         for i in range(1, n - 1):
             next_node = self.nodes[i]
             if self.entry_edges[i] == 0:
-                self.add_edge(Edge(entry_node, next_node, next_node.input_size))
+                self.add_edge(Edge(entry_node, next_node, next_node.input_size, next_node.input_time))
 
         finish_node = self.nodes[-1]
         for i in range(1, n - 1):
             previous_node = self.nodes[i]
             if self.finish_edges[i] == 0:
-                self.add_edge(Edge(previous_node, finish_node, previous_node.output_size))
+                self.add_edge(Edge(previous_node, finish_node, previous_node.output_size, previous_node.output_time))
 
-    def check_duplicate_critical_paths(self):  # check duplications
+    def check_duplicate_critical_paths(self):
         critical_paths = self.nodes[0].critical_paths
         for c_p in critical_paths:
             for elem in c_p[1]:
@@ -179,7 +179,7 @@ class Workflow:
         for i in range(0, self.num_of_processors):
             processor_value = []
             for j in range(1, len(self.nodes) - 1):
-                processor_value.append(round(self.nodes[j].runtime / self.processor_table_performance[i], 2))
+                processor_value.append(round_up(self.nodes[j].volume / self.processor_table_performance[i]))
             self.processor_table.append(processor_value)
 
     def schedule(self):
@@ -316,19 +316,19 @@ class Workflow:
         node = local_c_p[0]
         index = c_p.index(node)
         if index == 0:
-            node.start_time = self.global_timer
-            node.finish_time = round(node.start_time + layer.option[1], 2)
+            node.start_time = float(self.global_timer + node.input_time)
+            node.finish_time = round(node.start_time + node.output_time + round_up(layer.option[1]), 2)
         else:
             previous_node = c_p[index - 1]
             node.start_time = previous_node.finish_time
-            node.finish_time = round(node.start_time + layer.option[1], 2)
+            node.finish_time = round(node.start_time + node.output_time + round_up(layer.option[1]), 2)
 
         if layer.previous_layer:
             self.set_next_node_times(node, self.nodes[layer.previous_layer.node_id - self.first_id], layer.previous_layer)
 
     def set_next_node_times(self, previous_node, current_node, layer):
         current_node.start_time = previous_node.finish_time
-        current_node.finish_time = round(current_node.start_time + layer.option[1], 2)
+        current_node.finish_time = round(current_node.start_time + current_node.output_time + round_up(layer.option[1]), 2)
 
         if layer.previous_layer:
             self.set_next_node_times(current_node, self.nodes[layer.previous_layer.node_id - self.first_id], layer.previous_layer)

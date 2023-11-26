@@ -13,6 +13,7 @@ if __name__ == '__main__':
     MONTAGE50 = 'JobExamples/MONTAGE.n.50.0.dax'
     MONTAGE100 = 'JobExamples/MONTAGE.n.100.0.dax'
     MONTAGE500 = 'JobExamples/MONTAGE.n.500.0.dax'
+    MONTAGE1000 = 'JobExamples/MONTAGE.n.1000.1.dax'
 
     CYBERSHAKE50 = 'JobExamples/CYBERSHAKE.n.50.0.dax'
     CYBERSHAKE100 = 'JobExamples/CYBERSHAKE.n.100.0.dax'
@@ -35,20 +36,43 @@ if __name__ == '__main__':
     criteria: Criteria = AverageResourceLoadCriteria('max')
 
     workflow_set = WorkflowSet()
-    # workflow_set.addWorkflow(Workflow(XML_FILE, criteria))
-    # workflow_set.addWorkflow(Workflow(LIGO50, criteria))
+    workflow_set.addWorkflow(Workflow(MONTAGE50, criteria, 1, 1))
+    # workflow_set.addWorkflow(Workflow(MONTAGE1000, criteria, task_volume_multiplier=10, data_volume_multiplier=10, start_time=0))
+    # workflow_set.addWorkflow(Workflow(LIGO50, criteria, task_volume_multiplier=1, data_volume_multiplier=1, start_time=0))
+    # workflow_set.addWorkflow(Workflow(SIPHT50, criteria, task_volume_multiplier=1, data_volume_multiplier=1, start_time=0))
+    # workflow_set.addWorkflow(Workflow(GENOME50, criteria, task_volume_multiplier=1, data_volume_multiplier=1, start_time=0))
+    # workflow_set.addWorkflow(Workflow(CYBERSHAKE50, criteria, task_volume_multiplier=1, data_volume_multiplier=1, start_time=0))
 
 
-    workflow_set.addWorkflow(Workflow(MONTAGE100, criteria, 10000))
-    workflow_set.addWorkflow(Workflow(CYBERSHAKE100, criteria, 15000))
-    workflow_set.addWorkflow(Workflow(SIPHT100, criteria))
-    workflow_set.addWorkflow(Workflow(LIGO100, criteria, 5000))
-    workflow_set.addWorkflow(Workflow(GENOME100, criteria))
+    # workflow_set.addWorkflow(Workflow(MONTAGE50, criteria, 10, 10, 0))
+    # workflow_set.addWorkflow(Workflow(MONTAGE50, criteria, 10, 10, 55))
+    # workflow_set.addWorkflow(Workflow(MONTAGE50, criteria, 10, 10, 110))
+    # workflow_set.addWorkflow(Workflow(MONTAGE50, criteria, 10, 10, 230))
+
+    # workflow_set.addWorkflow(Workflow(MONTAGE50, criteria, 10, 10, 0))
+    # workflow_set.addWorkflow(Workflow(MONTAGE50, criteria, 10, 10, 0))
+    # workflow_set.addWorkflow(Workflow(MONTAGE50, criteria, 10, 10, 0))
+    # workflow_set.addWorkflow(Workflow(MONTAGE50, criteria, 10, 10, 0))
+
+    # workflow_set.addWorkflow(
+    #     Workflow(MONTAGE50, criteria, task_volume_multiplier=200, data_volume_multiplier=200, start_time=0))
+    # workflow_set.addWorkflow(
+    #     Workflow(CYBERSHAKE50, criteria, task_volume_multiplier=1, data_volume_multiplier=1, start_time=0))
+    # workflow_set.addWorkflow(
+    #     Workflow(SIPHT50, criteria, task_volume_multiplier=5, data_volume_multiplier=5, start_time=2000))
+    # workflow_set.addWorkflow(
+    #     Workflow(LIGO50, criteria, task_volume_multiplier=15, data_volume_multiplier=15, start_time=1000))
+    # workflow_set.addWorkflow(
+    #     Workflow(GENOME50, criteria, task_volume_multiplier=1, data_volume_multiplier=1, start_time=0))
+
+    # workflow_set.addWorkflow(Workflow(MONTAGE50, criteria, task_volume_multiplier=10, data_volume_multiplier=10, start_time=0))
+    # workflow_set.addWorkflow(Workflow(CYBERSHAKE50, criteria, task_volume_multiplier=10, data_volume_multiplier=10, start_time=0))
+    # workflow_set.addWorkflow(Workflow(SIPHT50, criteria, task_volume_multiplier=10, data_volume_multiplier=10, start_time=0))
+    # workflow_set.addWorkflow(Workflow(LIGO50, criteria, task_volume_multiplier=10, data_volume_multiplier=10, start_time=0))
+    # workflow_set.addWorkflow(Workflow(GENOME50, criteria, task_volume_multiplier=10, data_volume_multiplier=10, start_time=0))
+
     workflow_set.schedule()
 
-    # drawer: Drawer = GraphvizDrawer()
-    # drawer.drawGraph(workflow_set.drawn_nodes, workflow_set.drawn_edges)
-    # drawer.drawTimes(workflow_set.drawn_nodes)
 
     drawer: Drawer = PyvisDrawer()
     drawer.draw_graph(workflow_set.drawn_nodes, workflow_set.drawn_edges)

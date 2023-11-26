@@ -28,9 +28,15 @@ class PyvisDrawer(Drawer):
 
 
 
-        network = Network(height="750px", width="50%", directed = True,
-                          bgcolor="#222222", font_color="white", layout = True)
-        network.show_buttons(filter_=['layout', 'interaction', 'manipulation', 'physics'])
+        network = Network(height="750px", width="100%", directed=True,
+                          bgcolor="white", font_color="black", layout=True)
+        # network.show_buttons(filter_=['layout', 'interaction', 'manipulation', 'physics'])
+
+        network.set_options('var options = { "layout": { "hierarchical": { "enabled" : true, '
+                            '"levelSeparation" : 150, "nodeSpacing" : 100, "treeSpacing" : 200, '
+                            '"blockShifting" : true, "edgeMinimization" : true, "parentCentralization": true, '
+                            '"direction" : "UD", "sortMethod" : "directed", "shakeTowards" : "roots"} } }')
+
         network.from_nx(G)
         network.show(self.GRAPH_OUTPUT)
 
