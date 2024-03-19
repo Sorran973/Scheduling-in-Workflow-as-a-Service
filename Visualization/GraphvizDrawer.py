@@ -15,8 +15,8 @@ class GraphvizDrawer(Drawer):
                 G.node(str(node.id) + '\n' +
                        node.name + '\n' +
                        str(node.start_time) + '\n' +
-                       str(node.runtime),
-                       color=node.color)
+                       str(node.runtime))
+                       # color=node.color)
 
         for arr in edges:
             for edge in arr:

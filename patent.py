@@ -5,7 +5,7 @@ import math
 import copy
 
 
-XML_FILE_MONTAGE = 'JobExamples/Montage_25.xml'
+XML_FILE_MONTAGE = 'JobExamples/MONTAGE.n.50.0.dax'
 XML_FILE_EPIGENOMICS = 'JobExamples/Epigenomics_25.xml'
 XML_FILE_CYBERSHAKE = 'JobExamples/CyberShake_30.xml'
 
@@ -424,8 +424,8 @@ class WorkflowSet:
         CSVWriter.write_headers()
         for workflow in self.workflow:
             workflow.schedule()
-            self.draw_nodes.append(workflow.drawn_nodes)
-            self.draw_edges.append(workflow.drawn_edges)
+            self.draw_nodes.append(workflow.draw_nodes)
+            self.draw_edges.append(workflow.draw_edges)
             CSVWriter.write_all_tables(workflow)
 
 

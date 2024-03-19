@@ -77,3 +77,8 @@ if __name__ == '__main__':
     drawer: Drawer = PyvisDrawer()
     drawer.draw_graph(workflow_set.drawn_nodes, workflow_set.drawn_edges)
     drawer.draw_gantt(workflow_set.drawn_nodes)
+
+    # drawer: Drawer = GraphvizDrawer()
+    # drawer.draw_graph(workflow_set.drawn_nodes, workflow_set.drawn_edges)
+    # drawer.draw_gantt(workflow_set.drawn_nodes)
+

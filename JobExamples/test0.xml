@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<adag name="leadmm" jobCount="11" fileCount="0" childCount="5">
+	<job id="1" namespace="leadmm" name="TerrainPreProcessor" runtime="72" cores="1">
+		<uses file="p0.txt" link="input" size="209715"/>
+		<uses file="p0.txt" link="output" size="2209715"/>
+	</job>
+	<job id="2" namespace="leadmm" name="LateralBoundaryInterpolator" runtime="57" cores="1">
+		<uses file="p1.txt" link="input" size="154140672"/>
+		<uses file="p1.txt" link="output" size="209715"/>
+	</job>
+	<job id="3" namespace="leadmm" name="3DInterpolator" runtime="73" cores="1">
+		<uses file="p2.txt" link="input" size="154140672"/>
+		<uses file="p2.txt" link="output" size="209715"/>
+	</job>
+	<job id="4" namespace="leadmm" name="WrfStatic" runtime="338" cores="1">
+		<uses file="p3.txt" link="input" size="154140672"/>
+		<uses file="p3.txt" link="output" size="209715"/>
+	</job>
+	<job id="5" namespace="leadmm" name="ARPS2WRF" runtime="60" cores="1">
+		<uses file="p4.txt" link="input" size="154140672"/>
+		<uses file="p4.txt" link="output" size="209715"/>
+	</job>
+	<job id="6" namespace="leadmm" name="WRF" runtime="72" cores="16">
+		<uses file="p6.txt" link="input" size="539651072"/>
+		<uses file="p1.txt" link="input" size="209715"/>
+		<uses file="p7.txt" link="input" size="2539651072"/>
+		<uses file="p5.txt" link="output" size="1539651072"/>
+	</job>
+	<child ref="2">
+		<parent ref="1"/>
+	</child>
+	<child ref="3">
+		<parent ref="1"/>
+	</child>
+	<child ref="5">
+		<parent ref="2"/>
+		<parent ref="3"/>
+		<parent ref="4"/>
+	</child>
+	<child ref="6">
+		<parent ref="5"/>
+	</child>
+</adag>
