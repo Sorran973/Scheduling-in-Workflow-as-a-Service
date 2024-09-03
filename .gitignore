@@ -3,3 +3,7 @@ Visualization/__pycache__/
 __pycache__/
 .idea/
 Output/
+/Plot Examples/gantt_example.py
+/Plot Examples/gantt_matplotlib.py
+/Plot Examples/gantt_plotly.py
+/Plot Examples/tasks.csv

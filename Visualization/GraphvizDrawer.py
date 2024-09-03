@@ -1,6 +1,6 @@
 import graphviz
 import matplotlib.pyplot as plt
-from Drawer import Drawer
+from Visualization.Drawer import Drawer
 
 
 class GraphvizDrawer(Drawer):

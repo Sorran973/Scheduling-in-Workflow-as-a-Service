@@ -1,6 +1,6 @@
 from bs4 import BeautifulSoup
 
-class Parser:
+class XMLParser:
 
     @staticmethod
     def parse(xml_file):

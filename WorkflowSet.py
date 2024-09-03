@@ -1,4 +1,4 @@
-from CSVWriter import CSVWriter
+from Parsing.CSVHandler import CSVHandler
 
 
 class WorkflowSet:
@@ -14,9 +14,9 @@ class WorkflowSet:
 
 
     def schedule(self):
-        CSVWriter.write_headers()
+        CSVHandler.write_headers()
         for workflow in self.workflows:
             workflow.schedule()
             self.drawn_nodes.append(workflow.drawn_nodes)
             self.drawn_edges.append(workflow.drawn_edges)
-            CSVWriter.write_all_tables(workflow)
+            CSVHandler.write_all_tables(workflow)

@@ -1,9 +1,9 @@
-from Edge import Edge
-from File import File
-from Node import Node
-from Layer import Layer
-from Parser import Parser
-from Strategy import Strategy
+from Model.Edge import Edge
+from Parsing.File import File
+from Model.Node import Node
+from Model.Layer import Layer
+from Parsing.XMLParser import XMLParser
+from Model.Strategy import Strategy
 
 import math
 import copy
@@ -71,7 +71,7 @@ class Workflow:
         self.global_timer = start_time
 
         # Steps
-        soup_nodes, soup_edges = Parser.parse(XML_FILE)
+        soup_nodes, soup_edges = XMLParser.parse(XML_FILE)
         self.create_graph(soup_nodes, soup_edges)
         self.create_processor_table()
         self.find_all_critical_paths()
