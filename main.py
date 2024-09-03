@@ -1,9 +1,10 @@
-from Visualization.GraphvizDrawer import GraphvizDrawer
+from FTL.FTL import FTL
+from Parsing.CSVHandler import CSVHandler
 from Visualization.PyvisDrawer import PyvisDrawer
 
 from Workflow import Workflow
-import Drawer
-from Criteria import *
+from Visualization import Drawer
+from Model.Criteria import *
 from WorkflowSet import WorkflowSet
 
 
@@ -33,10 +34,13 @@ if __name__ == '__main__':
 
 
 
-    criteria: Criteria = AverageResourceLoadCriteria('max')
+    # criteria: Criteria = AverageResourceLoadCriteria('max')
+    # #
+    # workflow_set = WorkflowSet()
+    # workflow_set.addWorkflow(Workflow(LIGO50, criteria, task_volume_multiplier=1, data_volume_multiplier=1, start_time=0))
 
-    workflow_set = WorkflowSet()
-    workflow_set.addWorkflow(Workflow(MONTAGE50, criteria, 1, 1))
+    # workflow_set.addWorkflow(Workflow(XML_FILE, criteria, 1, 1))
+    # workflow_set.addWorkflow(Workflow(MONTAGE50, criteria, 1, 1))
     # workflow_set.addWorkflow(Workflow(MONTAGE1000, criteria, task_volume_multiplier=10, data_volume_multiplier=10, start_time=0))
     # workflow_set.addWorkflow(Workflow(LIGO50, criteria, task_volume_multiplier=1, data_volume_multiplier=1, start_time=0))
     # workflow_set.addWorkflow(Workflow(SIPHT50, criteria, task_volume_multiplier=1, data_volume_multiplier=1, start_time=0))
@@ -55,30 +59,43 @@ if __name__ == '__main__':
     # workflow_set.addWorkflow(Workflow(MONTAGE50, criteria, 10, 10, 0))
 
     # workflow_set.addWorkflow(
-    #     Workflow(MONTAGE50, criteria, task_volume_multiplier=200, data_volume_multiplier=200, start_time=0))
+    #     Workflow(MONTAGE50, criteria, task_volume_multiplier=100, data_volume_multiplier=100, start_time=3000))
     # workflow_set.addWorkflow(
-    #     Workflow(CYBERSHAKE50, criteria, task_volume_multiplier=1, data_volume_multiplier=1, start_time=0))
+    #     Workflow(CYBERSHAKE50, criteria, task_volume_multiplier=15, data_volume_multiplier=0, start_time=500))
     # workflow_set.addWorkflow(
-    #     Workflow(SIPHT50, criteria, task_volume_multiplier=5, data_volume_multiplier=5, start_time=2000))
+    #     Workflow(SIPHT50, criteria, task_volume_multiplier=2, data_volume_multiplier=5, start_time=5000))
     # workflow_set.addWorkflow(
-    #     Workflow(LIGO50, criteria, task_volume_multiplier=15, data_volume_multiplier=15, start_time=1000))
+    #     Workflow(LIGO50, criteria, task_volume_multiplier=10, data_volume_multiplier=15, start_time=1000))
     # workflow_set.addWorkflow(
     #     Workflow(GENOME50, criteria, task_volume_multiplier=1, data_volume_multiplier=1, start_time=0))
 
-    # workflow_set.addWorkflow(Workflow(MONTAGE50, criteria, task_volume_multiplier=10, data_volume_multiplier=10, start_time=0))
-    # workflow_set.addWorkflow(Workflow(CYBERSHAKE50, criteria, task_volume_multiplier=10, data_volume_multiplier=10, start_time=0))
-    # workflow_set.addWorkflow(Workflow(SIPHT50, criteria, task_volume_multiplier=10, data_volume_multiplier=10, start_time=0))
+    # workflow_set.addWorkflow(Workflow(MONTAGE50, criteria, task_volume_multiplier=100, data_volume_multiplier=100, start_time=0))
+    # workflow_set.addWorkflow(Workflow(CYBERSHAKE50, criteria, task_volume_multiplier=15, data_volume_multiplier=0, start_time=-0))
+    # workflow_set.addWorkflow(Workflow(SIPHT50, criteria, task_volume_multiplier=2.5, data_volume_multiplier=1, start_time=0))
     # workflow_set.addWorkflow(Workflow(LIGO50, criteria, task_volume_multiplier=10, data_volume_multiplier=10, start_time=0))
-    # workflow_set.addWorkflow(Workflow(GENOME50, criteria, task_volume_multiplier=10, data_volume_multiplier=10, start_time=0))
+    # workflow_set.addWorkflow(Workflow(GENOME50, criteria, task_volume_multiplier=0.61, data_volume_multiplier=1, start_time=0))
 
-    workflow_set.schedule()
+    # workflow_set.schedule()
 
 
     drawer: Drawer = PyvisDrawer()
-    drawer.draw_graph(workflow_set.drawn_nodes, workflow_set.drawn_edges)
-    drawer.draw_gantt(workflow_set.drawn_nodes)
+    # drawer.draw_graph(workflow_set.drawn_nodes, workflow_set.drawn_edges)
+    # drawer.draw_gantt(workflow_set.drawn_nodes)
+    # drawer.draw_new_gantt(workflow_set.drawn_nodes)
+
 
     # drawer: Drawer = GraphvizDrawer()
     # drawer.draw_graph(workflow_set.drawn_nodes, workflow_set.drawn_edges)
     # drawer.draw_gantt(workflow_set.drawn_nodes)
+
+    vm_types = CSVHandler.read_processors_table()
+    tasks = CSVHandler.read_task_time_table()
+    # data_transfer = CSVHandler.read_data_transfer_table()
+
+    ftl = FTL(vm_types, tasks)
+    drawer.draw_batches_gantt(ftl.tasks)
+
+
+
+
 
