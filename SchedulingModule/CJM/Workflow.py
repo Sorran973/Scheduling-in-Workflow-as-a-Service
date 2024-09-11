@@ -1,9 +1,9 @@
-from Model.Edge import Edge
+from SchedulingModule.CJM.Model.Edge import Edge
 from Parsing.File import File
-from Model.Node import Node
-from Model.Layer import Layer
+from SchedulingModule.CJM.Model.Node import Node
+from SchedulingModule.CJM.Model.Layer import Layer
 from Parsing.XMLParser import XMLParser
-from Model.Strategy import Strategy
+from SchedulingModule.CJM.Model.Strategy import Strategy
 
 import math
 import copy

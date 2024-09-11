@@ -1,12 +1,13 @@
-from FTL.FTL import FTL
+import pandas as pd
+
+from SchedulingModule.CJM.Model.Criteria import Criteria, AverageResourceLoadCriteria
+from SchedulingModule.CJM.WorkflowSet import WorkflowSet
+from SchedulingModule.CJM.Workflow import Workflow
+from AllocationModule.AllocationModule import AllocationModule
 from Parsing.CSVHandler import CSVHandler
-from Visualization.PyvisDrawer import PyvisDrawer
+from Visualization.PyvisDrawer import PyvisDrawer, rand_color
 
-from Workflow import Workflow
 from Visualization import Drawer
-from Model.Criteria import *
-from WorkflowSet import WorkflowSet
-
 
 if __name__ == '__main__':
     XML_FILE = 'JobExamples/test1_11.xml'
@@ -32,11 +33,12 @@ if __name__ == '__main__':
     SIPHT100 = 'JobExamples/SIPHT.n.100.0.dax'
     SIPHT500 = 'JobExamples/SIPHT.n.500.0.dax'
 
+    #####################################################
+    ################# SCHEDULING MODULE #################
+    #####################################################
 
-
-    # criteria: Criteria = AverageResourceLoadCriteria('max')
-    # #
-    # workflow_set = WorkflowSet()
+    criteria: Criteria = AverageResourceLoadCriteria('max')
+    workflow_set = WorkflowSet()
     # workflow_set.addWorkflow(Workflow(LIGO50, criteria, task_volume_multiplier=1, data_volume_multiplier=1, start_time=0))
 
     # workflow_set.addWorkflow(Workflow(XML_FILE, criteria, 1, 1))
@@ -46,7 +48,6 @@ if __name__ == '__main__':
     # workflow_set.addWorkflow(Workflow(SIPHT50, criteria, task_volume_multiplier=1, data_volume_multiplier=1, start_time=0))
     # workflow_set.addWorkflow(Workflow(GENOME50, criteria, task_volume_multiplier=1, data_volume_multiplier=1, start_time=0))
     # workflow_set.addWorkflow(Workflow(CYBERSHAKE50, criteria, task_volume_multiplier=1, data_volume_multiplier=1, start_time=0))
-
 
     # workflow_set.addWorkflow(Workflow(MONTAGE50, criteria, 10, 10, 0))
     # workflow_set.addWorkflow(Workflow(MONTAGE50, criteria, 10, 10, 55))
@@ -76,26 +77,45 @@ if __name__ == '__main__':
     # workflow_set.addWorkflow(Workflow(GENOME50, criteria, task_volume_multiplier=0.61, data_volume_multiplier=1, start_time=0))
 
     # workflow_set.schedule()
-
-
     drawer: Drawer = PyvisDrawer()
     # drawer.draw_graph(workflow_set.drawn_nodes, workflow_set.drawn_edges)
     # drawer.draw_gantt(workflow_set.drawn_nodes)
     # drawer.draw_new_gantt(workflow_set.drawn_nodes)
 
+    #####################################################
+    ################# ALLOCATION MODULE #################
+    #####################################################
 
-    # drawer: Drawer = GraphvizDrawer()
-    # drawer.draw_graph(workflow_set.drawn_nodes, workflow_set.drawn_edges)
-    # drawer.draw_gantt(workflow_set.drawn_nodes)
-
-    vm_types = CSVHandler.read_processors_table()
-    tasks = CSVHandler.read_task_time_table()
-    # data_transfer = CSVHandler.read_data_transfer_table()
-
-    ftl = FTL(vm_types, tasks)
-    drawer.draw_batches_gantt(ftl.tasks)
-
-
-
+    DATA_TRANSFER_SPEED = 500
+    OPTIMIZATION_CRITERIA = 'MIN'
+    main_directory = "/Users/artembulkhak/PycharmProjects/Dissertation/Output/"
+    folder = 'MONTAGEn50'
+    PROCESSOR_TABLE_FILE = main_directory + folder + "/processor_table.csv"
+    TASK_TIME_TABLE_FILE = main_directory + folder + "/task_time_table.csv"
+    TRANSFER_SIZE_TABLE_FILE = main_directory + folder + "/transfer_size_table.csv"
+    ALLOCATION_LOG_FILE = main_directory + folder + "/allocation_log.csv"
 
 
+    vm_types = CSVHandler.read_processors_table(PROCESSOR_TABLE_FILE)
+    tasks = CSVHandler.read_task_time_table(TASK_TIME_TABLE_FILE)
+    data_transfer = CSVHandler.read_data_transfer_table(TRANSFER_SIZE_TABLE_FILE, tasks)
+
+    allocation = AllocationModule(vm_types, tasks, data_transfer)
+    time = 0
+    batches = allocation.formParallelBatches(time)  # FTL algorithm
+    drawer.draw_batches_gantt(allocation.tasks)
+    allocation.setDataTransferSpeed(DATA_TRANSFER_SPEED)
+    allocation.setOptimizationCriteria(OPTIMIZATION_CRITERIA)
+    allocation.vma(batches)
+
+    log = allocation.log
+    CSVHandler.writre_allocation_logfile(ALLOCATION_LOG_FILE, log)
+
+    color = log[["vm_id"]]
+    color = color.drop_duplicates()
+    color["color"] = color.apply(lambda x: rand_color(x), axis=1)
+    log = pd.merge(log, color, on='vm_id', how='left')
+
+    drawer.draw_result_gantt(log)
+    log = log.sort_values(["vm_id", "vm_end"])
+    drawer.draw_result_gantt(log)

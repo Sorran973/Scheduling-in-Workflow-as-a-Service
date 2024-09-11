@@ -1,11 +1,24 @@
+import os
+import sys
+
+import pandas as pd
 from pyvis.network import Network
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 from matplotlib.patches import Patch
 
-
 from Visualization.Drawer import Drawer
+
+
+def rand_color(row):
+    import secrets
+    s = "#"
+    x = 0
+    while x < 6:
+        s += secrets.choice("0123456789ABCDEF")
+        x += 1
+    return s
 
 
 class PyvisDrawer(Drawer):
@@ -151,7 +164,7 @@ class PyvisDrawer(Drawer):
             task.color = c_dict[task.status]
 
         ##### PLOT #####
-        fig, (ax, ax1) = plt.subplots(2, figsize=(36, 16), gridspec_kw={'height_ratios': [10, 1]})
+        fig, (ax, ax1) = plt.subplots(2, figsize=(36, 16), gridspec_kw={'height_ratios': [15, 1]})
 
         # bars
         rownum = 0
@@ -200,4 +213,48 @@ class PyvisDrawer(Drawer):
         ax1.set_xticks([])
         ax1.set_yticks([])
 
+        plt.show()
+
+
+    def draw_result_gantt(self, log):
+        # fig, (ax, ax1) = plt.subplots(2, figsize=(16, 6), gridspec_kw={'height_ratios': [6, 1]})
+        fig, ax = plt.subplots(figsize=(36, 16))
+
+        rownum = 0
+        for index, row in log.iterrows():
+            # calc_time
+            ax.barh(rownum, row.task_allocation_end - row.task_allocation_start, left=row.task_allocation_start,
+                    color=row.color)
+            # interval
+            ax.barh(rownum, row.interval, left=row.task_start, color=row.color, alpha=0.3)
+            # vm_time
+            ax.barh(rownum, row.vm_end - row.vm_start, left=row.vm_start, color=row.color, alpha=0.6, fill=False,
+                    hatch='///')
+            # ax.barh(log.task_name, log.vm_end - log.vm_start, left=log.vm_start, color=log.color, alpha=0.6, fill=True,
+            #         linewidth=10, edgecolor=log.color)
+            ax.text(row.vm_end + 0.1, rownum, 'VM_' + str(row.vm_id), va='center')
+            ax.text(row.vm_start - 0.1, rownum, row.task_name, va='center', ha='right')
+            ax.text(row.task_allocation_start + (row.task_allocation_end - row.task_allocation_start)/2, rownum, row.task_batch, va='center')
+            rownum += 1
+
+        # grid lines
+        # ax.set_axisbelow(True)
+        # ax.xaxis.grid(color='gray', linestyle='dashed', alpha=0.2, which='both')
+
+        # ticks
+        xticks = np.arange(0, log.task_end.max() + 1, int((log.task_end.max() + 1) / 5))
+        xticks_labels = pd.date_range(0, end=log.task_end.max()).strftime("%m/%d")
+        # xticks_minor = np.arange(0, tasks.end.max() + 1, 1)
+        ax.set_xticks(xticks)
+        # ax.set_xticks(xticks_minor, minor=True)
+        # ax.set_xticks(, labels=)
+        ax.set_yticks([])
+
+        # remove spines
+        # ax.spines['right'].set_visible(False)
+        # ax.spines['left'].set_visible(False)
+        # ax.spines['left'].set_visible(False)
+        # ax.spines['top'].set_visible(False)
+
+        plt.suptitle('SCHEDULE')
         plt.show()
