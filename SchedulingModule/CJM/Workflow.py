@@ -1,5 +1,7 @@
+from SchedulingModule.CJM.Model.Criteria import AverageResourceLoadCriteria, TimeCriteria, CostCriteria
 from SchedulingModule.CJM.Model.Edge import Edge
 from Parsing.File import File
+from SchedulingModule.CJM.Model.LayerOption import LayerOption
 from SchedulingModule.CJM.Model.Node import Node
 from SchedulingModule.CJM.Model.Layer import Layer
 from Parsing.XMLParser import XMLParser
@@ -40,16 +42,16 @@ def mark_whole_path(path):
 def common_member(list_a, list_b, first_id):
     result = []
     for node in list_b:
-        if list_a[node.id - first_id - 1] != -math.inf:
+        if list_a[node.id - first_id] != -math.inf:
             result.append(node)
 
     return result
 
 
-# volume =
 class Workflow:
 
-    def __init__(self, XML_FILE, criteria, task_volume_multiplier, data_volume_multiplier, start_time=0):
+    def __init__(self, XML_FILE, T, vm_types, criteria, multiple_strategies,
+                 task_volume_multiplier, data_volume_multiplier, start_time=0):
         self.nodes = []
         self.first_id: int
         self.node_dict = {}  # [str(node_name) : obj(node)]
@@ -60,39 +62,42 @@ class Workflow:
         self.drawn_edges = []
         self.critical_paths = []
         self.strategies = []
-        self.num_of_processors = 5
-        self.processor_table = []
-        self.processor_table_performance = [3.0, 2.5, 2.0, 1.5, 1.0]
+        self.best_strategy = None
+        self.vm_types = vm_types
+        self.vms_table = []
+        self.vms_cost = []
         self.data_transfer_channel = 10
         self.volume_multiplier = task_volume_multiplier
         self.data_volume_multiplier = data_volume_multiplier
-        self.T: int
         self.criteria = criteria
+        self.T = T
+        self.multiple_strategies = multiple_strategies
         self.global_timer = start_time
 
         # Steps
         soup_nodes, soup_edges = XMLParser.parse(XML_FILE)
         self.create_graph(soup_nodes, soup_edges)
-        self.create_processor_table()
+        self.create_vms_table(vm_types)
         self.find_all_critical_paths()
         self.check_duplicate_critical_paths()
 
-        self.criteria.set_parameters(self.num_of_processors, self.T)
+        self.criteria.set_parameters(len(self.vms_table), self.T)
 
     def create_graph(self, soup_nodes, soup_edges):
         # Add entry_node into graph
-        #TODO: try to eliminate entry node
+        # ?TODO: try to eliminate entry node ?
         self.add_node(Node('entry', 0.0, 0.0))
 
         for node in soup_nodes:
             name = node.get('id')
             volume = round(float(node.get('runtime')) * self.volume_multiplier)
-            current_node = Node(name, volume, round_up(volume/self.processor_table_performance[0]))
+            current_node = Node(name, volume, round_up(volume / self.vm_types[0].perf))
             self.add_node(current_node)
 
             uses = node.find_all('uses')
             for use in uses:
-                current_node.add_file(File(use.get('file'), use.get('link'),
+                current_node.add_file(File(use.get('file'),
+                                           use.get('link'),
                                            round_up(float(use.get('size')) * self.data_volume_multiplier / 1000000)))
             current_node.calculate_transfer_time(self.data_transfer_channel)
 
@@ -143,8 +148,7 @@ class Workflow:
         self.nodes[0].critical_paths.sort(key=sort_for_critical_paths, reverse=True)
 
         # set T based on the critical path
-        self.T = round_up(self.nodes[0].critical_paths[0][0])
-        # self.T = 1360
+        # self.T = round_up(self.nodes[0].critical_paths[0][0])
         c_p = self.nodes[0].critical_paths[0][1]
         for i in range(0, len(c_p), 2):  # without edges
             c_p[i].color = 'red'
@@ -171,16 +175,25 @@ class Workflow:
                     self.critical_paths.append(c_p)
                     mark_whole_path(c_p)
 
-        # print("\nAll critical paths without duplications:")
-        # for c_p in self.critical_paths:
-        #     print(c_p[0], c_p[1])
 
-    def create_processor_table(self):
-        for i in range(0, self.num_of_processors):
-            processor_value = []
+    def create_vms_table(self, vm_types):
+        for i in vm_types:
+            vms_value = []
             for j in range(1, len(self.nodes) - 1):
-                processor_value.append(round_up(self.nodes[j].volume / self.processor_table_performance[i]))
-            self.processor_table.append(processor_value)
+                vms_value.append(round_up(self.nodes[j].volume / i.perf))
+            self.vms_table.append(vms_value)
+            self.vms_cost.append(i.cost)
+
+
+    def calc_c_node(self, index, c_p, node_index):
+        if isinstance(self.criteria, AverageResourceLoadCriteria):
+            return self.criteria.main_criteria(self.vms_table[index][c_p[node_index].id - self.first_id - 1])
+        elif isinstance(self.criteria, TimeCriteria):
+            return self.criteria.main_criteria(self.vms_table[index][c_p[node_index].id - self.first_id - 1])
+        elif isinstance(self.criteria, CostCriteria):
+            return self.criteria.main_criteria([self.vms_table[index][c_p[node_index].id - self.first_id - 1],
+                                                  self.vms_cost[index]])
+
 
     def schedule(self):
 
@@ -191,83 +204,118 @@ class Workflow:
             del c_p[-1:]  # delete finish node and edge
             del c_p[0:1]  # delete entry node and edge
 
-            Z1 = self.T
-            for i in range(len(c_p) - 1, -1, -2):  # delete edges
+            Z1 = self.T # Z1 = reserve time
+            for i in range(len(c_p) - 1, -1, -2):  # delete edges(transfer time)
                 Z1 -= c_p[i].transfer_time
                 del c_p[i]
 
             if not self.strategies:
                 layer = self.next_layer_calc(Z1, c_p, 0)  # direct pass
-                self.set_node_times(c_p, c_p, layer)  # reverse pass
+                self.strategies = self.create_strategies_recursion(layer)
             else:
-                strategy = self.strategies[0]
-                local_c_p = copy.copy(c_p)
-                local_Z1 = Z1
-                common_nodes = common_member(strategy.time, c_p, self.first_id)
+                for strategy in self.strategies:
+                    local_c_p = copy.copy(c_p)
+                    local_Z1 = Z1
+                    common_nodes = common_member(strategy.time, c_p, self.first_id)
 
-                if common_nodes:
-                    for node in common_nodes:
-                        local_Z1 -= strategy.time[node.id - self.first_id - 1]
-                        local_c_p.remove(node)
+                    if common_nodes:
+                        for node in common_nodes:
+                            local_Z1 -= strategy.time[node.id - self.first_id]
+                            local_c_p.remove(node)
 
-                if len(local_c_p) > 0:  # if not all nodes are already calculated
-                    layer = self.next_layer_calc(local_Z1, local_c_p, 0)  # direct pass
-                    self.set_node_times(c_p, local_c_p, layer)  # reverse pass
+                    if local_Z1 < 0:
+                        break
 
-            if layer.CF_of_layer is None:  # if all nodes are already calculated
-                continue
+                    if local_c_p:  # if not all nodes are already calculated
+                        layer = self.next_layer_calc(local_Z1, local_c_p, 0)  # direct pass
+                        new_strategies = self.create_strategies_recursion(layer, strategy)
 
-            l = len(self.nodes) - 2  # without entry and finish nodes
-            time = [-math.inf] * l
-            criteria = [-math.inf] * l
-            self.create_strategy(Strategy(c_p, time, criteria), layer)
-            new_strategy = self.local_strategies[0]
+                    self.local_strategies.extend(new_strategies)
 
-            if not self.local_strategies:
-                continue
+                if self.local_strategies:
+                    self.strategies = self.local_strategies
+                    self.local_strategies = []
+
+        res = []
+        for strategy in self.strategies:
+            del strategy.time[0]
+            del strategy.time[-1]
+            del strategy.criteria[0]
+            del strategy.criteria[-1]
+
+            res.append(sum(strategy.criteria))
+
+        best_res = self.criteria.cf_criteria(res)
+        index = res.index(best_res)
+        self.best_strategy = self.strategies[index]
+
+        self.set_node_times(self.best_strategy.dict)  # reverse pass
+
+
+    def create_strategies_recursion(self, layer, strategy=None):
+        if layer.previous_layers is None:
+            if strategy is None:
+                new_strategy = Strategy(len(self.nodes), self.T)
             else:
-                if self.strategies:
-                    strategy = self.strategies[0]
-                    for i in range(l):
-                        if strategy.time[i] != new_strategy.time[i] and strategy.time[i] == -math.inf:
-                            strategy.criteria[i] = new_strategy.criteria[i]
-                            strategy.time[i] = new_strategy.time[i]
-                        if strategy.time[i] != new_strategy.time[i] and strategy.time[i] != -math.inf and \
-                                new_strategy.time[i] != -math.inf:
-                            break
-                        else:
-                            continue
-                else:
-                    self.strategies.append(new_strategy)
+                new_strategy = Strategy(len(self.nodes), self.T, strategy)
 
-            # print(self.strategies[0].time)
+            current_node = layer.node
+            perform_time = new_strategy.change(current_node.id,
+                            layer.layer_options[0].t_current_node,
+                            layer.layer_options[0].C_current_node)
 
-    def create_strategy(self, strategy, layer):
-        if not layer.previous_layer:
-            strategy.change(layer.node_id - self.first_id, round(layer.option[0], 2), round(layer.option[1], 2))
-            self.local_strategies.append(strategy)
+            dest_times = []
+            for edge in current_node.edges:
+                if edge.destination_node.id in new_strategy.dict:
+                    dest_start_time = new_strategy.dict[edge.destination_node.id][0]
+                    dest_times.append(dest_start_time)
+
+            dest_start_time = min(dest_times)
+
+
+            start_time = round(dest_start_time - current_node.output_time - perform_time, 2)
+            finish_time = dest_start_time
+            new_strategy.dict[layer.node.id] = [start_time, finish_time]
+
+            return [new_strategy]
         else:
-            strategy.change(layer.node_id - self.first_id, round(layer.option[0], 2), round(layer.option[1], 2))
-            self.create_strategy(strategy, layer.previous_layer)
+            new_strategies = []
+            for i, l in enumerate(layer.previous_layers):
+                strategies = self.create_strategies_recursion(l, strategy)
+                for new_strategy in strategies:
+                    perform_time = new_strategy.change(layer.node.id,
+                                    layer.layer_options[i].t_current_node,
+                                    layer.layer_options[i].C_current_node)
+
+                    dest_time = new_strategy.dict[l.node.id][0]
+                    start_time = round(dest_time - layer.node.output_time - perform_time, 2)
+                    finish_time = new_strategy.dict[l.node.id][0]
+                    new_strategy.dict[layer.node.id] = [start_time, finish_time]
+
+                    new_strategies.append(new_strategy)
+
+            return new_strategies
+
 
     def next_layer_calc(self, reserve, c_p, node_index):
 
         if node_index == len(c_p) - 1:  # if the layer is the last one
             t_node = reserve
             index = self.find_index(t_node, c_p[node_index].id - self.first_id - 1)
-            C_node = self.criteria.main_criteria(self.processor_table[index][c_p[node_index].id - self.first_id - 1])
+            C_node = self.calc_c_node(index, c_p, node_index)
             CF_node = C_node
 
-            return Layer(c_p[node_index].id, CF_node, [C_node, t_node, None, None], None)
+            return Layer(c_p[node_index], CF_node, [LayerOption(t_node, None, None, C_node, CF_node)], None)
 
         else:
             Z_next_node = []
             Z_min = 0
-            for i in range(len(self.processor_table)):
-                z = reserve - self.processor_table[i][c_p[node_index].id - self.first_id - 1]
-                # rest reserve on the fastest processors
+            for i in range(len(self.vms_table)):
+                z = reserve - self.vms_table[i][c_p[node_index].id - self.first_id - 1]
+                Z_min = 0
+                # rest reserve on the fastest vms
                 for j in range(node_index + 1, len(c_p)):
-                    Z_min += self.processor_table[0][c_p[j].id - self.first_id - 1]
+                    Z_min += self.vms_table[0][c_p[j].id - self.first_id - 1]
                 if z >= Z_min:
                     Z_next_node.append(z)
                 else:
@@ -276,17 +324,18 @@ class Workflow:
             if not Z_next_node:
                 return
 
-            t_node = [self.processor_table[i][c_p[node_index].id - self.first_id - 1] for i in range(0, len(Z_next_node))]
+            t_node = [self.vms_table[i][c_p[node_index].id - self.first_id - 1] for i in range(0, len(Z_next_node))]
 
-            # add Z on the fastest processors
-            if len(Z_next_node) == len(self.processor_table):
+            # add Z on the fastest vms
+            if Z_next_node[-1] > Z_min:
                 Z_next_node.append(Z_min)
                 t_node += [reserve - Z_min]
 
             C_node = []
             for i in range(0, len(t_node)):
                 index = self.find_index(t_node[i], c_p[node_index].id - self.first_id - 1)
-                C_node.append(self.criteria.main_criteria(self.processor_table[index][c_p[node_index].id - self.first_id - 1]))
+                c_node = self.calc_c_node(index, c_p, node_index)
+                C_node.append(c_node)
 
             # recursion
             CF_next_node = []
@@ -299,46 +348,37 @@ class Workflow:
                     CF_next_node.append(previous_layer.CF_of_layer)
                     previous_layers.append(previous_layer)
 
-            CF_node = [CF_next_node[i] + C_node[i] for i in range(len(CF_next_node))]
+            CF_node = [round(CF_next_node[i] + C_node[i], 2) for i in range(len(CF_next_node))]
 
             if not CF_node:
                 return
             CF_of_layer = self.criteria.cf_criteria(CF_node)
-            index = CF_node.index(CF_of_layer)
-            options = [C_node[index], t_node[index], Z_next_node[index]]
-            new_previous_layer = previous_layers[index]
 
-            current_layer = Layer(c_p[node_index].id, CF_of_layer, options, new_previous_layer)
+            if self.multiple_strategies:
+                indices = [i for i, x in enumerate(CF_node) if x == CF_of_layer]
+            else:
+                indices = [CF_node.index(CF_of_layer)]
 
-            return current_layer
+            layerOptions = []
+            new_previous_layers = []
+            for i in indices:
+                layerOptions.append(LayerOption(t_node[i], Z_next_node[i], CF_next_node[i], C_node[i], CF_of_layer))
+                new_previous_layers.append(previous_layers[i])
 
-    def set_node_times(self, c_p, local_c_p, layer):
-        node = local_c_p[0]
-        index = c_p.index(node)
-        if index == 0:
-            node.start_time = float(self.global_timer + node.input_time)
-            node.finish_time = round(node.start_time + node.output_time + round_up(layer.option[1]), 2)
-        else:
-            previous_node = c_p[index - 1]
-            node.start_time = previous_node.finish_time
-            node.finish_time = round(node.start_time + node.output_time + round_up(layer.option[1]), 2)
+            return Layer(c_p[node_index], CF_of_layer, layerOptions, new_previous_layers)
 
-        if layer.previous_layer:
-            self.set_next_node_times(node, self.nodes[layer.previous_layer.node_id - self.first_id], layer.previous_layer)
+    def set_node_times(self, dict_times):
+        for node in self.nodes:
+            node.start_time = dict_times[node.id][0]
+            node.finish_time = dict_times[node.id][1]
 
-    def set_next_node_times(self, previous_node, current_node, layer):
-        current_node.start_time = previous_node.finish_time
-        current_node.finish_time = round(current_node.start_time + current_node.output_time + round_up(layer.option[1]), 2)
-
-        if layer.previous_layer:
-            self.set_next_node_times(current_node, self.nodes[layer.previous_layer.node_id - self.first_id], layer.previous_layer)
 
     def find_index(self, z, node_index):
         lo = 0
-        hi = len(self.processor_table)
+        hi = len(self.vms_table)
         while lo < hi:
             mid = (lo + hi) // 2
-            if z < self.processor_table[mid][node_index]:
+            if z < self.vms_table[mid][node_index]:
                 hi = mid
             else:
                 lo = mid + 1

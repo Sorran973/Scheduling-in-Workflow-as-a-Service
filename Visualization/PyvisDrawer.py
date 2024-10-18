@@ -169,12 +169,12 @@ class PyvisDrawer(Drawer):
         # bars
         rownum = 0
         for task in tasks:
-            ax.barh(task.name, task.interval, left=task.start, color=task.color, alpha=0.3)
-            ax.barh(task.name, task.calc_time, left=task.possible_start, color=task.color)
-            ax.barh(task.name, task.calc_time, left=task.latest_start, color=task.color, fill=False, hatch='///')
+            ax.barh(rownum, task.interval, left=task.start, color=task.color, alpha=0.3)
+            ax.barh(rownum, task.calc_time, left=task.possible_start, color=task.color)
+            ax.barh(rownum, task.calc_time, left=task.latest_start, color=task.color, fill=False, hatch='///')
 
             ax.text(task.end + 0.1, rownum, task.batch, va='center', alpha=0.8)
-            ax.text(task.start - 0.1, rownum, task.name, va='center', ha='right', alpha=0.7)
+            ax.text(task.start - 0.1, rownum, task.id, va='center', ha='right', alpha=0.7)
             rownum += 1
 
 
@@ -229,9 +229,7 @@ class PyvisDrawer(Drawer):
             ax.barh(rownum, row.interval, left=row.task_start, color=row.color, alpha=0.3)
             # vm_time
             ax.barh(rownum, row.vm_end - row.vm_start, left=row.vm_start, color=row.color, alpha=0.6, fill=False,
-                    hatch='///')
-            # ax.barh(log.task_name, log.vm_end - log.vm_start, left=log.vm_start, color=log.color, alpha=0.6, fill=True,
-            #         linewidth=10, edgecolor=log.color)
+                    hatch='///') # fill=True, linewidth=10, edgecolor=log.color
             ax.text(row.vm_end + 0.1, rownum, 'VM_' + str(row.vm_id), va='center')
             ax.text(row.vm_start - 0.1, rownum, row.task_name, va='center', ha='right')
             ax.text(row.task_allocation_start + (row.task_allocation_end - row.task_allocation_start)/2, rownum, row.task_batch, va='center')

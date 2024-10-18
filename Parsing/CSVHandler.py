@@ -25,7 +25,7 @@ class CSVHandler:
 
     @staticmethod
     def write_all_tables(workflow):
-        CSVHandler.write_processors_table(processor_table_performance=workflow.processor_table_performance)
+        # CSVHandler.write_processors_table(processor_table_performance=workflow.vms_table_performance)
         CSVHandler.write_task_times_table(nodes=workflow.nodes)
         CSVHandler.write_transfer_sizes_table(edges=workflow.edges)
 
@@ -71,14 +71,13 @@ class CSVHandler:
                 writer.writerow(row)
 
     @staticmethod
-    def read_processors_table(PROCESSOR_TABLE_FILE):
+    def read_vms_table(VMS_TABLE_FILE):
         vm_types = []
-        with open(PROCESSOR_TABLE_FILE, newline='') as csvfile:
+        with open(VMS_TABLE_FILE, newline='') as csvfile:
             reader = csv.reader(csvfile, delimiter=',', quotechar='|')
             headers = next(reader)
             for row in reader:
-                # vms.append(VMType(int(row[0]), float(row[1]), float(row[1])))
-                vm_types.append(VMType(row[0], float(row[1]), float(row[1])))
+                vm_types.append(VMType(row[0], float(row[1]), float(row[2])))
 
         return vm_types
 
@@ -105,7 +104,10 @@ class CSVHandler:
             reader = csv.reader(csvfile, delimiter=',', quotechar='|')
             headers = next(reader)
             for row in reader:
-                transfer = DataTransfer(int(row[0]), tasks[int(row[1])], tasks[int(row[2])], float(row[3]))
+                task_from_id = row[1].split('/')[0]
+                task_to_id = row[2].split('/')[0]
+                transfer = DataTransfer(int(row[0]), tasks[int(task_from_id)], tasks[int(task_to_id)], float(row[3]))
+                # transfer = DataTransfer(int(row[0]), tasks[int(row[1])], tasks[int(row[2])], float(row[3]))
                 data_transfer.append(transfer)
                 transfer.task_from.addOutputTransfer(transfer)
                 transfer.task_to.addInputTransfer(transfer)
@@ -113,7 +115,7 @@ class CSVHandler:
         return data_transfer
 
     @staticmethod
-    def writre_allocation_logfile(ALLOCATION_LOG_FILE, log):
+    def write_allocation_logfile(ALLOCATION_LOG_FILE, log):
         with open(ALLOCATION_LOG_FILE, 'w') as f:
             fieldnames = ['vm_id', 'vm_type', 'task_id', 'task_name', 'task_batch', 'task_start',
                           'task_end', 'interval', 'vm_start', 'input_data', 'task_allocation_start',
