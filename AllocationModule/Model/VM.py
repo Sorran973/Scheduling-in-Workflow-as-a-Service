@@ -39,3 +39,12 @@ class VM:
 
     def setColor(self, color):
         self.color = color
+
+    def __str__(self):
+        return 'id = ' + str(self.id) + \
+               ", type = " + self.type + \
+               ", perf = " + str(self.perf) + \
+               ", cost = " + str(self.cost) + \
+               ", prep_time = " + str(self.prep_time) + \
+               ", release_time = " + str(self.release_time) + \
+               ", status = " + str(self.status)

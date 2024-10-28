@@ -4,3 +4,8 @@ class DataTransfer:
         self.task_from = task_from
         self.task_to = task_to
         self.transfer_size = transfer_size
+
+    def __str__(self):
+        return str(self.task_from.id) + \
+               " --> " + str(self.task_to.id) + \
+               ", transfer_size = " + str(self.transfer_size)

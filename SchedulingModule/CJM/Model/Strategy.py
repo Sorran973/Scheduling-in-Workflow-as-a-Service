@@ -11,12 +11,8 @@ class Strategy:
 
         if strategy is None:
             self.time = [-math.inf] * num_nodes
-            # self.time[num_nodes - 1] = 0
-            # self.time[0] = 0
 
             self.criteria = [-math.inf] * num_nodes
-            # self.criteria[num_nodes - 1] = 0
-            # self.criteria[0] = 0
 
             self.dict = {}
             self.dict[0] = [0,0]

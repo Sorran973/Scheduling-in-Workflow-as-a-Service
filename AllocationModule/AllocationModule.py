@@ -11,19 +11,19 @@ from AllocationModule.Model.PossibleAssignment import PossibleAssignment
 from AllocationModule.Model.Task import Task
 from AllocationModule.Model.VM import VM
 from AllocationModule.Model.VMType import VMType
+from SchedulingModule.CJM.Workflow import round_up
 
 
 class AllocationModule:
-    def __init__(self, vm_types, tasks, data_transfer):
+    def __init__(self, vm_types, tasks):
         self.vm_types = vm_types
         self.tasks = tasks
         self.vms = []
-        self.data_transfer = data_transfer
         self.log = pd.DataFrame(columns=['vm_id', 'vm_type', 'task_id', 'task_name', 'task_batch', 'task_start',
                                          'task_end', 'interval', 'vm_start', 'input_data', 'task_allocation_start',
                                          'task_allocation_end', 'output_data', 'vm_end', 'allocation_cost'])
 
-        self.DATA_TRANSFER_SPEED = None
+        self.DATA_TRANSFER_CHANNEL_SPEED = None
         self.OPTIMIZATION_CRITERIA = None
         self.MAX_WAIT_TIME = None
 
@@ -163,7 +163,7 @@ class AllocationModule:
     ########## CALCULATING ALLOCATION COST ##########
     def calcVmAllocationCost(self, task, vm):
 
-        if task.name == 'ID00049':
+        if task.name == 'ID00004':
             y = 0
 
         # init
@@ -186,33 +186,35 @@ class AllocationModule:
 
         # if turning off
         if task.type == 'off':
-            possible_task_start = current_time  # release task can be started any time (no data/logic restrictions)
+            possible_task_start = current_time  # release task can be started any time (no input data/logic restrictions)
 
             # calculate time needed to transfer data before shut down vm
             release_time = vm.release_time
             previous_task = vm.previous_task
 
             if previous_task is not None and previous_task.output_size > 0:
-                outgoing_data_transfer_time = -sys.maxsize
-                for transfer in previous_task.output:
+                output_data_transfer_time = -sys.maxsize
+                for transfer in previous_task.output_transfers:
                     task_to = transfer.task_to
-                    transfer_time = transfer.transfer_size / self.DATA_TRANSFER_SPEED  # maybe speed should be decreased based on number of parallel data transfers
+                    transfer_time = math.ceil(transfer.transfer_size / self.DATA_TRANSFER_SPEED)  # maybe speed should be decreased based on number of parallel data transfers
                     transfer_end = previous_task.allocation_end + transfer_time
 
-                    outgoing_data_transfer_time = transfer_end - possible_vm_start \
-                        if outgoing_data_transfer_time < transfer_end - possible_vm_start \
-                        else outgoing_data_transfer_time  # meaning time between the time vm can be stopped and it finishes the longest data transfer
+                    # meaning time between the time vm can be stopped and it finishes the longest data transfer
+                    if output_data_transfer_time < transfer_end - possible_vm_start:
+                        output_data_transfer_time = transfer_end - possible_vm_start
 
-                outgoing_data_transfer_time = max(outgoing_data_transfer_time, 0)  # can't be negative
-                release_time = release_time + outgoing_data_transfer_time
-                output_data_transfer = outgoing_data_transfer_time
+                if output_data_transfer_time < 0:
+                    y = 0
+                output_data_transfer_time = max(output_data_transfer_time, 0)  # can't be negative
+                release_time = release_time + output_data_transfer_time
+                output_data_transfer = output_data_transfer_time
 
         # if perform calculations
         else:
             # runtime = math.ceil(row.volume / vm_type.perf)
             runtime = task.volume / vm.perf
             if (vm.status == 'open'):
-                preparation_time += vm.prep_time  # add startup time
+                preparation_time += vm.prep_time  # add vm startup time
 
             # calculate additional preparation time to copy required input data
             earliest_data_ready_time_max = -sys.maxsize
@@ -221,30 +223,37 @@ class AllocationModule:
             if task.input_size > 0:
                 input_tasks = []
 
-                for transfer in task.input:
+                #TODO: create node_edges and data_center_edges and check their times
+                for transfer in task.input_transfers:
                     task_from = transfer.task_from
                     input_tasks.append(task_from)
 
                     if transfer.task_from.assigned_vm is vm:
                         transfer_time = 0
                     else:
-                        transfer_time = transfer.transfer_size / self.DATA_TRANSFER_SPEED  # maybe speed should be decreased based on number of parallel data transfers
+                        transfer_time = math.ceil(transfer.transfer_size / self.DATA_TRANSFER_SPEED)  # maybe speed should be decreased based on number of parallel data transfers
 
-                    data_transfer_time_max = transfer_time \
-                        if data_transfer_time_max < transfer_time \
-                        else data_transfer_time_max
+                    if data_transfer_time_max < transfer_time:
+                        data_transfer_time_max = transfer_time
 
                     # when there is input from 'entry' point
-                    task_from_allocation_end = 0 if task_from.id == 0 else task_from.allocation_end
+                    if task_from.id == 0:
+                        task_from_allocation_end = 0
+                    else:
+                        task_from_allocation_end = task_from.allocation_end
 
-                    earliest_data_ready_time_max = task_from_allocation_end + transfer_time \
-                        if earliest_data_ready_time_max < task_from_allocation_end + transfer_time \
-                        else earliest_data_ready_time_max
+                    try:
+                        if earliest_data_ready_time_max < task_from_allocation_end + transfer_time:
+                            earliest_data_ready_time_max = task_from_allocation_end + transfer_time
+                    except:
+                        print("calcVmAllocationCost\ntask_id={}, task_name={}".format(task.id, task.name))
 
                 preparation_time = preparation_time + data_transfer_time_max
                 input_data_transfer = data_transfer_time_max
 
             # possibly check if can start earlier, i.e. remove row.start from max
+            if earliest_data_ready_time_max > task.start:
+                y = 0
             possible_task_start = max(task.start, earliest_data_ready_time_max)
 
         full_runtime = preparation_time + runtime + release_time
@@ -263,18 +272,14 @@ class AllocationModule:
         if expected_task_end > task.end and task.type == 'task':
             allocation_cost = 10000000000  # can't execute task
         else:
-            # possible_assignment.calc_time = None
-            # possible_assignment.latest_start = None
-            # possible_assignment.earliest_finish = None
-            # possible_assignment.possible_start = None
-            possible_assignment.task_allocation_start = expected_task_start
-            possible_assignment.task_allocation_end = expected_task_end
-            possible_assignment.vm_allocation_start = expected_vm_start
-            possible_assignment.vm_allocation_end = expected_vm_end
+            possible_assignment.task_allocation_start = round_up(expected_task_start)
+            possible_assignment.task_allocation_end = round_up(expected_task_end)
+            possible_assignment.vm_allocation_start = round_up(expected_vm_start)
+            possible_assignment.vm_allocation_end = round_up(expected_vm_end)
 
-            allocation_cost = (full_runtime + idle_time) * vm.cost
+            allocation_cost = round_up((full_runtime + idle_time) * vm.cost)
 
-        if self.OPTIMIZATION_CRITERIA == "MAX":
+        if self.OPTIMIZATION_CRITERIA == "max":
             allocation_cost = -allocation_cost
 
         # allocation_cost + 1 because zeros are bad for optimization for Munkres function
@@ -286,28 +291,25 @@ class AllocationModule:
         else:
             return False, allocation_cost, possible_assignment
 
-    def calcAllocationCosts(self, batch):
-        for task in batch:
-            if task.type == 'task':
-                possible_vms = [vm for vm in task.possible_vms if self.calcVmAllocationCost(task, vm)[0]]
-                task.possible_vms = possible_vms
-
 
 
     ########## CHOOSING THE BEST MATCHES (MUNKRES ALGORITHM) ##########
     def calcMinCostPairings(self, batch):
-        print("Calculate Min Cost Pairings")
         vms = self.vms.copy()
         cost_matrix = []
-
         active_num = len(self.vms)
 
         for t, task in enumerate(batch):
             if task.type == 'task':
+                # if task.id == 49:
+                #     y = 0
+                possible_vms = [vm for vm in task.possible_vms if self.calcVmAllocationCost(task, vm)[0]]
+                task.possible_vms = possible_vms
+
                 try:
                     assignment_with_min_cost = min(task.possible_assignments, key=lambda possible_assignment: possible_assignment.allocation_cost)
                 except:
-                    print("Task(id={}, name={}".format(task.id, task.name))
+                    print("Task(id={}, name={})".format(task.id, task.name))
 
 
                 min_cost = assignment_with_min_cost.allocation_cost
@@ -317,8 +319,8 @@ class AllocationModule:
                 vm_costs_for_task = [DISALLOWED] * len(batch)
                 for i, vm in enumerate(self.vms):
                     cost = self.calcVmAllocationCost(task, vm)[1]
-                    if (self.OPTIMIZATION_CRITERIA == "MIN" and cost < 1000000000 or
-                            self.OPTIMIZATION_CRITERIA == "MAX" and cost > -1000000000):
+                    if (self.OPTIMIZATION_CRITERIA == "min" and cost < 1000000000 or
+                            self.OPTIMIZATION_CRITERIA == "max" and cost > -1000000000):
                         vm_costs_for_task[i] = cost
 
                 vm_costs_for_task[active_num + t] = min_cost
@@ -333,8 +335,8 @@ class AllocationModule:
             possible_assignments_for_off_tasks = []
             for i, vm in enumerate(vms):
                 bool, cost, assign_info = self.calcVmAllocationCost(off_task, vm)
-                if (self.OPTIMIZATION_CRITERIA == "MIN" and cost < 1000000000 or
-                        self.OPTIMIZATION_CRITERIA == "MAX" and cost > -1000000000):
+                if (self.OPTIMIZATION_CRITERIA == "min" and cost < 1000000000 or
+                        self.OPTIMIZATION_CRITERIA == "max" and cost > -1000000000):
                     vm_costs_for_task[i] = cost
                     possible_assignments_for_off_tasks.append(assign_info)
             cost_matrix.append(vm_costs_for_task)
@@ -345,7 +347,6 @@ class AllocationModule:
 
         m = Munkres()
         result = m.compute(cost_matrix)
-        print(result)
 
         pairs = []
         for row, column in result:
@@ -385,9 +386,7 @@ class AllocationModule:
     def allocateBatch(self, batch):
         # prepare tasks and vms for matching
         batch = self.prepareVmMatchings(batch, additional_vms_num=len(batch))
-        # calc allocation costs for matches
-        self.calcAllocationCosts(batch)
-        # calc munkres algorithm
+        # calc allocation costs for matches (munkres algorithm)
         pairings = self.calcMinCostPairings(batch)
         # pairing and logging
         self.applyPairings(pairings)

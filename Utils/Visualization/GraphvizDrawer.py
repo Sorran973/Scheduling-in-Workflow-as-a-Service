@@ -1,6 +1,6 @@
 import graphviz
 import matplotlib.pyplot as plt
-from Visualization.Drawer import Drawer
+from Utils.Visualization.Drawer import Drawer
 
 
 class GraphvizDrawer(Drawer):
@@ -20,15 +20,15 @@ class GraphvizDrawer(Drawer):
 
         for arr in edges:
             for edge in arr:
-                G.edge(str(edge.source_node.id) + '\n' +
-                       edge.source_node.name + '\n' +
-                       str(edge.source_node.start_time) + '\n' +
-                       str(edge.source_node.runtime),
+                G.edge(str(edge.node_from.id) + '\n' +
+                       edge.node_from.name + '\n' +
+                       str(edge.node_from.start_time) + '\n' +
+                       str(edge.node_from.runtime),
 
-                       str(edge.destination_node.id) + '\n' +
-                       edge.destination_node.name + '\n' +
-                       str(edge.destination_node.start_time) + '\n' +
-                       str(edge.destination_node.runtime),
+                       str(edge.node_to.id) + '\n' +
+                       edge.node_to.name + '\n' +
+                       str(edge.node_to.start_time) + '\n' +
+                       str(edge.node_to.runtime),
 
                        str(edge.transfer_time))
 

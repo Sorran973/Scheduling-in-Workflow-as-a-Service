@@ -10,9 +10,11 @@ class Task:
         self.end = end
         self.interval = self.end - self.start
         self.type = type
+        self.input_transfers = []
         self.input = []
         self.input_size = 0
         self.input_time = 0
+        self.output_transfers = []
         self.output = []
         self.output_size = 0
         self.output_time = 0
@@ -41,11 +43,11 @@ class Task:
 
 
     def addInputTransfer(self, data_transfer):
-            self.input.append(data_transfer)
+            self.input_transfers.append(data_transfer)
             self.input_size += data_transfer.transfer_size
 
     def addOutputTransfer(self, data_transfer):
-            self.output.append(data_transfer)
+            self.output_transfers.append(data_transfer)
             self.output_size += data_transfer.transfer_size
 
     def calculateTransferTime(self, data_transfer_channel):
@@ -66,3 +68,8 @@ class Task:
 
     def setAllocationEnd(self, allocation_end):
         self.allocation_end = allocation_end
+
+    def __str__(self):
+        return 'id = ' + str(self.id) + \
+               ", name = " + self.name + \
+               ", volume = " + str(self.volume)

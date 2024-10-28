@@ -1,6 +1,3 @@
-import os
-import sys
-
 import pandas as pd
 from pyvis.network import Network
 import matplotlib.pyplot as plt
@@ -8,7 +5,8 @@ import networkx as nx
 import numpy as np
 from matplotlib.patches import Patch
 
-from Visualization.Drawer import Drawer
+import Utils.Configuration
+from Utils.Visualization.Drawer import Drawer
 
 
 def rand_color(row):
@@ -40,7 +38,7 @@ class PyvisDrawer(Drawer):
 
         for arr_edges in edges:
             for edge in arr_edges:
-                G.add_edge(edge.source_node.id, edge.destination_node.id, title=str(edge.transfer_time), label=str(edge.id))
+                G.add_edge(edge.node_from.id, edge.node_to.id, title=str(edge.transfer_time), label=str(edge.id))
 
 
 
@@ -214,9 +212,10 @@ class PyvisDrawer(Drawer):
         ax1.set_yticks([])
 
         plt.show()
+        fig.savefig(Utils.Configuration.GANTT_FIGURES_BATCHES, format="pdf")
 
 
-    def draw_result_gantt(self, log):
+    def draw_result_gantt(self, log, figure_name):
         # fig, (ax, ax1) = plt.subplots(2, figsize=(16, 6), gridspec_kw={'height_ratios': [6, 1]})
         fig, ax = plt.subplots(figsize=(36, 16))
 
@@ -230,8 +229,8 @@ class PyvisDrawer(Drawer):
             # vm_time
             ax.barh(rownum, row.vm_end - row.vm_start, left=row.vm_start, color=row.color, alpha=0.6, fill=False,
                     hatch='///') # fill=True, linewidth=10, edgecolor=log.color
-            ax.text(row.vm_end + 0.1, rownum, 'VM_' + str(row.vm_id), va='center')
-            ax.text(row.vm_start - 0.1, rownum, row.task_name, va='center', ha='right')
+            ax.text(row.vm_end + 0.1, rownum, 'VM_' + str(row.vm_id) + row.vm_type, va='center')
+            ax.text(row.vm_start - 0.1, rownum, row.task_id, va='center', ha='right')
             ax.text(row.task_allocation_start + (row.task_allocation_end - row.task_allocation_start)/2, rownum, row.task_batch, va='center')
             rownum += 1
 
@@ -256,3 +255,5 @@ class PyvisDrawer(Drawer):
 
         plt.suptitle('SCHEDULE')
         plt.show()
+        fig.savefig(figure_name, format="pdf")
+

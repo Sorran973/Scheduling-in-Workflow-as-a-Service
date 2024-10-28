@@ -1,34 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <adag name="leadmm" jobCount="11" fileCount="0" childCount="5">
 	<job id="p0" namespace="leadmm" name="TerrainPreProcessor" runtime="72" cores="1">
-		<uses file="p0.txt" link="input" size="209715"/>
+		<uses file="p0.txt" link="input" size="51380224"/>
 		<uses file="p0.txt" link="output" size="51380224"/>
 	</job>
 	<job id="p1" namespace="leadmm" name="LateralBoundaryInterpolator" runtime="57" cores="1">
-		<uses file="p1.txt" link="input" size="209715"/>
+		<uses file="p1.txt" link="input" size="51380224"/>
 		<uses file="p1.txt" link="output" size="51380224"/>
 	</job>
 	<job id="p2" namespace="leadmm" name="3DInterpolator" runtime="73" cores="1">
-		<uses file="p2.txt" link="input" size="209715"/>
+		<uses file="p2.txt" link="input" size="51380224"/>
 		<uses file="p2.txt" link="output" size="51380224"/>
 	</job>
-	<job id="p3" namespace="leadmm" name="WrfStatic" runtime="54" cores="1">
-		<uses file="p3.txt" link="input" size="209715"/>
-		<uses file="p3.txt" link="output" size="209715"/>
+	<job id="p3" namespace="leadmm" name="WrfStatic" runtime="105" cores="1">
+		<uses file="p3.txt" link="input" size="51380224"/>
+		<uses file="p3.txt" link="output" size="102760448"/>
 	</job>
 	<job id="p4" namespace="leadmm" name="ARPS2WRF" runtime="60" cores="1">
-		<uses file="p4.txt" link="input" size="209715"/>
 		<uses file="p4.txt" link="output" size="51380224"/>
 	</job>
 	<job id="p5" namespace="leadmm" name="WRF" runtime="72" cores="16">
 		<uses file="p6.txt" link="input" size="49967691"/>
 		<uses file="p1.txt" link="input" size="209715"/>
 		<uses file="p7.txt" link="input" size="49993131"/>
-		<uses file="p5.txt" link="output" size="209715"/>
+		<uses file="p5.txt" link="output" size="51380224"/>
 	</job>
 	<job id="p6" namespace="leadmm" name="WRF" runtime="60" cores="16">
-		<uses file="p0.txt" link="input" size="49967691"/>
-		<uses file="p9.txt" link="input" size="209715"/>
+		<uses file="p0.txt" link="input" size="51380224"/>
+		<uses file="p9.txt" link="input" size="51380224"/>
 		<uses file="p6.txt" link="output" size="49967691"/>
 	</job>
 	<job id="p7" namespace="leadmm" name="WRF" runtime="54" cores="16">
@@ -42,15 +41,27 @@
 		<uses file="p1.txt" link="input" size="209715"/>
 		<uses file="p2.txt" link="input" size="209715"/>
 		<uses file="p7.txt" link="input" size="49993131"/>
-		<uses file="p8.txt" link="output" size="209715"/>
+		<uses file="p8.txt" link="output" size="51380224"/>
 	</job>
 	<job id="p9" namespace="leadmm" name="WRF" runtime="60" cores="16">
-		<uses file="p9.txt" link="input" size="209715"/>
+		<uses file="p9.txt" link="input" size="51380224"/>
 		<uses file="p9.txt" link="output" size="51380224"/>
 	</job>
 	<job id="p10" namespace="leadmm" name="WRF" runtime="62" cores="16">
 		<uses file="p7.txt" link="input" size="49993131"/>
-		<uses file="p10.txt" link="output" size="209715"/>
+		<uses file="p10.txt" link="output" size="51380224"/>
+	</job>
+	<job id="p11" namespace="leadmm" name="WRF" runtime="100" cores="16">
+		<uses file="p3.txt" link="input" size="51380224"/>
+		<uses file="p11.txt" link="output" size="51380224"/>
+	</job>
+	<job id="p12" namespace="leadmm" name="WRF" runtime="105" cores="16">
+		<uses file="p12.txt" link="input" size="51380224"/>
+		<uses file="p12.txt" link="output" size="102760448"/>
+	</job>
+	<job id="p13" namespace="leadmm" name="WRF" runtime="105" cores="16">
+		<uses file="p13.txt" link="input" size="51380224"/>
+		<uses file="p13.txt" link="output" size="51380224"/>
 	</job>
 	<child ref="p6">
 		<parent ref="p0"/>
@@ -75,4 +86,8 @@
 	<child ref="p10">
 		<parent ref="p7"/>
 	</child>
+	<child ref="p11">
+		<parent ref="p3"/>
+	</child>
+
 </adag>

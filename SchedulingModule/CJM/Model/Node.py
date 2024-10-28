@@ -1,4 +1,4 @@
-
+import math
 
 class Node:
 
@@ -13,7 +13,8 @@ class Node:
         self.finish_time = None
         self.visited = False
         self.in_critical_path = False
-        self.edges = []
+        self.edges_from = []          # edges from other nodes into this node
+        self.edges_to = []          # edges from this node to other nodes
         self.color = 'black'
         self.critical_paths = [] # all critical paths of the node (start from that node) = [length, [obj(nodes and edges)], ...]
         self.input = []
@@ -34,13 +35,15 @@ class Node:
             self.output_size += file.size
 
 
-    def add_edge(self, edge):
-        self.edges.append(edge)
+    def add_edge_from(self, edge):
+        self.edges_from.append(edge)
 
+    def add_edge_to(self, edge):
+        self.edges_to.append(edge)
 
     def calculate_transfer_time(self, data_transfer_channel):
-        self.input_time = round(self.input_size / data_transfer_channel)
-        self.output_time = round(self.output_size / data_transfer_channel)
+        self.input_time = math.ceil(self.input_size / data_transfer_channel)
+        self.output_time = math.ceil(self.output_size / data_transfer_channel)
 
 
     def __str__(self):

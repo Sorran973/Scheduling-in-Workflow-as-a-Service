@@ -3,6 +3,8 @@ import csv
 from AllocationModule.Model.DataTransfer import DataTransfer
 from AllocationModule.Model.Task import Task
 from AllocationModule.Model.VMType import VMType
+from SchedulingModule.CJM.Model.Edge import Edge
+import Utils.Configuration
 
 PROCESSOR_TABLE_FILE = '/Users/artembulkhak/PycharmProjects/Dissertation/Output/processor_table.csv'
 TASK_TIME_TABLE_FILE = '/Users/artembulkhak/PycharmProjects/Dissertation/Output/task_time_table.csv'
@@ -25,7 +27,6 @@ class CSVHandler:
 
     @staticmethod
     def write_all_tables(workflow):
-        # CSVHandler.write_processors_table(processor_table_performance=workflow.vms_table_performance)
         CSVHandler.write_task_times_table(nodes=workflow.nodes)
         CSVHandler.write_transfer_sizes_table(edges=workflow.edges)
 
@@ -65,8 +66,8 @@ class CSVHandler:
 
             for edge in edges:
                 row = {fieldnames[0]: edge.id,
-                       fieldnames[1]: str(edge.source_node.id) + '/' + edge.source_node.name,
-                       fieldnames[2]: str(edge.destination_node.id) + '/' + edge.destination_node.name,
+                       fieldnames[1]: str(edge.node_from.id) + '/' + edge.node_from.name,
+                       fieldnames[2]: str(edge.node_to.id) + '/' + edge.node_to.name,
                        fieldnames[3]: edge.transfer_size}
                 writer.writerow(row)
 
@@ -82,17 +83,37 @@ class CSVHandler:
         return vm_types
 
     @staticmethod
+    def read_from_nodes(nodes):
+        tasks = []
+        for node in nodes:
+            task = Task(node.id, node.name, node.volume, node.start_time, node.finish_time)
+            tasks.append(task)
+
+        for i, node in enumerate(nodes):
+            task = tasks[i]
+            for edge in node.edges:
+                task.input_transfers.append(Edge(tasks[edge.node_from.id],
+                                                 tasks[edge.node_to.id],
+                                                 edge.files,
+                                                 Utils.Configuration.DATA_TRANSFER_CHANNEL_SPEED))
+            task.input_transfers = node.edges
+            task.input = node.input
+            task.input_size = node.input_size
+            task.input_time = node.input_time
+            task.output = node.output
+            task.output_size = node.output_size
+            task.output_time = node.output_time
+
+        return tasks
+
+    @staticmethod
     def read_task_time_table(TASK_TIME_TABLE_FILE):
         tasks = []
         with open(TASK_TIME_TABLE_FILE, newline='') as csvfile:
             reader = csv.reader(csvfile, delimiter=',', quotechar='|')
             headers = next(reader)
             for row in reader:
-                if row[3] != '':
-                    task = Task(int(row[0]), row[1], float(row[2]), float(row[3]), float(row[4]))
-                else:
-                    task = Task(int(row[0]), row[1], float(row[2]))
-
+                task = Task(int(row[0]), row[1], float(row[2]), float(row[3]), float(row[4]))
                 tasks.append(task)
 
         return tasks
@@ -107,12 +128,30 @@ class CSVHandler:
                 task_from_id = row[1].split('/')[0]
                 task_to_id = row[2].split('/')[0]
                 transfer = DataTransfer(int(row[0]), tasks[int(task_from_id)], tasks[int(task_to_id)], float(row[3]))
-                # transfer = DataTransfer(int(row[0]), tasks[int(row[1])], tasks[int(row[2])], float(row[3]))
                 data_transfer.append(transfer)
                 transfer.task_from.addOutputTransfer(transfer)
                 transfer.task_to.addInputTransfer(transfer)
 
         return data_transfer
+
+    @staticmethod
+    def write_configuration_file(CONFIGURATION_FILE):
+        with open(CONFIGURATION_FILE, 'w') as f:
+            fieldnames = ['multiple_strategies', 'scheduling_criteria', 'scheduling_optimization_criteria', 'T',
+                          'data_transfer_channel_speed', 'allocation_optimization_criteria']
+
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+
+            file_row = {fieldnames[0]: Utils.Configuration.MULTIPLE_STRATEGIES,
+                        fieldnames[1]: Utils.Configuration.CRITERIA,
+                        fieldnames[2]: Utils.Configuration.SCHEDULING_OPTIMIZATION_CRITERIA,
+                        fieldnames[3]: Utils.Configuration.T,
+                        fieldnames[4]: Utils.Configuration.DATA_TRANSFER_CHANNEL_SPEED,
+                        fieldnames[5]: Utils.Configuration.ALLOCATION_OPTIMIZATION_CRITERIA}
+            writer.writerow(file_row)
+
+
 
     @staticmethod
     def write_allocation_logfile(ALLOCATION_LOG_FILE, log):
