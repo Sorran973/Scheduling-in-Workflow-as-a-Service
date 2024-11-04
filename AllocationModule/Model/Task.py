@@ -42,7 +42,7 @@ class Task:
             self.status = 'IO'
 
 
-    def addInputTransfer(self, data_transfer):
+    def add_input_transfer(self, data_transfer):
             self.input_transfers.append(data_transfer)
             self.input_size += data_transfer.transfer_size
 

@@ -12,3 +12,7 @@ class XMLParser:
         soup_edges = soup.find_all('child')
 
         return soup_nodes, soup_edges
+
+    @staticmethod
+    def get_xml_file_name(xml_file):
+        return xml_file.split('/')[-1]

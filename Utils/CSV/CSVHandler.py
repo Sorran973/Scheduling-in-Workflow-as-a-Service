@@ -4,7 +4,7 @@ from AllocationModule.Model.DataTransfer import DataTransfer
 from AllocationModule.Model.Task import Task
 from AllocationModule.Model.VMType import VMType
 from SchedulingModule.CJM.Model.Edge import Edge
-import Utils.Configuration
+import Utils.CloudConfiguration
 
 PROCESSOR_TABLE_FILE = '/Users/artembulkhak/PycharmProjects/Dissertation/Output/processor_table.csv'
 TASK_TIME_TABLE_FILE = '/Users/artembulkhak/PycharmProjects/Dissertation/Output/task_time_table.csv'
@@ -130,7 +130,7 @@ class CSVHandler:
                 transfer = DataTransfer(int(row[0]), tasks[int(task_from_id)], tasks[int(task_to_id)], float(row[3]))
                 data_transfer.append(transfer)
                 transfer.task_from.addOutputTransfer(transfer)
-                transfer.task_to.addInputTransfer(transfer)
+                transfer.task_to.add_input_transfer(transfer)
 
         return data_transfer
 
@@ -155,6 +155,7 @@ class CSVHandler:
 
     @staticmethod
     def write_allocation_logfile(ALLOCATION_LOG_FILE, log):
+
         with open(ALLOCATION_LOG_FILE, 'w') as f:
             fieldnames = ['vm_id', 'vm_type', 'task_id', 'task_name', 'task_batch', 'task_start',
                           'task_end', 'interval', 'vm_start', 'input_data', 'task_allocation_start',

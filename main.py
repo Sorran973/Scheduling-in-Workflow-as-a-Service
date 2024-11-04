@@ -1,66 +1,74 @@
-import pandas as pd
-from Utils.CSVHandler import CSVHandler
-from SchedulingModule.CJM.WorkflowSet import WorkflowSet
+from CloudPlatform import CloudPlatform
+from SchedulingModule.CJM.Criteria.Criteria import Criteria, TimeCriteria, AverageResourceLoadCriteria
+from Utils.CSV.CSVHandler import CSVHandler
 from SchedulingModule.CJM.Workflow import Workflow
-from AllocationModule.AllocationModule import AllocationModule
-import Utils.Configuration
-from Utils.Visualization.PyvisDrawer import PyvisDrawer, rand_color
-from Utils.Visualization import Drawer
+import Utils.CloudConfiguration
+
 
 
 
 if __name__ == '__main__':
+    TEST_1_12 = 'JobExamples/test1_12.xml'
 
-    #####################################################
-    ################# SCHEDULING MODULE #################
-    #####################################################
-    vm_types = CSVHandler.read_vms_table(Utils.Configuration.VMS_TABLE_FILE)
+    MONTAGE50 = 'JobExamples/MONTAGE.n.50.0.dax'
+    MONTAGE100 = 'JobExamples/MONTAGE.n.100.0.dax'
+    MONTAGE500 = 'JobExamples/MONTAGE.n.500.0.dax'
+    MONTAGE1000 = 'JobExamples/MONTAGE.n.1000.1.dax'
 
-    workflow_set = WorkflowSet()
-    workflow_set.addWorkflow(Workflow(Utils.Configuration.XML_FILE,
-                                      Utils.Configuration.T,
-                                      vm_types,
-                                      Utils.Configuration.CRITERIA,
+    CYBERSHAKE50 = 'JobExamples/CYBERSHAKE.n.50.0.dax'
+    CYBERSHAKE100 = 'JobExamples/CYBERSHAKE.n.100.0.dax'
+    CYBERSHAKE500 = 'JobExamples/CYBERSHAKE.n.500.0.dax'
+
+    GENOME50 = 'JobExamples/GENOME.n.50.0.dax'
+    GENOME100 = 'JobExamples/GENOME.n.100.0.dax'
+    GENOME500 = 'JobExamples/GENOME.n.500.0.dax'
+
+    LIGO50 = 'JobExamples/LIGO.n.50.0.dax'
+    LIGO100 = 'JobExamples/LIGO.n.100.0.dax'
+    LIGO500 = 'JobExamples/LIGO.n.500.0.dax'
+
+    SIPHT50 = 'JobExamples/SIPHT.n.50.0.dax'
+    SIPHT100 = 'JobExamples/SIPHT.n.100.0.dax'
+    SIPHT500 = 'JobExamples/SIPHT.n.500.0.dax'
+    ########################################################################################################################
+
+    T = None
+    MULTIPLE_STRATEGIES = False
+    SCHEDULING_OPTIMIZATION_CRITERIA = 'max'
+    # SCHEDULING_OPTIMIZATION_CRITERIA = 'min'
+
+    CRITERIA: Criteria = AverageResourceLoadCriteria(SCHEDULING_OPTIMIZATION_CRITERIA)
+    # CRITERIA: Criteria = TimeCriteria(SCHEDULING_OPTIMIZATION_CRITERIA)
+    # CRITERIA: Criteria = CostCriteria(SCHEDULING_OPTIMIZATION_CRITERIA)
+
+    ALLOCATION_OPTIMIZATION_CRITERIA = 'min'
+    # ALLOCATION_OPTIMIZATION_CRITERIA = 'max' #????
+    ########################################################################################################################
+
+    workflow_examples = (MONTAGE50, MONTAGE100, MONTAGE500, MONTAGE1000,
+                         CYBERSHAKE50, CYBERSHAKE100, CYBERSHAKE500,
+                         GENOME50, GENOME100, GENOME500,
+                         LIGO50, LIGO100, LIGO500,
+                         SIPHT50, SIPHT100, SIPHT500)
+
+    cloud_platform = CloudPlatform()
+    # workflow_set = WorkflowSet()
+    cloud_platform.add_workflow(Workflow(MONTAGE50,
+                                      T,
+                                      CRITERIA,
+                                      MULTIPLE_STRATEGIES,
                                       1,
-                                      1))
-    workflow_set.schedule()
-
-    drawer: Drawer = PyvisDrawer()
-    drawer.draw_graph(workflow_set.drawn_nodes, workflow_set.drawn_edges)
-    # drawer.draw_gantt(workflow_set.drawn_nodes)
-    # drawer.draw_new_gantt(workflow_set.drawn_nodes)
-
-    #####################################################
-    ################# ALLOCATION MODULE #################
-    #####################################################
-
-    tasks = CSVHandler.read_task_time_table(Utils.Configuration.TASK_TIME_TABLE_FILE)
-    data_transfer = CSVHandler.read_data_transfer_table(Utils.Configuration.TRANSFER_SIZE_TABLE_FILE, tasks)
-
-    allocation = AllocationModule(vm_types, tasks)
-    time = 0
-    batches = allocation.formParallelBatches(time)  # FTL algorithm
-    drawer.draw_batches_gantt(allocation.tasks)
-
-    allocation.setDataTransferSpeed(Utils.Configuration.DATA_TRANSFER_CHANNEL_SPEED)
-    allocation.setOptimizationCriteria(Utils.Configuration.ALLOCATION_OPTIMIZATION_CRITERIA)
-    allocation.vma(batches)
-
-    log = allocation.log
-    CSVHandler.write_allocation_logfile(Utils.Configuration.ALLOCATION_LOG_FILE, log)
-    CSVHandler.write_configuration_file(Utils.Configuration.CONFIGURATION_FILE)
-    print("Total Cost: " + str(log.allocation_cost.sum()))
-    print("Total Time: " + str(log.vm_end.max()))
-
-    color = log[["vm_id"]]
-    color = color.drop_duplicates()
-    color["color"] = color.apply(lambda x: rand_color(x), axis=1)
-    log = pd.merge(log, color, on='vm_id', how='left')
-
-    drawer.draw_result_gantt(log, Utils.Configuration.GANTT_FIGURES_BASIC)
-    log = log.sort_values(["vm_id", "vm_end"])
-    drawer.draw_result_gantt(log, Utils.Configuration.GANTT_FIGURES_VM_SORT)
-
+                                      1),
+                                ALLOCATION_OPTIMIZATION_CRITERIA)
+    # cloud_platform.add_workflow(Workflow(MONTAGE100,
+    #                                   T,
+    #                                   CRITERIA,
+    #                                   MULTIPLE_STRATEGIES,
+    #                                   1,
+    #                                   1),
+    #                             ALLOCATION_OPTIMIZATION_CRITERIA)
+    cloud_platform.run()
+    cloud_platform.get_cloud_result()
 
 
 

@@ -1,12 +1,12 @@
-from SchedulingModule.CJM.Model.Criteria import AverageResourceLoadCriteria, TimeCriteria, CostCriteria
+from SchedulingModule.CJM.Criteria.Criteria import AverageResourceLoadCriteria, TimeCriteria, CostCriteria
 from SchedulingModule.CJM.Model.Edge import Edge
 from SchedulingModule.CJM.Model.File import File
 from SchedulingModule.CJM.Model.LayerOption import LayerOption
 from SchedulingModule.CJM.Model.Node import Node
 from SchedulingModule.CJM.Model.Layer import Layer
-from Utils.Configuration import DATA_TRANSFER_CHANNEL_SPEED, MULTIPLE_STRATEGIES
-from Utils.XMLParser import XMLParser
 from SchedulingModule.CJM.Model.Strategy import Strategy
+import Utils.CloudConfiguration
+import Utils.Parsing.XMLParser
 
 import math
 import copy
@@ -51,7 +51,7 @@ def common_member(list_a, list_b, first_id):
 
 class Workflow:
 
-    def __init__(self, XML_FILE, T, vm_types, criteria,
+    def __init__(self, XML_FILE, T, criteria, multiple_strategies,
                  task_volume_multiplier, data_volume_multiplier, start_time=0):
         self.nodes = []
         self.first_id: int
@@ -64,19 +64,22 @@ class Workflow:
         self.critical_paths = []
         self.strategies = []
         self.best_strategy = None
-        self.vm_types = vm_types
+        self.vm_types = Utils.CloudConfiguration.VM_TYPES
         self.vms_table = []
         self.vms_cost = []
         self.volume_multiplier = task_volume_multiplier
         self.data_volume_multiplier = data_volume_multiplier
         self.criteria = criteria
         self.T = T
+        self.xml_file_name = Utils.Parsing.XMLParser.XMLParser.get_xml_file_name(XML_FILE)
+        self.MULTIPLE_STRATEGIES = None
         self.global_timer = start_time
+        self.allocation_optimization_criteria = None
 
         # Steps
-        soup_nodes, soup_edges = XMLParser.parse(XML_FILE)
+        soup_nodes, soup_edges = Utils.Parsing.XMLParser.XMLParser.parse(XML_FILE)
         self.create_graph(soup_nodes, soup_edges)
-        self.create_vms_table(vm_types)
+        self.create_vms_table(self.vm_types)
         self.find_all_critical_paths()
         self.check_duplicate_critical_paths()
 
@@ -103,7 +106,7 @@ class Workflow:
                                            use.get('link'),
                                            round_up(float(use.get('size')) * self.data_volume_multiplier / 1000000),
                                            use.get('register')))
-            current_node.calculate_transfer_time(DATA_TRANSFER_CHANNEL_SPEED)
+            current_node.calculate_transfer_time(Utils.CloudConfiguration.DATA_TRANSFER_CHANNEL_SPEED)
 
         # Add finish_node into graph
         self.add_node(Node('finish', 0.0, 0.0))
@@ -116,7 +119,7 @@ class Workflow:
             for parent in parents:
                 node_from = self.node_dict.get(parent.get('ref'))
                 node_to = self.node_dict.get(edge.get('ref'))
-                e = Edge(node_from, node_to, node_from.output, DATA_TRANSFER_CHANNEL_SPEED)
+                e = Edge(node_from, node_to, node_from.output, Utils.CloudConfiguration.DATA_TRANSFER_CHANNEL_SPEED)
                 self.add_edge(e)
                 node_from.add_edge_to(e)
                 node_to.add_edge_from(e)
@@ -164,7 +167,7 @@ class Workflow:
         for i in range(1, n - 1):
             next_node = self.nodes[i]
             if self.entry_edges[i] == 0:
-                edge = Edge(entry_node, next_node, next_node.input, DATA_TRANSFER_CHANNEL_SPEED)
+                edge = Edge(entry_node, next_node, next_node.input, Utils.CloudConfiguration.DATA_TRANSFER_CHANNEL_SPEED)
                 self.add_edge(edge)
                 entry_node.add_edge_to(edge)
                 next_node.add_edge_from(edge)
@@ -173,7 +176,7 @@ class Workflow:
         for i in range(1, n - 1):
             previous_node = self.nodes[i]
             if self.finish_edges[i] == 0:
-                edge = Edge(previous_node, finish_node, previous_node.output, DATA_TRANSFER_CHANNEL_SPEED)
+                edge = Edge(previous_node, finish_node, previous_node.output, Utils.CloudConfiguration.DATA_TRANSFER_CHANNEL_SPEED)
                 self.add_edge(edge)
                 previous_node.add_edge_to(edge)
                 finish_node.add_edge_from(edge)
@@ -438,7 +441,7 @@ class Workflow:
                 return
             CF_of_layer = self.criteria.cf_criteria(CF_node)
 
-            if MULTIPLE_STRATEGIES:
+            if self.MULTIPLE_STRATEGIES:
                 indices = [i for i, x in enumerate(CF_node) if x == CF_of_layer]
             else:
                 indices = [CF_node.index(CF_of_layer)]

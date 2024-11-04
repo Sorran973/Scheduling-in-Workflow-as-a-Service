@@ -1,4 +1,3 @@
-import ctypes
 import math
 import random
 import sys
@@ -7,10 +6,10 @@ import time
 import pandas as pd
 from munkres import Munkres, print_matrix, DISALLOWED, make_cost_matrix
 
-from AllocationModule.Model.PossibleAssignment import PossibleAssignment
 from AllocationModule.Model.Task import Task
-from AllocationModule.Model.VM import VM
 from AllocationModule.Model.VMType import VMType
+from AllocationModule.Model.VM import VM
+from AllocationModule.Model.PossibleAssignment import PossibleAssignment
 from SchedulingModule.CJM.Workflow import round_up
 
 
@@ -19,22 +18,20 @@ class AllocationModule:
         self.vm_types = vm_types
         self.tasks = tasks
         self.vms = []
+        self.batches = None
+        self.DATA_TRANSFER_CHANNEL_SPEED = None
+        self.OPTIMIZATION_CRITERIA = None
         self.log = pd.DataFrame(columns=['vm_id', 'vm_type', 'task_id', 'task_name', 'task_batch', 'task_start',
                                          'task_end', 'interval', 'vm_start', 'input_data', 'task_allocation_start',
                                          'task_allocation_end', 'output_data', 'vm_end', 'allocation_cost'])
 
-        self.DATA_TRANSFER_CHANNEL_SPEED = None
-        self.OPTIMIZATION_CRITERIA = None
-        self.MAX_WAIT_TIME = None
 
-    def setDataTransferSpeed(self, DATA_TRANSFER_SPEED):
-        self.DATA_TRANSFER_SPEED = DATA_TRANSFER_SPEED
+
+    def setDataTransferSpeed(self, DATA_TRANSFER_CHANNEL_SPEED):
+        self.DATA_TRANSFER_CHANNEL_SPEED = DATA_TRANSFER_CHANNEL_SPEED
 
     def setOptimizationCriteria(self, OPTIMIZATION_CRITERIA):
         self.OPTIMIZATION_CRITERIA = OPTIMIZATION_CRITERIA
-
-    def setMaxWaitTime(self, MAX_WAIT_TIME):
-        self.MAX_WAIT_TIME = MAX_WAIT_TIME
 
 
 
@@ -80,8 +77,7 @@ class AllocationModule:
             time = self.assignToLeader(tasks_with_none_status, time, batches)
             tasks_with_none_status = list(filter(lambda i: i.status is None, tasks_with_none_status))
 
-        return batches
-
+        self.batches = batches
 
 
     ########## PREPARE (TASK:VM) MATCHINGS ##########
@@ -196,7 +192,7 @@ class AllocationModule:
                 output_data_transfer_time = -sys.maxsize
                 for transfer in previous_task.output_transfers:
                     task_to = transfer.task_to
-                    transfer_time = math.ceil(transfer.transfer_size / self.DATA_TRANSFER_SPEED)  # maybe speed should be decreased based on number of parallel data transfers
+                    transfer_time = math.ceil(transfer.transfer_size / self.DATA_TRANSFER_CHANNEL_SPEED)  # maybe speed should be decreased based on number of parallel data transfers
                     transfer_end = previous_task.allocation_end + transfer_time
 
                     # meaning time between the time vm can be stopped and it finishes the longest data transfer
@@ -231,7 +227,7 @@ class AllocationModule:
                     if transfer.task_from.assigned_vm is vm:
                         transfer_time = 0
                     else:
-                        transfer_time = math.ceil(transfer.transfer_size / self.DATA_TRANSFER_SPEED)  # maybe speed should be decreased based on number of parallel data transfers
+                        transfer_time = math.ceil(transfer.transfer_size / self.DATA_TRANSFER_CHANNEL_SPEED)  # maybe speed should be decreased based on number of parallel data transfers
 
                     if data_transfer_time_max < transfer_time:
                         data_transfer_time_max = transfer_time
@@ -379,7 +375,6 @@ class AllocationModule:
                         'input_data': pair[0].input_time, 'task_allocation_start': pair[0].allocation_start,
                         'task_allocation_end': pair[0].allocation_end, 'output_data': pair[0].output_time,
                         'vm_end': pair[0].vm_allocation_end, 'allocation_cost': pair[0].allocation_cost - 1}, ignore_index=True)
-
 
 
     ########## ALLOCATION BATCHES (VMA ALGORITHM) ##########

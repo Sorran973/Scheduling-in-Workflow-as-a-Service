@@ -1,4 +1,4 @@
-from Utils.CSVHandler import CSVHandler
+from Utils.CSV.CSVHandler import CSVHandler
 
 
 class WorkflowSet:
