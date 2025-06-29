@@ -1,11 +1,12 @@
 class Task:
     task_counter = 0
 
-    def __init__(self, id, name, volume, start=0, end=0, type='task'):
+    def __init__(self, id, name, volume, workflow_id, start=0, end=0, type='task'):
         self.id = id
         Task.task_counter = id
         self.name = name
         self.volume = volume
+        self.workflow_id = workflow_id
         self.start = start
         self.end = end
         self.interval = self.end - self.start
@@ -18,6 +19,9 @@ class Task:
         self.output = []
         self.output_size = 0
         self.output_time = 0
+        self.vm_input_time = None
+        self.vm_output_time = None
+        self.idle_time = None
         self.status = None
         self.batch = None
         self.color = None
@@ -45,14 +49,13 @@ class Task:
     def addInputTransfer(self, data_transfer):
             self.input_transfers.append(data_transfer)
             self.input_size += data_transfer.transfer_size
+            self.input_time += data_transfer.transfer_time
 
     def addOutputTransfer(self, data_transfer):
             self.output_transfers.append(data_transfer)
             self.output_size += data_transfer.transfer_size
+            self.output_time += data_transfer.transfer_time
 
-    def calculateTransferTime(self, data_transfer_channel):
-        self.input_time = round(self.input_size / data_transfer_channel)
-        self.output_time = round(self.output_size / data_transfer_channel)
 
     def setAssignedVm(self, assigned_vm):
         self.assigned_vm = assigned_vm
@@ -61,7 +64,10 @@ class Task:
         self.allocation_end = assign_info.task_allocation_end
         self.vm_allocation_start = assign_info.vm_allocation_start
         self.vm_allocation_end = assign_info.vm_allocation_end
+        self.vm_input_time = assign_info.input_data_transfer_time
+        self.vm_output_time = assign_info.output_data_transfer_time
         self.allocation_cost = assign_info.allocation_cost
+        self.idle_time = assign_info.idle_time
 
     def setAllocationStart(self, allocation_start):
         self.allocation_start = allocation_start
@@ -71,5 +77,6 @@ class Task:
 
     def __str__(self):
         return 'id = ' + str(self.id) + \
-               ", name = " + self.name + \
-               ", volume = " + str(self.volume)
+                ", name = " + self.name + \
+                ", volume = " + str(self.volume) + \
+                ", workflow_id = " + str(self.workflow_id)

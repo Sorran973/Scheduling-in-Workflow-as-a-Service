@@ -1,12 +1,15 @@
+import random
+
 from SchedulingModule.CJM.Model.Criteria import AverageResourceLoadCriteria, TimeCriteria, CostCriteria
 from SchedulingModule.CJM.Model.Edge import Edge
 from SchedulingModule.CJM.Model.File import File
 from SchedulingModule.CJM.Model.LayerOption import LayerOption
 from SchedulingModule.CJM.Model.Node import Node
 from SchedulingModule.CJM.Model.Layer import Layer
-from Utils.Configuration import DATA_TRANSFER_CHANNEL_SPEED, MULTIPLE_STRATEGIES
+from Utils.Configuration import DATA_TRANSFER_CHANNEL_SPEED
 from Utils.XMLParser import XMLParser
 from SchedulingModule.CJM.Model.Strategy import Strategy
+import Utils.Configuration
 
 import math
 import copy
@@ -62,16 +65,18 @@ class Workflow:
         self.drawn_nodes = []
         self.drawn_edges = []
         self.critical_paths = []
+        self.longest_path = []
         self.strategies = []
         self.best_strategy = None
         self.vm_types = vm_types
         self.vms_table = []
         self.vms_cost = []
-        self.volume_multiplier = task_volume_multiplier
+        self.task_volume_multiplier = task_volume_multiplier
         self.data_volume_multiplier = data_volume_multiplier
         self.criteria = criteria
         self.T = T
         self.global_timer = start_time
+        self.xml_file = XML_FILE
 
         # Steps
         soup_nodes, soup_edges = XMLParser.parse(XML_FILE)
@@ -79,9 +84,13 @@ class Workflow:
         self.create_vms_table(vm_types)
         self.find_all_critical_paths()
         self.check_duplicate_critical_paths()
+        self.find_the_longest_path()
 
         if self.T is None:
+            # self.T = random.randint(self.critical_paths[0][0], self.longest_path)
             self.T = self.critical_paths[0][0]
+            # self.T = self.longest_path
+
         self.criteria.set_parameters(len(self.vms_table), self.T)
 
     def create_graph(self, soup_nodes, soup_edges):
@@ -91,18 +100,25 @@ class Workflow:
 
         for node in soup_nodes:
             name = node.get('id')
-            volume = round(float(node.get('runtime')) * self.volume_multiplier)
+            if round_up(float(node.get('runtime')) * self.task_volume_multiplier) < 5:
+                volume = 5
+            else:
+                volume = round_up(float(node.get('runtime')) * self.task_volume_multiplier)
+            # volume = round_up(float(node.get('runtime')) * self.task_volume_multiplier)
             current_node = Node(name, volume, round_up(volume / self.vm_types[0].perf))
             self.add_node(current_node)
 
-            if current_node.id == 49:
+            if current_node.id == 9 or current_node.id == 21:
                 y = 0
             uses = node.find_all('uses')
             for use in uses:
-                current_node.add_file(File(use.get('file'),
-                                           use.get('link'),
-                                           round_up(float(use.get('size')) * self.data_volume_multiplier / 1000000),
-                                           use.get('register')))
+                # TODO:
+                if use.get('register') != 'true':
+                # if use.get('link') != 'input':
+                    current_node.add_file(File(use.get('file'),
+                                               use.get('link'),
+                                               round_up(float(use.get('size')) * self.data_volume_multiplier / 1000000),
+                                               use.get('register')))
             current_node.calculate_transfer_time(DATA_TRANSFER_CHANNEL_SPEED)
 
         # Add finish_node into graph
@@ -164,7 +180,10 @@ class Workflow:
         for i in range(1, n - 1):
             next_node = self.nodes[i]
             if self.entry_edges[i] == 0:
-                edge = Edge(entry_node, next_node, next_node.input, DATA_TRANSFER_CHANNEL_SPEED)
+                if next_node.input:
+                    edge = Edge(entry_node, next_node, next_node.input, DATA_TRANSFER_CHANNEL_SPEED)
+                else:
+                    edge = Edge(entry_node, next_node, [File('empty_file', 'input', 0, 'false')], DATA_TRANSFER_CHANNEL_SPEED)
                 self.add_edge(edge)
                 entry_node.add_edge_to(edge)
                 next_node.add_edge_from(edge)
@@ -188,6 +207,18 @@ class Workflow:
                     mark_whole_path(c_p)
 
 
+    def find_the_longest_path(self):
+        longest_path = 0
+        c_p = self.critical_paths[0][1]
+        for elem in c_p:
+            if isinstance(elem, Node):
+                longest_path += round_up(elem.volume / self.vm_types[-1].perf)
+            else:
+                longest_path += elem.transfer_time
+
+        self.longest_path = longest_path
+
+
     def create_vms_table(self, vm_types):
         for i in vm_types:
             vms_value = []
@@ -195,6 +226,8 @@ class Workflow:
                 vms_value.append(round_up(self.nodes[j].volume / i.perf))
             self.vms_table.append(vms_value)
             self.vms_cost.append(i.cost)
+
+
 
 
     def calc_c_node(self, index, c_p, node_index):
@@ -210,7 +243,7 @@ class Workflow:
     def schedule(self):
 
         for critical_path in self.critical_paths:
-            self.local_strategies = []
+            self.multiple_strategies = []
             layer = Layer()
             c_p = critical_path[1]
             del c_p[-1]  # delete finish node and edge
@@ -223,10 +256,12 @@ class Workflow:
 
             if not self.strategies:
                 layer = self.next_layer_calc(Z1, c_p, 0)  # direct pass
-                # self.strategies = self.create_strategies_recursion(layer)
-                strategy = Strategy(len(self.nodes), self.T)
-                self.strategies.append(strategy)
-                self.set_strategy_times(c_p, c_p, layer)  # reverse pass
+                if Utils.Configuration.MULTIPLE_STRATEGIES:
+                    self.strategies = self.create_strategies_recursion(layer, c_p)
+                else:
+                    strategy = Strategy(len(self.nodes), self.T)
+                    self.strategies.append(strategy)
+                    self.set_strategy_times(c_p, c_p, layer)  # reverse pass
             else:
                 for strategy in self.strategies:
                     local_c_p = copy.copy(c_p)
@@ -243,14 +278,18 @@ class Workflow:
 
                     if local_c_p:  # if not all nodes are already calculated
                         layer = self.next_layer_calc(local_Z1, local_c_p, 0)  # direct pass
-                        # new_strategies = self.create_strategies_recursion(layer, strategy)
-                        self.set_strategy_times(c_p, local_c_p, layer)  # reverse pass
+                        if Utils.Configuration.MULTIPLE_STRATEGIES:
+                            new_strategies = self.create_strategies_recursion(layer, c_p, strategy)
+                            self.multiple_strategies.extend(new_strategies)
+                        else:
+                            self.set_strategy_times(c_p, local_c_p, layer)  # reverse pass
 
-                    # self.local_strategies.extend(new_strategies)
 
-                if self.local_strategies:
-                    self.strategies = self.local_strategies
-                    self.local_strategies = []
+                if self.multiple_strategies:
+                    self.strategies = self.multiple_strategies
+                    print("multiple_strategies" + str(len(self.multiple_strategies)))
+                    self.multiple_strategies = []
+                    # print("self.strategies" + str(len(self.strategies)))
 
         res = []
         for strategy in self.strategies:
@@ -261,15 +300,21 @@ class Workflow:
 
             res.append(sum(strategy.criteria))
 
+        print("Number of time distribution variations = " + str(len(res)))
         best_res = self.criteria.cf_criteria(res)
         index = res.index(best_res)
-        self.best_strategy = self.strategies[index]
+        best_strategy_arr = [i for i in self.strategies if sum(i.criteria) == best_res]
+        best_strategy = best_strategy_arr[0]
+        # self.best_strategy = self.strategies[index]
+        self.best_strategy = best_strategy
 
-        # self.set_node_times(self.best_strategy.dict)
-        self.nodes[0].start_time = 0
-        self.nodes[0].finish_time = 0
-        self.nodes[-1].start_time = self.T
-        self.nodes[-1].finish_time = self.T
+
+        if Utils.Configuration.MULTIPLE_STRATEGIES:
+            self.set_node_times(self.best_strategy.dict)
+        self.nodes[0].start_time = self.global_timer
+        self.nodes[0].finish_time = self.global_timer
+        self.nodes[-1].start_time = self.global_timer + self.T
+        self.nodes[-1].finish_time = self.global_timer + self.T
         print()
 
     def set_strategy_times(self, c_p, local_c_p, layer):
@@ -277,21 +322,18 @@ class Workflow:
         index = c_p.index(node)
         strategy = self.strategies[0]
         if index == 0:
-            # node.start_time = float(self.global_timer + node.input_time)
-            node.start_time = float(self.global_timer)
-            # node.finish_time = round(node.start_time + node.output_time + round_up(layer.layer_options[0].t_current_node), 2)
-            node.finish_time = round(node.start_time + node.input_time + round_up(layer.layer_options[0].t_current_node), 2)
+            node.start_time = float(self.global_timer + node.input_time)
+            node.finish_time = round(node.start_time + round_up(layer.layer_options[0].t_current_node), 2)
 
-            strategy.change(node.id,
+            strategy.change(node.id - self.first_id,
                                 layer.layer_options[0].t_current_node,
                                 layer.layer_options[0].C_current_node)
         else:
             previous_node = c_p[index - 1]
-            node.start_time = previous_node.finish_time
-            node.finish_time = round(node.start_time + previous_node.output_time +
-                                     round_up(layer.layer_options[0].t_current_node), 2)
+            node.start_time = previous_node.finish_time + previous_node.output_time
+            node.finish_time = round(node.start_time + round_up(layer.layer_options[0].t_current_node), 2)
 
-            strategy.change(node.id,
+            strategy.change(node.id - self.first_id,
                                 layer.layer_options[0].t_current_node,
                                 layer.layer_options[0].C_current_node)
 
@@ -303,11 +345,10 @@ class Workflow:
 
     def set_next_node_strategy_times(self, previous_node, current_node, layer):
         strategy = self.strategies[0]
-        current_node.start_time = previous_node.finish_time
-        current_node.finish_time = round(current_node.start_time + previous_node.output_time +
-                                         round_up(layer.layer_options[0].t_current_node), 2)
+        current_node.start_time = previous_node.finish_time + previous_node.output_time
+        current_node.finish_time = round(current_node.start_time + round_up(layer.layer_options[0].t_current_node), 2)
 
-        strategy.change(current_node.id,
+        strategy.change(current_node.id - self.first_id,
                         layer.layer_options[0].t_current_node,
                         layer.layer_options[0].C_current_node)
 
@@ -315,7 +356,7 @@ class Workflow:
             self.set_next_node_strategy_times(current_node, self.nodes[layer.previous_layers[0].node.id - self.first_id],
                                      layer.previous_layers[0])
 
-    def create_strategies_recursion(self, layer, strategy=None, previous_node=None):
+    def create_strategies_recursion(self, layer, c_p, strategy=None, previous_node=None):
         if layer.previous_layers is None:
             if strategy is None:
                 new_strategy = Strategy(len(self.nodes), self.T)
@@ -323,26 +364,39 @@ class Workflow:
                 new_strategy = Strategy(len(self.nodes), self.T, strategy)
 
             current_node = layer.node
-            if current_node.name == "p13":
+            current_node_index = c_p.index(current_node)
+            if previous_node is None:
+                if current_node_index == 0:
+                    previous_node = self.nodes[0]
+                else:
+                    previous_node = c_p[current_node_index - 1]
+
+            try:
+                next_node = c_p[current_node_index + 1]
+            except:
+                next_node = self.nodes[-1]
+
+            if current_node.id == 2:
                 y = 0
-            possible_time_for_perform = new_strategy.change(current_node.id,
+            possible_time_for_perform = new_strategy.change(current_node.id - self.first_id,
                             layer.layer_options[0].t_current_node,
                             layer.layer_options[0].C_current_node) # (perform time) + (time left from reserve)
 
             dest_times = []
             transfer_times = []
-            #TODO: make up with something to handle input_time
+            #TODO: ? make up with something to handle input_time
             for edge in current_node.edges_from:
                 if edge.node_from.id == previous_node.id:
                     transfer_times.append(edge.transfer_time)
             input_time = max(transfer_times)
 
             for edge in current_node.edges_to:
-                if edge.node_to.id in new_strategy.dict:
-                    if edge.node_to.id == self.nodes[-1].id:
-                        dest_start_time = new_strategy.dict[edge.node_to.id][0] - current_node.output_time
+                # if edge.node_to.id in new_strategy.dict:
+                if edge.node_to.id == next_node.id:
+                    if next_node.id == self.nodes[-1].id:
+                        dest_start_time = new_strategy.dict[edge.node_to.id - self.first_id][0] - current_node.output_time
                     else:
-                        dest_start_time = new_strategy.dict[edge.node_to.id][0]
+                        dest_start_time = new_strategy.dict[edge.node_to.id - self.first_id][0]
                     dest_times.append(dest_start_time)
             dest_start_time = max(dest_times)
 
@@ -350,31 +404,46 @@ class Workflow:
             start_time = round(dest_start_time - possible_time_for_perform - input_time, 2)
             # finish_time = dest_start_time - current_node.output_time
             finish_time = dest_start_time
-            new_strategy.dict[layer.node.id] = [start_time, finish_time]
+            new_strategy.dict[layer.node.id - self.first_id] = [start_time, finish_time]
 
             return [new_strategy]
         else:
             new_strategies = []
             for i, l in enumerate(layer.previous_layers):
-                strategies = self.create_strategies_recursion(l, strategy, layer.node)
+                strategies = self.create_strategies_recursion(l, c_p, strategy, layer.node)
                 for new_strategy in strategies:
-                    perform_time = new_strategy.change(layer.node.id,
+                    perform_time = new_strategy.change(layer.node.id - self.first_id,
                                     layer.layer_options[i].t_current_node,
                                     layer.layer_options[i].C_current_node)
 
                     current_node = layer.node
+                    if current_node.id == 2:
+                        y = 0
+                    current_node_index = c_p.index(current_node)
+                    if previous_node is None:
+                        if current_node_index == 0:
+                            previous_node = self.nodes[0]
+                        else:
+                            previous_node = c_p[current_node_index - 1]
+
                     transfer_times = []
                     for edge in current_node.edges_from:
-                        if edge.node_from.id == self.nodes[0].id:
-                            transfer_times.append(edge.transfer_time)
+                        if previous_node is None:
+                            if edge.node_from.id == self.nodes[0].id:
+                                transfer_times.append(edge.transfer_time)
+                        else:
+                            if edge.node_from.id == previous_node.id:
+                                transfer_times.append(edge.transfer_time)
+                    if transfer_times is None:
+                        print()
                     input_time = max(transfer_times)
 
-                    dest_time = new_strategy.dict[l.node.id][0]
+                    dest_time = new_strategy.dict[l.node.id - self.first_id][0]
                     start_time = round(dest_time - perform_time - input_time, 2)
                     # start_time = round(dest_time - current_node.output_time - perform_time - input_time, 2)
-                    finish_time = new_strategy.dict[l.node.id][0]
+                    finish_time = new_strategy.dict[l.node.id - self.first_id][0]
                     # finish_time = new_strategy.dict[l.node.id][0] - current_node.output_time
-                    new_strategy.dict[current_node.id] = [start_time, finish_time]
+                    new_strategy.dict[current_node.id - self.first_id] = [start_time, finish_time]
 
                     new_strategies.append(new_strategy)
 
@@ -395,6 +464,9 @@ class Workflow:
             Z_next_node = []
             Z_min = 0
             for i in range(len(self.vms_table)):
+                vm_type_id = i
+                task_id = c_p[node_index].id - self.first_id - 1 # +1
+                task_time = self.vms_table[i][c_p[node_index].id - self.first_id - 1]
                 z = reserve - self.vms_table[i][c_p[node_index].id - self.first_id - 1]
                 Z_min = 0
                 # rest reserve on the fastest vms
@@ -436,12 +508,12 @@ class Workflow:
 
             if not CF_node:
                 return
-            CF_of_layer = self.criteria.cf_criteria(CF_node)
+            CF_of_layer = self.criteria.cf_criteria(CF_node) # choosing the optimal option (by criterion) from the array
 
-            if MULTIPLE_STRATEGIES:
+            if Utils.Configuration.MULTIPLE_STRATEGIES:
                 indices = [i for i, x in enumerate(CF_node) if x == CF_of_layer]
             else:
-                indices = [CF_node.index(CF_of_layer)]
+                indices = [CF_node.index(CF_of_layer)] # only one index
 
             layerOptions = []
             new_previous_layers = []
@@ -453,8 +525,8 @@ class Workflow:
 
     def set_node_times(self, dict_times):
         for node in self.nodes:
-            node.start_time = dict_times[node.id][0]
-            node.finish_time = dict_times[node.id][1]
+            node.start_time = dict_times[node.id - self.first_id][0] + self.global_timer
+            node.finish_time = dict_times[node.id - self.first_id][1] + self.global_timer
 
 
     def find_index(self, z, node_index):

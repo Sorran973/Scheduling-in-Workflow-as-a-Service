@@ -1,13 +1,13 @@
 class VM:
     vm_counter = 0
 
-    def __init__(self, type, perf, cost, prep_time=1, release_time=1):
+    def __init__(self, type, perf, cost, prep_time, shutdown_time):
         self.id = VM.vm_counter
         self.type = type
         self.perf = perf
         self.cost = cost
         self.prep_time = prep_time
-        self.release_time = release_time
+        self.shutdown_time = shutdown_time
         self.status = 'open'
         self.previous_task = None
         self.vm_allocation_start = None
@@ -46,5 +46,5 @@ class VM:
                ", perf = " + str(self.perf) + \
                ", cost = " + str(self.cost) + \
                ", prep_time = " + str(self.prep_time) + \
-               ", release_time = " + str(self.release_time) + \
+               ", release_time = " + str(self.shutdown_time) + \
                ", status = " + str(self.status)

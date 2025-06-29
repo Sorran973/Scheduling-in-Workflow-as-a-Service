@@ -17,6 +17,7 @@
 		<uses file="p3.txt" link="output" size="102760448"/>
 	</job>
 	<job id="p4" namespace="leadmm" name="ARPS2WRF" runtime="60" cores="1">
+		<uses file="p4.txt" link="input" size="51380224"/>
 		<uses file="p4.txt" link="output" size="51380224"/>
 	</job>
 	<job id="p5" namespace="leadmm" name="WRF" runtime="72" cores="16">
@@ -52,7 +53,7 @@
 		<uses file="p10.txt" link="output" size="51380224"/>
 	</job>
 	<job id="p11" namespace="leadmm" name="WRF" runtime="100" cores="16">
-		<uses file="p3.txt" link="input" size="51380224"/>
+		<uses file="p3.txt" link="input" size="102760448"/>
 		<uses file="p11.txt" link="output" size="51380224"/>
 	</job>
 	<job id="p12" namespace="leadmm" name="WRF" runtime="105" cores="16">

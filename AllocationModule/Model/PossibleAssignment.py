@@ -10,3 +10,6 @@ class PossibleAssignment:
         self.task_allocation_end = None
         self.vm_allocation_start = None
         self.vm_allocation_end = None
+        self.input_data_transfer_time = None
+        self.output_data_transfer_time = None
+        self.idle_time = None

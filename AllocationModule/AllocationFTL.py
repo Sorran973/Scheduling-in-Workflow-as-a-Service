@@ -1,20 +1,17 @@
 import math
-import random
 import sys
 from datetime import datetime
 
 import pandas as pd
-from munkres import Munkres, print_matrix, DISALLOWED, make_cost_matrix
+from munkres import DISALLOWED, Munkres
 
 from AllocationModule.Model.PossibleAssignment import PossibleAssignment
 from AllocationModule.Model.Task import Task
 from AllocationModule.Model.VM import VM
-from AllocationModule.Model.VMType import VMType
 from SchedulingModule.CJM.Model.Criteria import CostCriteria, TimeCriteria
-from SchedulingModule.CJM.Workflow import round_up
 
 
-class AllocationModule:
+class AllocationFTL:
     def __init__(self, criteria, vm_types, tasks):
         self.vm_types = vm_types
         self.tasks = tasks
@@ -75,47 +72,17 @@ class AllocationModule:
 
         return EFT
 
-    def assignToLeaderNew(self, tasks, time, batches):
-        batch = []
-        EFT = sys.maxsize
-        for task in tasks:
-            task.possible_start = max(task.start, time)
-            task.earliest_finish = task.possible_start + task.calc_time
-            a = task.earliest_finish
-            EFT = task.earliest_finish if task.earliest_finish < EFT else EFT
-
-        for task in tasks:
-            # if (list(filter(lambda transfer: transfer.task_from.status is None, task.input_transfers))
-            #         or task.possible_start >= EFT):
-            if list(filter(lambda transfer: transfer.task_from.status is None, task.input_transfers)):
-                continue
-            else:
-                task.batch = len(batches)
-                batch.append(task)
-
-        for task in batch:
-            task.status = 'Batch'
-
-        batches.append(batch)
-
-        return EFT
-
     def formParallelBatches(self, time):
         batches = []
         leader_vm_type = max(self.vm_types, key=lambda vm_type: vm_type.perf)
         self.calcTimingsForVM(leader_vm_type)
         tasks_with_none_status = list(filter(lambda i: i.status is None, self.tasks))
 
-        # while tasks_with_none_status:
-        #     time = self.assignToLeader(tasks_with_none_status, time, batches)
-        #     tasks_with_none_status = list(filter(lambda i: i.status is None, tasks_with_none_status))
-
         while tasks_with_none_status:
-            time = self.assignToLeaderNew(tasks_with_none_status, time, batches)
+            time = self.assignToLeader(tasks_with_none_status, time, batches)
             tasks_with_none_status = list(filter(lambda i: i.status is None, tasks_with_none_status))
 
         return batches
-
 
 
     ########## PREPARE (TASK:VM) MATCHINGS ##########
@@ -131,54 +98,9 @@ class AllocationModule:
 
         return batch
 
-    def addNewVmsRandomly(self, num, vm_perf_factor):
-        if vm_perf_factor < 10:
-            # 1. take more samples then required by factor of vm_perf_factor
-            initial_sample_num = num * vm_perf_factor if vm_perf_factor >= 1 else num / vm_perf_factor
-            initial_sample_num = math.ceil(initial_sample_num)
-
-            # random_types = self.vm_types.sample(initial_sample_num, replace=True)
-            random_types = random.choices(self.vm_types, k=initial_sample_num)
-
-            # 2. if needed - pick first n by perf
-            if vm_perf_factor != 1:
-                # ???? initial_sample_num vs num ????
-                # random_types = random_types.nlargest(num, 'perf') if vm_perf_factor >= 1 else random_types.nsmallest(num, 'perf')
-                if vm_perf_factor >= 1:
-                    random_types = random_types.sort(key=lambda vm_type: vm_type.perf, reverse=True)[:num]
-                else:
-                    random_types = random_types.sort(key=lambda vm_type: vm_type.perf)[:num]
-
-        else:
-            # take all max perf VMs in case vm_perf_factor is really big
-            # ???? initial_sample_num vs num ????
-            # maxPerf = vm_types.perf.max()
-            # random_types = vm_types[vm_types.perf == maxPerf].sample(num, replace=True)
-            max_perf_vm_type = max(self.vm_types, key=lambda vm_type: vm_type.perf)
-            random_types = [VMType(max_perf_vm_type.type,
-                                   max_perf_vm_type.perf,
-                                   max_perf_vm_type.cost) for i in range(num)]
-
-        for vm_type in random_types:
-            self.vms.append(VM(vm_type.type,
-                               vm_type.perf,
-                               vm_type.cost,
-                               vm_type.prep_time,
-                               vm_type.shutdown_time))
-
-    def addActiveVms(self, task):
-        for vm in self.vms:
-            task.possible_vms.append(vm)
-
     def addNewVms(self, task):
-        # if task.id >= 27 and task.id <= 37:
-        #     for vm_type in self.vm_types:
-        #         if vm_type.perf == 3:
-        #             task.possible_vms.append(
-        #                 VM(vm_type.type, vm_type.perf, vm_type.cost, vm_type.prep_time, vm_type.shutdown_time))
-        # else:
-            for vm_type in self.vm_types:
-                task.possible_vms.append(VM(vm_type.type, vm_type.perf, vm_type.cost, vm_type.prep_time, vm_type.shutdown_time))
+        for vm_type in self.vm_types:
+            task.possible_vms.append(VM(vm_type.type, vm_type.perf, vm_type.cost, vm_type.prep_time, vm_type.shutdown_time))
 
     def prepareVmMatchings(self, batch, additional_vms_num):
         # first remove old temp tasks and not started vms
@@ -199,7 +121,6 @@ class AllocationModule:
             self.addNewVms(task)
 
         return batch
-
 
 
     ########## CALCULATING ALLOCATION COST ##########
@@ -241,7 +162,7 @@ class AllocationModule:
                     transfer_time = round(transfer.transfer_time * self.map_vm_perf_for_transfer[vm.perf])
                     transfer_end = previous_task.allocation_end + transfer_time
 
-                    # meaning time between the time vm can be stopped and it finishes the longest data transfer
+                    # meaning time between the time vm can be stopped, and it finishes the longest data transfer
                     if output_data_transfer_time_max < (transfer_end - possible_vm_start):
                         output_data_transfer_time_max = transfer_end - possible_vm_start
 
@@ -263,7 +184,7 @@ class AllocationModule:
             data_transfer_time_max = -sys.maxsize
 
             if task.input_transfers:
-                #TODO: ? create node_edges and data_center_edges and check their times
+                # TODO: ? create node_edges and data_center_edges and check their times
                 for transfer in task.input_transfers:
                     task_from = transfer.task_from
 
@@ -290,7 +211,7 @@ class AllocationModule:
                 preparation_time = preparation_time + data_transfer_time_max
                 input_data_transfer_time = data_transfer_time_max
 
-            # possibly check if can start earlier, i.e. remove row.start from max
+            # possibly check if it can start earlier, i.e. remove row.start from max
             # possible_task_start = min(task.start, earliest_data_ready_time_max)
             possible_task_start = earliest_data_ready_time_max
 
@@ -333,7 +254,6 @@ class AllocationModule:
             return False, allocation_cost, possible_assignment
 
 
-
     ########## CHOOSING THE BEST MATCHES (MUNKRES ALGORITHM) ##########
     def calcMinCostPairings(self, batch):
         vms = self.vms.copy()
@@ -342,7 +262,7 @@ class AllocationModule:
 
         for t, task in enumerate(batch):
             if task.type == 'task':
-                if task.id >= 27 and task.id <= 37:
+                if task.id == 2906:
                     y = 0
                 possible_vms = [vm for vm in task.possible_vms if self.calcVmAllocationCost(task, vm)[0]]
                 task.possible_vms = possible_vms
@@ -414,9 +334,11 @@ class AllocationModule:
 
                 try:
                     if (self.criteria.optimization_criteria == "min"):
-                        assignment_with_min_time = min(task.possible_assignments, key=lambda possible_assignment: possible_assignment.task_allocation_end)
+                        assignment_with_min_time = min(task.possible_assignments, key=lambda
+                            possible_assignment: possible_assignment.task_allocation_end)
                     else:
-                        assignment_with_min_time = max(task.possible_assignments, key=lambda possible_assignment: possible_assignment.task_allocation_end)
+                        assignment_with_min_time = max(task.possible_assignments, key=lambda
+                            possible_assignment: possible_assignment.task_allocation_end)
                 except:
                     print("Task(id={}, name={})".format(task.id, task.name))
 
@@ -463,13 +385,16 @@ class AllocationModule:
         return pairs
 
 
-
     ########## PAIRING and LOGGING ##########
     def applyPairings(self, pairs):
         for pair in pairs:
+            vm_status = 'active'
+            if pair[0].id == 18:
+                print()
             if pair[0].type == 'off' and pair[1].status == 'open':
                 continue
             elif pair[0].type == 'task' and pair[1].status == 'open':
+                vm_status = 'new'
                 pair[1].setStatus('active')
                 self.vms.append(pair[1])
             elif pair[0].type == 'off' and pair[1].status == 'active':
@@ -479,17 +404,19 @@ class AllocationModule:
             pair[1].setPreviousTask(pair[0])
             pair[0].setAssignedVm(pair[1])
             cost = pair[0].allocation_cost - 1
-            self.cost_of_workflow[pair[0].workflow_id] = self.cost_of_workflow[pair[0].workflow_id] + pair[0].allocation_cost - 1
+            self.cost_of_workflow[pair[0].workflow_id] = self.cost_of_workflow[pair[0].workflow_id] + pair[
+                0].allocation_cost - 1
 
-            self.log = self.log._append({'workflow_id': pair[0].workflow_id, 'vm_id': pair[1].id, 'vm_type': pair[1].type,
-                                         'task_id': pair[0].id, 'task_name': pair[0].name, 'task_batch': pair[0].batch,
-                                         'task_start': pair[0].start, 'task_end': pair[0].end, 'interval': pair[0].interval,
-                                         'vm_start': pair[0].vm_allocation_start, 'vm_input_time': pair[0].vm_input_time,
-                                         'task_allocation_start': pair[0].allocation_start, 'task_allocation_end': pair[0].allocation_end,
-                                         'vm_output_time': pair[0].vm_output_time, 'vm_end': pair[0].vm_allocation_end,
-                                         'allocation_cost': pair[0].allocation_cost - 1, 'idle_time': pair[0].idle_time, 'vm_status': pair[1].status},
-                                        ignore_index=True)
 
+            self.log = self.log._append(
+                {'workflow_id': pair[0].workflow_id, 'vm_id': pair[1].id, 'vm_type': pair[1].type,
+                 'task_id': pair[0].id, 'task_name': pair[0].name, 'task_batch': pair[0].batch,
+                 'task_start': pair[0].start, 'task_end': pair[0].end, 'interval': pair[0].interval,
+                 'vm_start': pair[0].vm_allocation_start, 'vm_input_time': pair[0].vm_input_time,
+                 'task_allocation_start': pair[0].allocation_start, 'task_allocation_end': pair[0].allocation_end,
+                 'vm_output_time': pair[0].vm_output_time, 'vm_end': pair[0].vm_allocation_end,
+                 'allocation_cost': pair[0].allocation_cost - 1, 'idle_time': pair[0].idle_time, 'vm_status': vm_status},
+                ignore_index=True)
 
 
     ########## ALLOCATION BATCHES (VMA ALGORITHM) ##########
@@ -505,6 +432,8 @@ class AllocationModule:
         self.applyPairings(pairings)
 
     def vma(self, batches):
+        start_time = datetime.now()
+
         n = len(batches)
         for i, batch in enumerate(batches):
             self.allocateBatch(batch)
@@ -512,6 +441,8 @@ class AllocationModule:
 
         self.allocateBatch([])
 
+        end_time = datetime.now()
+        return end_time - start_time
 
     def create_vm_for_transfer(self):
         n = len(self.vm_types)
@@ -519,4 +450,3 @@ class AllocationModule:
         self.map_vm_perf_for_transfer = {}
         for i, vm in enumerate(self.vm_types):
             self.map_vm_perf_for_transfer[vm.perf] = vm_for_transfer[i].perf
-

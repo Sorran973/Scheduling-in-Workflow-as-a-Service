@@ -16,36 +16,36 @@ class CSVHandler:
     @staticmethod
     def write_headers():
         with open(TASK_TIME_TABLE_FILE, 'w') as f:
-            fieldnames = ['task_id', 'task_name', 'volume', 'start_time', 'finish_time']
+            fieldnames = ['task_id', 'task_name', 'volume', 'workflow_id', 'start_time', 'finish_time']
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
 
         with open(TRANSFER_SIZE_TABLE_FILE, 'w') as f:
-            fieldnames = ['transfer_id', 'task_from', 'task_to', 'transfer_size']
+            fieldnames = ['transfer_id', 'task_from', 'task_to', 'transfer_size', 'transfer_time']
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
 
     @staticmethod
-    def write_all_tables(workflow):
-        CSVHandler.write_task_times_table(nodes=workflow.nodes)
+    def write_all_tables(workflow, i):
+        CSVHandler.write_task_times_table(nodes=workflow.nodes, workflow_id=i)
         CSVHandler.write_transfer_sizes_table(edges=workflow.edges)
 
-    @staticmethod
-    def write_processors_table(processor_table_performance):
-        with open(PROCESSOR_TABLE_FILE, 'w', newline='') as f:
-            fieldnames = ['VM_type', 'performance']
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            writer.writeheader()
+    # @staticmethod
+    # def write_processors_table(processor_table_performance):
+    #     with open(PROCESSOR_TABLE_FILE, 'w', newline='') as f:
+    #         fieldnames = ['VM_type', 'performance']
+    #         writer = csv.DictWriter(f, fieldnames=fieldnames)
+    #         writer.writeheader()
+    #
+    #         for i in range(len(processor_table_performance)):
+    #             row = {fieldnames[0]: i,
+    #                    fieldnames[1]: processor_table_performance[i]}
+    #             writer.writerow(row)
 
-            for i in range(len(processor_table_performance)):
-                row = {fieldnames[0]: i,
-                       fieldnames[1]: processor_table_performance[i]}
-                writer.writerow(row)
-
     @staticmethod
-    def write_task_times_table(nodes):
+    def write_task_times_table(nodes, workflow_id):
         with open(TASK_TIME_TABLE_FILE, 'a') as f:
-            fieldnames = ['task_id', 'task_name', 'volume', 'start_time', 'finish_time']
+            fieldnames = ['task_id', 'task_name', 'volume', 'workflow_id', 'start_time', 'finish_time']
 
             writer = csv.DictWriter(f, fieldnames=fieldnames)
 
@@ -53,14 +53,15 @@ class CSVHandler:
                 row = {fieldnames[0]: node.id,
                        fieldnames[1]: node.name,
                        fieldnames[2]: node.volume,
-                       fieldnames[3]: node.start_time,
-                       fieldnames[4]: node.finish_time}
+                       fieldnames[3]: workflow_id,
+                       fieldnames[4]: node.start_time,
+                       fieldnames[5]: node.finish_time}
                 writer.writerow(row)
 
     @staticmethod
     def write_transfer_sizes_table(edges):
         with open(TRANSFER_SIZE_TABLE_FILE, 'a') as f:
-            fieldnames = ['transfer_id', 'task_from', 'task_to', 'transfer_size']
+            fieldnames = ['transfer_id', 'task_from', 'task_to', 'transfer_size', 'transfer_time']
 
             writer = csv.DictWriter(f, fieldnames=fieldnames)
 
@@ -68,7 +69,8 @@ class CSVHandler:
                 row = {fieldnames[0]: edge.id,
                        fieldnames[1]: str(edge.node_from.id) + '/' + edge.node_from.name,
                        fieldnames[2]: str(edge.node_to.id) + '/' + edge.node_to.name,
-                       fieldnames[3]: edge.transfer_size}
+                       fieldnames[3]: edge.transfer_size,
+                       fieldnames[4]: edge.transfer_time}
                 writer.writerow(row)
 
     @staticmethod
@@ -82,29 +84,29 @@ class CSVHandler:
 
         return vm_types
 
-    @staticmethod
-    def read_from_nodes(nodes):
-        tasks = []
-        for node in nodes:
-            task = Task(node.id, node.name, node.volume, node.start_time, node.finish_time)
-            tasks.append(task)
-
-        for i, node in enumerate(nodes):
-            task = tasks[i]
-            for edge in node.edges:
-                task.input_transfers.append(Edge(tasks[edge.node_from.id],
-                                                 tasks[edge.node_to.id],
-                                                 edge.files,
-                                                 Utils.Configuration.DATA_TRANSFER_CHANNEL_SPEED))
-            task.input_transfers = node.edges
-            task.input = node.input
-            task.input_size = node.input_size
-            task.input_time = node.input_time
-            task.output = node.output
-            task.output_size = node.output_size
-            task.output_time = node.output_time
-
-        return tasks
+    # @staticmethod
+    # def read_from_nodes(nodes):
+    #     tasks = []
+    #     for node in nodes:
+    #         task = Task(node.id, node.name, node.volume, node.start_time, node.finish_time)
+    #         tasks.append(task)
+    #
+    #     for i, node in enumerate(nodes):
+    #         task = tasks[i]
+    #         for edge in node.edges:
+    #             task.input_transfers.append(Edge(tasks[edge.node_from.id],
+    #                                              tasks[edge.node_to.id],
+    #                                              edge.files,
+    #                                              Utils.Configuration.DATA_TRANSFER_CHANNEL_SPEED))
+    #         task.input_transfers = node.edges
+    #         task.input = node.input
+    #         task.input_size = node.input_size
+    #         task.input_time = node.input_time
+    #         task.output = node.output
+    #         task.output_size = node.output_size
+    #         task.output_time = node.output_time
+    #
+    #     return tasks
 
     @staticmethod
     def read_task_time_table(TASK_TIME_TABLE_FILE):
@@ -113,7 +115,7 @@ class CSVHandler:
             reader = csv.reader(csvfile, delimiter=',', quotechar='|')
             headers = next(reader)
             for row in reader:
-                task = Task(int(row[0]), row[1], float(row[2]), float(row[3]), float(row[4]))
+                task = Task(int(row[0]), row[1], float(row[2]), int(row[3]), float(row[4]), float(row[5]))
                 tasks.append(task)
 
         return tasks
@@ -127,7 +129,7 @@ class CSVHandler:
             for row in reader:
                 task_from_id = row[1].split('/')[0]
                 task_to_id = row[2].split('/')[0]
-                transfer = DataTransfer(int(row[0]), tasks[int(task_from_id)], tasks[int(task_to_id)], float(row[3]))
+                transfer = DataTransfer(int(row[0]), tasks[int(task_from_id)], tasks[int(task_to_id)], float(row[3]), float(row[4]))
                 data_transfer.append(transfer)
                 transfer.task_from.addOutputTransfer(transfer)
                 transfer.task_to.addInputTransfer(transfer)
@@ -144,9 +146,9 @@ class CSVHandler:
             writer.writeheader()
 
             file_row = {fieldnames[0]: Utils.Configuration.MULTIPLE_STRATEGIES,
-                        fieldnames[1]: Utils.Configuration.CRITERIA,
+                        fieldnames[1]: Utils.Configuration.CJM_CRITERIA.__class__.__name__,
                         fieldnames[2]: Utils.Configuration.SCHEDULING_OPTIMIZATION_CRITERIA,
-                        fieldnames[3]: Utils.Configuration.T,
+                        fieldnames[3]: "None" if Utils.Configuration.T is None else Utils.Configuration.T,
                         fieldnames[4]: Utils.Configuration.DATA_TRANSFER_CHANNEL_SPEED,
                         fieldnames[5]: Utils.Configuration.ALLOCATION_OPTIMIZATION_CRITERIA}
             writer.writerow(file_row)
@@ -156,27 +158,28 @@ class CSVHandler:
     @staticmethod
     def write_allocation_logfile(ALLOCATION_LOG_FILE, log):
         with open(ALLOCATION_LOG_FILE, 'w') as f:
-            fieldnames = ['vm_id', 'vm_type', 'task_id', 'task_name', 'task_batch', 'task_start',
-                          'task_end', 'interval', 'vm_start', 'input_data', 'task_allocation_start',
-                          'task_allocation_end', 'output_data', 'vm_end', 'allocation_cost']
+            fieldnames = ['workflow_id', 'vm_id', 'vm_type', 'task_id', 'task_name', 'task_batch', 'task_start',
+                          'task_end', 'interval', 'vm_start', 'vm_input_data_transfer_time', 'task_allocation_start',
+                          'task_allocation_end', 'vm_output_data_transfer_time', 'vm_end', 'allocation_cost']
 
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
 
             for index, row in log.iterrows():
-                file_row = {fieldnames[0]: row.vm_id,
-                            fieldnames[1]: row.vm_type,
-                            fieldnames[2]: row.task_id,
-                            fieldnames[3]: row.task_name,
-                            fieldnames[4]: row.task_batch,
-                            fieldnames[5]: row.task_start,
-                            fieldnames[6]: row.task_end,
-                            fieldnames[7]: row.interval,
-                            fieldnames[8]: row.vm_start,
-                            fieldnames[9]: row.input_data,
-                            fieldnames[10]: row.task_allocation_start,
-                            fieldnames[11]: row.task_allocation_end,
-                            fieldnames[12]: row.output_data,
-                            fieldnames[13]: row.vm_end,
-                            fieldnames[14]: row.allocation_cost}
+                file_row = {fieldnames[0]: row.workflow_id,
+                            fieldnames[1]: row.vm_id,
+                            fieldnames[2]: row.vm_type,
+                            fieldnames[3]: row.task_id,
+                            fieldnames[4]: row.task_name,
+                            fieldnames[5]: row.task_batch,
+                            fieldnames[6]: row.task_start,
+                            fieldnames[7]: row.task_end,
+                            fieldnames[8]: row.interval,
+                            fieldnames[9]: row.vm_start,
+                            fieldnames[10]:row.vm_input_time,
+                            fieldnames[11]: row.task_allocation_start,
+                            fieldnames[12]: row.task_allocation_end,
+                            fieldnames[13]: row.vm_output_time,
+                            fieldnames[14]: row.vm_end,
+                            fieldnames[14]:row.allocation_cost}
                 writer.writerow(file_row)

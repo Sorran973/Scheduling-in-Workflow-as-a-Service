@@ -1,9 +1,14 @@
+import Utils.Configuration
+
+
 class VMType:
 
-    def __init__(self, type, perf, cost, prep_time=1, release_time=1):
+    def __init__(self, type, perf, cost,
+                 prep_time=Utils.Configuration.VM_PREP_TIME,
+                 shutdown_time=Utils.Configuration.VM_SHUTDOWN_TIME):
         self.type = type
         self.perf = perf
         self.cost = cost
         self.prep_time = prep_time
-        self.release_time = release_time
+        self.shutdown_time = shutdown_time
 
