@@ -1,6 +1,9 @@
 import pandas as pd
 from pyvis.network import Network
+import matplotlib
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
+plt.ion()
 import networkx as nx
 import numpy as np
 from matplotlib.patches import Patch
@@ -156,12 +159,13 @@ class PyvisDrawer(Drawer):
 
 
 
-    def draw_batches_gantt(self, tasks):
+    def draw_batches_gantt(self, tasks, figure_name):
         c_dict = {'Leader': '#E64646', 'Batch': '#34D05C', 'CPU 2': '#E69646', 'CPU 4': '#34D0C3', 'CPU 5': '#3475D0',
                   'None': '#000000', 'IO': '#44D05C'}
         for task in tasks:
             task.color = c_dict[task.status]
 
+        # plt.ion()
         ##### PLOT #####
         fig, (ax, ax1) = plt.subplots(2, figsize=(36, 16), gridspec_kw={'height_ratios': [15, 1]})
 
@@ -215,9 +219,9 @@ class PyvisDrawer(Drawer):
                      Utils.Configuration.SCHEDULING_OPTIMIZATION_CRITERIA + " " +
                      Utils.Configuration.VMA_CRITERIA.__class__.__name__ + " " +
                      Utils.Configuration.ALLOCATION_OPTIMIZATION_CRITERIA)
-        plt.show()
-        fig.savefig(Utils.Configuration.GANTT_FIGURES_BATCHES, format="pdf")
-
+        # plt.show()
+        fig.savefig(figure_name, format="pdf")
+        # fig.savefig(Utils.Configuration.GANTT_FIGURES_BATCHES, format="pdf", bbox_inches='tight')
 
     def draw_batches_gantt_for_mixed(self, tasks):
         c_dict = {'Leader': '#E64646', 'Batch': '#34D05C', 'CPU 2': '#E69646', 'CPU 4': '#34D0C3', 'CPU 5': '#3475D0',
@@ -278,8 +282,10 @@ class PyvisDrawer(Drawer):
                      Utils.Configuration.SCHEDULING_OPTIMIZATION_CRITERIA + " " +
                      Utils.Configuration.VMA_CRITERIA.__class__.__name__ + " " +
                      Utils.Configuration.ALLOCATION_OPTIMIZATION_CRITERIA)
-        plt.show()
-        fig.savefig(Utils.Configuration.GANTT_FIGURES_BATCHES, format="pdf")
+        # plt.show()
+        fig.savefig(Utils.Configuration.GANTT_FIGURES_BATCHES_ASAP_MOD, format="pdf")
+        # fig.savefig(Utils.Configuration.GANTT_FIGURES_BATCHES_ASAP_MOD, format="pdf", bbox_inches='tight')
+
 
     def draw_big_batches_gantt(self, tasks, figure_name):
         c_dict = {'Leader': '#E64646', 'Batch': '#34D05C', 'CPU 2': '#E69646', 'CPU 4': '#34D0C3', 'CPU 5': '#3475D0',
@@ -334,7 +340,7 @@ class PyvisDrawer(Drawer):
     def draw_result_gantt(self, log, figure_name):
         # fig, (ax, ax1) = plt.subplots(2, figsize=(16, 6), gridspec_kw={'height_ratios': [6, 1]})
         # fig, ax = plt.subplots(figsize=(76, 46))
-        fig, ax = plt.subplots(figsize=(16, 6))
+        fig, ax = plt.subplots(figsize=(36, 16))
         # fig, ax = plt.subplots(figsize=(108, 48))
 
         # my_data = [
@@ -445,6 +451,81 @@ class PyvisDrawer(Drawer):
                      Utils.Configuration.SCHEDULING_OPTIMIZATION_CRITERIA + " " +
                      Utils.Configuration.VMA_CRITERIA.__class__.__name__ + " " +
                      Utils.Configuration.ALLOCATION_OPTIMIZATION_CRITERIA)
+        # plt.show()
+        fig.savefig(figure_name, format="pdf", bbox_inches='tight')
+
+
+    def draw_result_gantt_HEFT(self, log, figure_name):
+        fig, ax = plt.subplots(figsize=(36, 16))
+
+        rownum = 0
+        for index, row in log.iterrows():
+            # calc_time
+            ax.barh(rownum, row.task_end - row.task_start, left=row.task_start, color=row.color)
+            # vm_time
+            ax.barh(rownum, row.vm_end - row.vm_start, left=row.vm_start, color=row.color, alpha=0.6, fill=False,
+                    hatch='///') # fill=True, linewidth=10, edgecolor=log.color
+
+            ax.text(row.vm_end + 0.1, rownum, 'VM_' + str(row.vm_id) + '_' + row.vm_type, va='center')
+            ax.text(row.vm_start - 0.1, rownum, str(row.task_id) + '_' + str(row.workflow_id) + '_' + str(row.task_name), va='center', ha='right')
+            rownum += 1
+
+        # ticks
+        xticks = np.arange(0, log.task_end.max() + 1, int((log.task_end.max() + 1) / 5))
+        xticks_labels = pd.date_range(0, end=log.task_end.max()).strftime("%m/%d")
+        # xticks_minor = np.arange(0, tasks.end.max() + 1, 1)
+        ax.set_xticks(xticks)
+        # ax.set_xticks(xticks_minor, minor=True)
+        # ax.set_xticks(, labels=)
+        ax.set_yticks([])
+
+        plt.suptitle(Utils.Configuration.CJM_CRITERIA.__class__.__name__ + " " +
+                     Utils.Configuration.SCHEDULING_OPTIMIZATION_CRITERIA + " " +
+                     Utils.Configuration.VMA_CRITERIA.__class__.__name__ + " " +
+                     Utils.Configuration.ALLOCATION_OPTIMIZATION_CRITERIA)
+        # plt.show()
+        fig.savefig(figure_name, format="pdf", bbox_inches='tight')
+
+    def draw_result_gantt_HEFT_vms(self, vms, figure_name):
+        fig, ax = plt.subplots(figsize=(36, 16))
+
+        for i, vm in enumerate(vms):
+            for j, node in enumerate(vm.previous_tasks):
+                ax.barh(vm.id, node.eft - node.est, left=node.est)
+                ax.text(node.est + (node.eft - node.est) / 2, vm.id, node.id, va='center')
+
+
+        sorted_vms = sorted(vms, key=lambda vm: vm.current_time, reverse = True)
+        # ticks
+        xticks = np.arange(0, sorted_vms[0].current_time + 1, int((sorted_vms[0].current_time + 1) / 5))
+        # xticks_labels = pd.date_range(0, end=sorted_vms[0].current_time).strftime("%m/%d")
+        # xticks_minor = np.arange(0, tasks.end.max() + 1, 1)
+        ax.set_xticks(xticks)
+        # ax.set_xticks(xticks_minor, minor=True)
+        # ax.set_xticks(, labels=)
+        ax.set_yticks([])
+
+        # plt.show()
+        fig.savefig(figure_name, format="pdf", bbox_inches='tight')
+
+    def draw_result_gantt_HEFT_nodes(self, nodes, vms, figure_name):
+        fig, ax = plt.subplots(figsize=(36, 16))
+
+        for node in nodes:
+            ax.barh(node.id, node.eft - node.est, left=node.est)
+            ax.text(node.eft + 0.1, node.id, 'VM_' + str(node.vm.id) + '_' + node.vm.type, va='center')
+            ax.text(node.est + (node.eft - node.est) / 2, node.id, node.id, va='center')
+
+        sorted_vms = sorted(vms, key=lambda vm: vm.current_time, reverse=True)
+        # ticks
+        xticks = np.arange(0, sorted_vms[0].current_time + 1, int((sorted_vms[0].current_time + 1) / 5))
+        # xticks_labels = pd.date_range(0, end=sorted_vms[0].current_time).strftime("%m/%d")
+        # xticks_minor = np.arange(0, tasks.end.max() + 1, 1)
+        ax.set_xticks(xticks)
+        # ax.set_xticks(xticks_minor, minor=True)
+        # ax.set_xticks(, labels=)
+        ax.set_yticks([])
+
         # plt.show()
         fig.savefig(figure_name, format="pdf", bbox_inches='tight')
 

@@ -1,21 +1,18 @@
-import csv
 import random
 from copy import deepcopy
 from datetime import datetime
 
 import pandas as pd
-from matplotlib import pyplot as plt
 
 from AllocationModule.AllocationFTL import AllocationFTL
 from AllocationModule.AllocationMixed import AllocationMixed
 from AllocationModule.AllocationModule import AllocationModule
 from AllocationModule.NewVmForEachTask import NewVmForEachTask
-from SchedulingModule.CJM.Model.Criteria import TimeCriteria, CostCriteria
+from SchedulingModule.CJM.Model.Criteria import CostCriteria
 from Utils.Analyzer import Analyzer
 from Utils.CSVHandler import CSVHandler
 from SchedulingModule.CJM.WorkflowSet import WorkflowSet
 from SchedulingModule.CJM.Workflow import Workflow
-from SchedulingModule.CJM.WorkflowTest import WorkflowTest
 
 import Utils.Configuration
 from Utils.Visualization.PyvisDrawer import PyvisDrawer, rand_color
@@ -24,18 +21,18 @@ from Utils.Visualization import Drawer
 
 
 if __name__ == '__main__':
-    # vm_types = CSVHandler.read_vms_table(Utils.Configuration.VMS_TABLE_FILE)
-    vm_types = CSVHandler.read_vms_table('/Users/artembulkhak/PycharmProjects/Dissertation/Output/test/processor_table.csv')
+    vm_types = CSVHandler.read_vms_table(Utils.Configuration.VMS_TABLE_FILE)
+    # vm_types = CSVHandler.read_vms_table('/Users/artembulkhak/PycharmProjects/Dissertation/Output/test/processor_table.csv')
     workflow_samples = Utils.Configuration.WORKFLOW_SAMPLES
 
 
     workflow_set = WorkflowSet()
-    # T = None
-    T = 38
+    T = None
+    # T = 38
     index_workflow_from_samples = random.randint(0, len(workflow_samples) - 1)
 
     # workflow = Workflow(XML_FILE=workflow_samples[index_workflow_from_samples],
-    workflow = Workflow(XML_FILE=Utils.Configuration.TEST,
+    workflow = Workflow(XML_FILE=Utils.Configuration.LIGO50,
                         T=T,
                         vm_types=vm_types,
                         criteria=CostCriteria(min),
@@ -43,19 +40,28 @@ if __name__ == '__main__':
                         data_volume_multiplier=1,
                         start_time=0)
 
-    # workflow2 = Workflow(XML_FILE=Utils.Configuration.LIGO50,
-    #                     T=T,
-    #                     vm_types=vm_types,
-    #                     criteria=CostCriteria(min),
-    #                     task_volume_multiplier=1,
-    #                     data_volume_multiplier=1,
-    #                     start_time=1000)
+    workflow2 = Workflow(XML_FILE=Utils.Configuration.LIGO50,
+                        T=T,
+                        vm_types=vm_types,
+                        criteria=CostCriteria(min),
+                        task_volume_multiplier=1,
+                        data_volume_multiplier=1,
+                        start_time=60)
+
+    workflow3 = Workflow(XML_FILE=Utils.Configuration.LIGO50,
+                        T=T,
+                        vm_types=vm_types,
+                        criteria=CostCriteria(min),
+                        task_volume_multiplier=1,
+                        data_volume_multiplier=1,
+                        start_time=120)
 
     start_time = datetime.now()
     workflow_set.addWorkflow(workflow)
+    workflow_set.addWorkflow(workflow2)
+    workflow_set.addWorkflow(workflow3)
     end_time = datetime.now()
     print('Duration of scheduling (CJM): {}'.format(end_time - start_time))
-    # workflow_set.addWorkflow(workflow2)
 
     tasks = CSVHandler.read_task_time_table(Utils.Configuration.TASK_TIME_TABLE_FILE)
     workload_start_time = tasks[0].start
@@ -65,7 +71,7 @@ if __name__ == '__main__':
 
 
     drawer: Drawer = PyvisDrawer()
-    drawer.draw_graph(workflow_set.drawn_nodes, workflow_set.drawn_edges)
+    # drawer.draw_graph(workflow_set.drawn_nodes, workflow_set.drawn_edges)
 
     allocations = []
     allocations.append(AllocationFTL(Utils.Configuration.VMA_CRITERIA, vm_types, deepcopy(tasks)))
@@ -89,11 +95,14 @@ if __name__ == '__main__':
 
 
 
-        if isinstance(allocation, AllocationModule) or isinstance(allocation, AllocationFTL):
-            drawer.draw_batches_gantt(allocation.tasks)
-        else:
-            drawer.draw_batches_gantt_for_mixed(allocation.tasks)
-
+        # if isinstance(allocation, AllocationFTL):
+        #     drawer.draw_batches_gantt(allocation.tasks, Utils.Configuration.GANTT_FIGURES_BATCHES_FTL)
+        # if isinstance(allocation, AllocationModule):
+        #     drawer.draw_batches_gantt(allocation.tasks, Utils.Configuration.GANTT_FIGURES_BATCHES_ASAP)
+        # if isinstance(allocation, AllocationMixed):
+        #     drawer.draw_batches_gantt_for_mixed(allocation.tasks)
+        # if isinstance(allocation, NewVmForEachTask):
+        #     drawer.draw_batches_gantt(allocation.tasks, Utils.Configuration.GANTT_FIGURES_BATCHES_NEW_VM_FOR_EACH)
 
         allocation.vma(batches)
 
@@ -144,3 +153,4 @@ if __name__ == '__main__':
             color["color"] = color.apply(lambda x: rand_color(x), axis=1)
             log = pd.merge(log, color, on='workflow_id', how='left')
             drawer.draw_result_gantt(log, Utils.Configuration.GANTT_FIGURES_NEW_VM_FOR_EACH)
+    a = 0

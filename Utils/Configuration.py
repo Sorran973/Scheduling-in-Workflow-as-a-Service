@@ -4,6 +4,7 @@ from SchedulingModule.CJM.Model.Criteria import Criteria, AverageResourceLoadCri
 TEST = 'JobExamples/test.xml'
 TEST_1_12 = 'JobExamples/test1_12.xml'
 TEST_1_13 = 'JobExamples/test1_13.xml'
+TEST_HEFT = 'JobExamples/testHEFT.xml'
 
 MONTAGE50 = 'JobExamples/MONTAGE.n.50.0.dax'
 MONTAGE100 = 'JobExamples/MONTAGE.n.100.0.dax'
@@ -64,12 +65,14 @@ GANTT_FIGURES_BATCHES_FTL = GANTT_FIGURES_BATCHES + "_ftl.pdf"
 GANTT_FIGURES_BATCHES_ASAP = GANTT_FIGURES_BATCHES + "_asap.pdf"
 GANTT_FIGURES_BATCHES_ASAP_MOD = GANTT_FIGURES_BATCHES + "_asap_mod.pdf"
 GANTT_FIGURES_BATCHES_NEW_VM_FOR_EACH = GANTT_FIGURES_BATCHES + "_new_vm_for_each.pdf"
+GANTT_FIGURES_BATCHES_TEN_BEST_VM = GANTT_FIGURES_BATCHES + "_ten_best_vm.pdf"
 
 GANTT_FIGURES_VM_SORT = GANTT_FIGURES + "/vm_sort"
 GANTT_FIGURES_FTL = GANTT_FIGURES_VM_SORT + "_ftl.pdf"
 GANTT_FIGURES_ASAP = GANTT_FIGURES_VM_SORT + "_asap.pdf"
 GANTT_FIGURES_ASAP_MOD = GANTT_FIGURES_VM_SORT + "_asap_mod.pdf"
 GANTT_FIGURES_NEW_VM_FOR_EACH = GANTT_FIGURES_VM_SORT + "_new_vm_for_each.pdf"
+GANTT_FIGURES_HEFT = GANTT_FIGURES_VM_SORT + "_heft.pdf"
 
 
 T = None

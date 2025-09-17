@@ -20,3 +20,11 @@ class WorkflowSet:
         print("Workflow " + str(n) + ":")
         print("\tT: " + str(workflow.T))
         print("\tTotal CJM Criteria: " + str(sum(workflow.best_strategy.criteria)))
+
+    def addHEFTWorkflow(self, heft_workflow):
+        n = len(self.workflows)
+        heft_workflow.set_workflow_id(n)
+        self.workflows.append(heft_workflow)
+        self.drawn_nodes.append(heft_workflow.drawn_nodes)
+        self.drawn_edges.append(heft_workflow.drawn_edges)
+        # CSVHandler.write_all_tables(workflow, n)
