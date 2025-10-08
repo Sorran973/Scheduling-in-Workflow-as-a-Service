@@ -24,6 +24,7 @@ class AllocationFTL:
                                          'task_allocation_end', 'vm_output_time', 'vm_end', 'allocation_cost', 'idle_time', 'vm_status'])
         self.num_workflow_deadline_met = None
         self.percentage_workflow_deadline_met = None
+        self.batches_size = None
         self.total_cost = None
         self.total_num_leased_vm = None
         self.total_idle_time = None
@@ -126,7 +127,7 @@ class AllocationFTL:
     ########## CALCULATING ALLOCATION COST ##########
     def calcVmAllocationCost(self, task, vm):
 
-        if task.id == 19:
+        if task.id == 22 or task.id == 45 or task.id == 48:
             y = 0
         # init
         # current_time = -100
@@ -159,7 +160,7 @@ class AllocationFTL:
                 output_data_transfer_time_max = -sys.maxsize
                 for transfer in previous_task.output_transfers:
                     # transfer_time = transfer.transfer_time
-                    transfer_time = round(transfer.transfer_time * self.map_vm_perf_for_transfer[vm.perf])
+                    transfer_time = math.ceil(transfer.transfer_time / vm.perf)
                     transfer_end = previous_task.allocation_end + transfer_time
 
                     # meaning time between the time vm can be stopped, and it finishes the longest data transfer
@@ -192,7 +193,7 @@ class AllocationFTL:
                         transfer_time = 0
                     else:
                         # transfer_time = transfer.transfer_time
-                        transfer_time = round(transfer.transfer_time * self.map_vm_perf_for_transfer[vm.perf])
+                        transfer_time = math.ceil(transfer.transfer_time / vm.perf)
 
                     if data_transfer_time_max < transfer_time:
                         data_transfer_time_max = transfer_time
@@ -261,22 +262,24 @@ class AllocationFTL:
         active_num = len(self.vms)
 
         for t, task in enumerate(batch):
+            assignment_with_desired_cost = None
             if task.type == 'task':
-                if task.id == 2906:
+                if task.id == 48:
                     y = 0
                 possible_vms = [vm for vm in task.possible_vms if self.calcVmAllocationCost(task, vm)[0]]
                 task.possible_vms = possible_vms
 
                 try:
                     if (self.criteria.optimization_criteria == "min"):
-                        assignment_with_min_cost = min(task.possible_assignments, key=lambda possible_assignment: possible_assignment.allocation_cost)
+                        assignment_with_desired_cost = min(task.possible_assignments, key=lambda possible_assignment: possible_assignment.allocation_cost)
                     else:
-                        assignment_with_min_cost = max(task.possible_assignments, key=lambda possible_assignment: possible_assignment.allocation_cost)
+                        assignment_with_desired_cost = max(task.possible_assignments, key=lambda possible_assignment: possible_assignment.allocation_cost)
                 except:
                     print("Task(id={}, name={})".format(task.id, task.name))
+                    # return
 
-                best_cost = assignment_with_min_cost.allocation_cost
-                vm = assignment_with_min_cost.assigned_vm
+                best_cost = assignment_with_desired_cost.allocation_cost
+                vm = assignment_with_desired_cost.assigned_vm
                 vms.append(vm)
 
                 vm_costs_for_task = [DISALLOWED] * len(batch)
@@ -402,6 +405,8 @@ class AllocationFTL:
                 pair[0].workflow_id = pair[1].previous_task.workflow_id
 
             pair[1].setPreviousTask(pair[0])
+            if pair[0].id == 94:
+                y =0
             pair[0].setAssignedVm(pair[1])
             cost = pair[0].allocation_cost - 1
             self.cost_of_workflow[pair[0].workflow_id] = self.cost_of_workflow[pair[0].workflow_id] + pair[
@@ -426,6 +431,8 @@ class AllocationFTL:
         # calc allocation costs for matches (munkres algorithm)
         if isinstance(self.criteria, CostCriteria):
             pairings = self.calcMinCostPairings(batch)
+            # if pairings is None:
+            #     return 0
         elif isinstance(self.criteria, TimeCriteria):
             pairings = self.calcMinTimePairings(batch)
         # pairing and logging
@@ -436,8 +443,11 @@ class AllocationFTL:
 
         n = len(batches)
         for i, batch in enumerate(batches):
-            self.allocateBatch(batch)
+            a = self.allocateBatch(batch)
+            # if a is 0:
+            #     return 0
             print(f"Batch #{i} out of {n}")
+            print(f"{len(batch)} in the batch #{i}")
 
         self.allocateBatch([])
 

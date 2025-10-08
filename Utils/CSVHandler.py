@@ -3,8 +3,7 @@ import csv
 from AllocationModule.Model.DataTransfer import DataTransfer
 from AllocationModule.Model.Task import Task
 from AllocationModule.Model.VMType import VMType
-from SchedulingModule.CJM.Model.Edge import Edge
-import Utils.Configuration
+import config
 
 PROCESSOR_TABLE_FILE = '/Users/artembulkhak/PycharmProjects/Dissertation/Output/processor_table.csv'
 TASK_TIME_TABLE_FILE = '/Users/artembulkhak/PycharmProjects/Dissertation/Output/task_time_table.csv'
@@ -145,12 +144,12 @@ class CSVHandler:
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
 
-            file_row = {fieldnames[0]: Utils.Configuration.MULTIPLE_STRATEGIES,
-                        fieldnames[1]: Utils.Configuration.CJM_CRITERIA.__class__.__name__,
-                        fieldnames[2]: Utils.Configuration.SCHEDULING_OPTIMIZATION_CRITERIA,
-                        fieldnames[3]: "None" if Utils.Configuration.T is None else Utils.Configuration.T,
-                        fieldnames[4]: Utils.Configuration.DATA_TRANSFER_CHANNEL_SPEED,
-                        fieldnames[5]: Utils.Configuration.ALLOCATION_OPTIMIZATION_CRITERIA}
+            file_row = {fieldnames[0]: Configuration.MULTIPLE_STRATEGIES,
+                        fieldnames[1]: Configuration.CJM_CRITERIA.__class__.__name__,
+                        fieldnames[2]: Configuration.SCHEDULING_OPTIMIZATION_CRITERIA,
+                        fieldnames[3]: "None" if Configuration.T is None else Configuration.T,
+                        fieldnames[4]: Configuration.DATA_TRANSFER_CHANNEL_SPEED,
+                        fieldnames[5]: Configuration.ALLOCATION_OPTIMIZATION_CRITERIA}
             writer.writerow(file_row)
 
 

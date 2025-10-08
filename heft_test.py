@@ -1,6 +1,3 @@
-import csv
-import random
-from copy import deepcopy
 from datetime import datetime
 
 import pandas as pd
@@ -9,20 +6,18 @@ from AllocationModule.HEFT.HEFT import HEFT
 from AllocationModule.HEFT.HEFTVM import HEFTVM
 from AllocationModule.HEFT.HEFTWorkflow import HEFTWorkflow
 from SchedulingModule.CJM.Model.Criteria import CostCriteria
-from Utils.Analyzer import Analyzer
 from Utils.CSVHandler import CSVHandler
 from SchedulingModule.CJM.WorkflowSet import WorkflowSet
-from SchedulingModule.CJM.Workflow import Workflow
 
-import Utils.Configuration
+import config
 from Utils.Visualization.PyvisDrawer import PyvisDrawer, rand_color
 from Utils.Visualization import Drawer
 
 
 
 if __name__ == '__main__':
-    vm_types = CSVHandler.read_vms_table(Utils.Configuration.VMS_TABLE_FILE)
-    workflow_samples = Utils.Configuration.WORKFLOW_SAMPLES
+    vm_types = CSVHandler.read_vms_table(Configuration.VMS_TABLE_FILE)
+    workflow_samples = Configuration.WORKFLOW_SAMPLES
 
     # FTL: 142
     # ASAP: 122
@@ -128,32 +123,32 @@ if __name__ == '__main__':
 
     workflow_set = WorkflowSet()
     start_time = datetime.now()
-    workflow = HEFTWorkflow(XML_FILE=Utils.Configuration.LIGO50,
-                        T=T,
-                        vm_types=vm_types,
-                        vms=vms,
-                        criteria=CostCriteria(min),
-                        task_volume_multiplier=1,
-                        data_volume_multiplier=1,
-                        start_time=0)
+    workflow = HEFTWorkflow(XML_FILE=Configuration.LIGO50,
+                            T=T,
+                            vm_types=vm_types,
+                            vms=vms,
+                            criteria=CostCriteria(min),
+                            task_volume_multiplier=1,
+                            data_volume_multiplier=1,
+                            start_time=0)
 
-    workflow2 = HEFTWorkflow(XML_FILE=Utils.Configuration.LIGO50,
-                        T=T,
-                        vm_types=vm_types,
-                        vms=vms,
-                        criteria=CostCriteria(min),
-                        task_volume_multiplier=1,
-                        data_volume_multiplier=1,
-                        start_time=60)
+    workflow2 = HEFTWorkflow(XML_FILE=Configuration.LIGO50,
+                             T=T,
+                             vm_types=vm_types,
+                             vms=vms,
+                             criteria=CostCriteria(min),
+                             task_volume_multiplier=1,
+                             data_volume_multiplier=1,
+                             start_time=60)
 
-    workflow3 = HEFTWorkflow(XML_FILE=Utils.Configuration.LIGO50,
-                        T=T,
-                        vm_types=vm_types,
-                        vms=vms,
-                        criteria=CostCriteria(min),
-                        task_volume_multiplier=1,
-                        data_volume_multiplier=1,
-                        start_time=120)
+    workflow3 = HEFTWorkflow(XML_FILE=Configuration.LIGO50,
+                             T=T,
+                             vm_types=vm_types,
+                             vms=vms,
+                             criteria=CostCriteria(min),
+                             task_volume_multiplier=1,
+                             data_volume_multiplier=1,
+                             start_time=120)
 
 
     workflow_set.addHEFTWorkflow(workflow)
@@ -174,7 +169,7 @@ if __name__ == '__main__':
     color["color"] = color.apply(lambda x: rand_color(x), axis=1)
     log = pd.merge(log, color, on='workflow_id', how='left')
     log = log.sort_values(["vm_id", "vm_start"])
-    drawer.draw_result_gantt_HEFT(log, Utils.Configuration.GANTT_FIGURES_HEFT)
+    drawer.draw_result_gantt_HEFT(log, Configuration.GANTT_FIGURES_HEFT)
     # drawer.draw_result_gantt_HEFT_vms(heft.vms, Utils.Configuration.GANTT_FIGURES_HEFT)
     # drawer.draw_result_gantt_HEFT_nodes(heft.nodes, heft.vms, Utils.Configuration.GANTT_FIGURES_HEFT)
 

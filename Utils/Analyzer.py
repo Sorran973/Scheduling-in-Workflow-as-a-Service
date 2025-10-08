@@ -1,3 +1,12 @@
+import math
+
+from AllocationModule.AllocationASAP import AllocationASAP
+from AllocationModule.AllocationASAP_O import AllocationASAP_O
+from AllocationModule.AllocationFTL import AllocationFTL
+from AllocationModule.AllocationMixed import AllocationMixed
+import warnings
+warnings.filterwarnings('ignore')
+
 class Analyzer:
     @staticmethod
     def analyze_allocation(allocation, cjm_workflow_list):
@@ -176,27 +185,65 @@ class Analyzer:
     @staticmethod
     def print_comparison_table(allocations):
 
-        print(f"\tTotal cost of FTL: {allocations[0].total_cost}")
-        print(f"\tTotal cost of ASAP: {allocations[1].total_cost}")
-        print(f"\tTotal cost of ASAP_MIX: {allocations[2].total_cost}")
-        print(f"\tTotal cost of New_VM: {allocations[3].total_cost}")
-        # print(f"\tTotal cost of Ten_Best_VM: {allocations[4].total_cost}")
+        allocation_FTL = None
+        allocation_ASAP = None
+        allocation_ASAP_O = None
+        allocation_ASAP_MIXED = None
+        allocation_NewVM = None
+
+        for allocation in allocations:
+            if isinstance(allocation, AllocationFTL):
+                allocation_FTL = allocation
+            elif isinstance(allocation, AllocationASAP):
+                allocation_ASAP = allocation
+            elif isinstance(allocation, AllocationASAP_O):
+                allocation_ASAP_O = allocation
+            elif isinstance(allocation, AllocationMixed):
+                allocation_ASAP_MIXED = allocation
+            else:
+                allocation_NewVM = allocation
+
+
+        FTL_percent = round(100 - allocation_FTL.total_cost * 100 / allocation_NewVM.total_cost, 2)
+        # ASAP_percent = round(100 - allocation_ASAP.total_cost * 100 / allocation_NewVM.total_cost, 2)
+        ASAP_O_percent = round(100 - allocation_ASAP_O.total_cost * 100 / allocation_NewVM.total_cost, 2)
+        ASAP_MIXED_percent = round(100 - allocation_ASAP_MIXED.total_cost * 100 / allocation_NewVM.total_cost, 2)
+
+        print(f"\tTotal idle time of FTL: {allocation_FTL.total_idle_time}")
+        # print(f"\tTotal idle time of ASAP: {allocation_ASAP.total_idle_time}")
+        print(f"\tTotal idle time of ASAP_0: {allocation_ASAP_O.total_idle_time}")
+        print(f"\tTotal idle time of ASAP_MIXED: {allocation_ASAP_MIXED.total_idle_time}")
+        print(f"\tTotal idle time of New_VM: {allocation_NewVM.total_idle_time}")
         print()
-        print(f"\tWorkload Time of FTL: {allocations[0].workload_time}")
-        print(f"\tWorkload Time of ASAP: {allocations[1].workload_time}")
-        print(f"\tWorkload Time of ASAP_MIX: {allocations[2].workload_time}")
-        print(f"\tWorkload Time of New_VM: {allocations[3].workload_time}")
-        # print(f"\tWorkload Time of Ten_Best_VM: {allocations[4].workload_time}")
+        print(f"\tTotal cost of FTL: {allocation_FTL.total_cost}")
+        # print(f"\tTotal cost of ASAP: {allocation_ASAP.total_cost}")
+        print(f"\tTotal cost of ASAP_0: {allocation_ASAP_O.total_cost}")
+        print(f"\tTotal cost of ASAP_MIXED: {allocation_ASAP_MIXED.total_cost}")
+        print(f"\tTotal cost of New_VM: {allocation_NewVM.total_cost}")
         print()
-        print(f"\tTotal number of leased VM of FTL: {allocations[0].total_num_leased_vm}")
-        print(f"\tTotal number of leased VM of ASAP: {allocations[1].total_num_leased_vm}")
-        print(f"\tTotal number of leased VM of ASAP_MIX: {allocations[2].total_num_leased_vm}")
-        print(f"\tTotal number of leased VM of New_VM: {allocations[3].total_num_leased_vm}")
-        # print(f"\tTotal number of leased VM of Ten_Best_VM: {allocations[4].total_num_leased_vm}")
+        print(f"\tFTL batches num: {allocation_FTL.batches_size}")
+        # print(f"\tASAP batches num: {allocation_ASAP.batches_size}")
+        print(f"\tASAP_0 batches num: {allocation_ASAP_O.batches_size}")
+        print(f"\tASAP_MIXED batches num: {allocation_ASAP_MIXED.batches_size}")
+        print(f"\tNew_VM batches num: {allocation_NewVM.batches_size}")
         print()
-        print(f"\tTotal idle time of FTL: {allocations[0].total_idle_time}")
-        print(f"\tTotal idle time of ASAP: {allocations[1].total_idle_time}")
-        print(f"\tTotal idle time of ASAP_MIX: {allocations[2].total_idle_time}")
-        print(f"\tTotal idle time of New_VM: {allocations[3].total_idle_time}")
-        # print(f"\tTotal idle time of Ten_Best_VM: {allocations[4].total_idle_time}")
+        print(f"\tTotal number of leased VM of FTL: {allocation_FTL.total_num_leased_vm}")
+        # print(f"\tTotal number of leased VM of ASAP: {allocation_ASAP.total_num_leased_vm}")
+        print(f"\tTotal number of leased VM of ASAP_0: {allocation_ASAP_O.total_num_leased_vm}")
+        print(f"\tTotal number of leased VM of ASAP_MIXED: {allocation_ASAP_MIXED.total_num_leased_vm}")
+        print(f"\tTotal number of leased VM of New_VM: {allocation_NewVM.total_num_leased_vm}")
+        print()
+        print(f"\tWorkload Time of FTL: {allocation_FTL.workload_time}")
+        # print(f"\tWorkload Time of ASAP: {allocation_ASAP.workload_time}")
+        print(f"\tWorkload Time of ASAP_0: {allocation_ASAP_O.workload_time}")
+        print(f"\tWorkload Time of ASAP_MIXED: {allocation_ASAP_MIXED.workload_time}")
+        print(f"\tWorkload Time of New_VM: {allocation_NewVM.workload_time}")
+        print()
+        print(f"\tFTL %: {FTL_percent}")
+        # print(f"\tASAP %: {ASAP_percent}")
+        print(f"\tASAP_0 %: {ASAP_O_percent}")
+        print(f"\tASAP_MIXED %: {ASAP_MIXED_percent}")
+        print(f"\tNew_VM %: -")
+        print()
+
 

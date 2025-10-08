@@ -14,7 +14,7 @@ from SchedulingModule.CJM.Model.Criteria import CostCriteria, TimeCriteria
 from SchedulingModule.CJM.Workflow import round_up
 
 
-class AllocationModule:
+class AllocationASAP:
     def __init__(self, criteria, vm_types, tasks):
         self.vm_types = vm_types
         self.tasks = tasks
@@ -27,6 +27,7 @@ class AllocationModule:
                                          'task_allocation_end', 'vm_output_time', 'vm_end', 'allocation_cost', 'idle_time', 'vm_status'])
         self.num_workflow_deadline_met = None
         self.percentage_workflow_deadline_met = None
+        self.batches_size = None
         self.total_cost = None
         self.total_num_leased_vm = None
         self.total_idle_time = None
@@ -509,6 +510,7 @@ class AllocationModule:
         for i, batch in enumerate(batches):
             self.allocateBatch(batch)
             print(f"Batch #{i} out of {n}")
+            print(f"{len(batch)} in the batch #{i}")
 
         self.allocateBatch([])
 

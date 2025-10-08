@@ -1,21 +1,10 @@
-import random
-import sys
-
 from AllocationModule.HEFT.HEFTNode import HEFTNode
-from AllocationModule.HEFT.HEFTVM import HEFTVM
-from AllocationModule.Model.VM import VM
-from SchedulingModule.CJM.Model.Criteria import AverageResourceLoadCriteria, TimeCriteria, CostCriteria
 from SchedulingModule.CJM.Model.Edge import Edge
 from SchedulingModule.CJM.Model.File import File
-from SchedulingModule.CJM.Model.LayerOption import LayerOption
-from SchedulingModule.CJM.Model.Layer import Layer
-from Utils.Configuration import DATA_TRANSFER_CHANNEL_SPEED
+from config import DATA_TRANSFER_CHANNEL_SPEED
 from Utils.XMLParser import XMLParser
-from SchedulingModule.CJM.Model.Strategy import Strategy
-import Utils.Configuration
 
 import math
-import copy
 
 
 def round_up(n, decimals=0):

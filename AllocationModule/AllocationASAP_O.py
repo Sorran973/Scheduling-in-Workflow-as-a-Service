@@ -14,7 +14,7 @@ from SchedulingModule.CJM.Model.Criteria import CostCriteria, TimeCriteria
 from SchedulingModule.CJM.Workflow import round_up
 
 
-class AllocationMixed:
+class AllocationASAP_O:
     def __init__(self, criteria, vm_types, tasks):
         self.vm_types = vm_types
         self.tasks = tasks
@@ -22,10 +22,9 @@ class AllocationMixed:
         self.cost_of_workflow = [0 for workflow_id in range(self.num_workflows)]
         self.vms = []
         self.criteria = criteria
-        self.log = pd.DataFrame(
-            columns=['workflow_id', 'vm_id', 'vm_type', 'task_id', 'task_name', 'task_batch', 'task_start',
-                     'task_end', 'interval', 'vm_start', 'vm_input_time', 'task_allocation_start',
-                     'task_allocation_end', 'vm_output_time', 'vm_end', 'allocation_cost', 'idle_time', 'vm_status'])
+        self.log = pd.DataFrame(columns=['workflow_id', 'vm_id', 'vm_type', 'task_id', 'task_name', 'task_batch', 'task_start',
+                                         'task_end', 'interval', 'vm_start', 'vm_input_time', 'task_allocation_start',
+                                         'task_allocation_end', 'vm_output_time', 'vm_end', 'allocation_cost', 'idle_time', 'vm_status'])
         self.num_workflow_deadline_met = None
         self.percentage_workflow_deadline_met = None
         self.batches_size = None
@@ -44,25 +43,37 @@ class AllocationMixed:
         self.map_vm_perf_for_transfer = None
         self.create_vm_for_transfer()
 
+
     ########## SEPARATING TASKS INTO (FORMING)BATCHES (FTL ALGORITHM) ##########
     def calcTimingsForVM(self, vm_type):
         for task in self.tasks:
             task.calc_time = math.ceil(task.volume / vm_type.perf)
-            task.latest_start = task.end - task.calc_time
-            task.earliest_finish = task.start + task.calc_time
+            task.earliest_start = task.start
+            task.earliest_finish = task.earliest_start + task.calc_time
+            task.latest_finish = task.end
+            task.latest_start = task.latest_finish - task.calc_time
+            task.earliest_finish = task.earliest_start + task.calc_time
 
-    def assignToLeaderNew(self, tasks, time, batches):
+
+    def assignToLeader(self, tasks, time, batches):
         batch = []
         EFT = sys.maxsize
         for task in tasks:
             task.possible_start = max(task.start, time)
             task.earliest_finish = task.possible_start + task.calc_time
+            a = task.earliest_finish
             EFT = task.earliest_finish if task.earliest_finish < EFT else EFT
 
         for task in tasks:
-            # if (list(filter(lambda transfer: transfer.task_from.status is None, task.input_transfers))
-            #         or task.possible_start >= EFT):
+            if task.id == 53:
+                r = 0
             if list(filter(lambda transfer: transfer.task_from.status is None, task.input_transfers)):
+                y=0
+            if task.possible_start >= EFT:
+                t=0
+            if (list(filter(lambda transfer: transfer.task_from.status is None, task.input_transfers))
+                    or task.possible_start >= EFT):
+            # if list(filter(lambda transfer: transfer.task_from.status is None, task.input_transfers)):
                 continue
             else:
                 task.batch = len(batches)
@@ -79,19 +90,15 @@ class AllocationMixed:
         batches = []
         leader_vm_type = max(self.vm_types, key=lambda vm_type: vm_type.perf)
         self.calcTimingsForVM(leader_vm_type)
+        tasks_with_none_status = list(filter(lambda i: i.status is None, self.tasks))
 
-        workflows = list(map(
-            lambda i: list(filter(lambda task: task.workflow_id == i, self.tasks)),
-            range(self.num_workflows)
-        ))
-
-        for workflow in workflows:
-            tasks_with_none_status = list(filter(lambda i: i.status is None, workflow))
-            while tasks_with_none_status:
-                time = self.assignToLeaderNew(tasks_with_none_status, time, batches)
-                tasks_with_none_status = list(filter(lambda i: i.status is None, tasks_with_none_status))
+        while tasks_with_none_status:
+            time = self.assignToLeader(tasks_with_none_status, time, batches)
+            tasks_with_none_status = list(filter(lambda i: i.status is None, tasks_with_none_status))
 
         return batches
+
+
 
     ########## PREPARE (TASK:VM) MATCHINGS ##########
     def clearTasksFromOff(self, batch):
@@ -102,8 +109,7 @@ class AllocationMixed:
 
     def addOffTasks(self, batch, num, counter=0):
         for i in range(num):
-            batch.append(Task(id=Task.task_counter + 1, name='off' + str(i + counter), volume=0, workflow_id=-1,
-                              type='off'))
+            batch.append(Task(id=Task.task_counter + 1, name='off' + str(i + counter), volume=0, workflow_id=-1, type='off'))
 
         return batch
 
@@ -153,9 +159,8 @@ class AllocationMixed:
         #             task.possible_vms.append(
         #                 VM(vm_type.type, vm_type.perf, vm_type.cost, vm_type.prep_time, vm_type.shutdown_time))
         # else:
-        for vm_type in self.vm_types:
-            task.possible_vms.append(
-                VM(vm_type.type, vm_type.perf, vm_type.cost, vm_type.prep_time, vm_type.shutdown_time))
+            for vm_type in self.vm_types:
+                task.possible_vms.append(VM(vm_type.type, vm_type.perf, vm_type.cost, vm_type.prep_time, vm_type.shutdown_time))
 
     def prepareVmMatchings(self, batch, additional_vms_num):
         # first remove old temp tasks and not started vms
@@ -170,18 +175,19 @@ class AllocationMixed:
         if self.vms:
             vms_to_add += additional_vms_num
             off_tasks_to_add += len(self.vms)
-            batch = self.addOffTasks(batch, off_tasks_to_add,
-                                     len(batch) + 1)  # use len(batch) + 1 to avoid name collisions
+            batch = self.addOffTasks(batch, off_tasks_to_add, len(batch) + 1)  # use len(batch) + 1 to avoid name collisions
 
         for task in batch:
             self.addNewVms(task)
 
         return batch
 
+
+
     ########## CALCULATING ALLOCATION COST ##########
     def calcVmAllocationCost(self, task, vm):
 
-        if task.id == 6:
+        if task.id == 40 or task.id == 45 or task.id == 48:
             y = 0
         # init
         # current_time = -100
@@ -214,7 +220,7 @@ class AllocationMixed:
                 output_data_transfer_time_max = -sys.maxsize
                 for transfer in previous_task.output_transfers:
                     # transfer_time = transfer.transfer_time
-                    transfer_time = round(transfer.transfer_time / vm.perf)
+                    transfer_time = math.ceil(transfer.transfer_time / vm.perf)
                     transfer_end = previous_task.allocation_end + transfer_time
 
                     # meaning time between the time vm can be stopped and it finishes the longest data transfer
@@ -239,7 +245,7 @@ class AllocationMixed:
             data_transfer_time_max = -sys.maxsize
 
             if task.input_transfers:
-                # TODO: ? create node_edges and data_center_edges and check their times
+                #TODO: ? create node_edges and data_center_edges and check their times
                 for transfer in task.input_transfers:
                     task_from = transfer.task_from
 
@@ -247,7 +253,7 @@ class AllocationMixed:
                         transfer_time = 0
                     else:
                         # transfer_time = transfer.transfer_time
-                        transfer_time = round(transfer.transfer_time / vm.perf)
+                        transfer_time = math.ceil(transfer.transfer_time / vm.perf)
 
                     if data_transfer_time_max < transfer_time:
                         data_transfer_time_max = transfer_time
@@ -308,6 +314,8 @@ class AllocationMixed:
         else:
             return False, allocation_cost, possible_assignment
 
+
+
     ########## CHOOSING THE BEST MATCHES (MUNKRES ALGORITHM) ##########
     def calcMinCostPairings(self, batch):
         vms = self.vms.copy()
@@ -315,25 +323,24 @@ class AllocationMixed:
         active_num = len(self.vms)
 
         for t, task in enumerate(batch):
+            assignment_with_desired_cost = None
             if task.type == 'task':
-                if task.id == 103:
+                if task.id >= 27 and task.id <= 37:
                     y = 0
                 possible_vms = [vm for vm in task.possible_vms if self.calcVmAllocationCost(task, vm)[0]]
                 task.possible_vms = possible_vms
 
                 try:
                     if (self.criteria.optimization_criteria == "min"):
-                        assignment_with_min_cost = min(task.possible_assignments, key=lambda
-                            possible_assignment: possible_assignment.allocation_cost)
+                        assignment_with_desired_cost = min(task.possible_assignments, key=lambda possible_assignment: possible_assignment.allocation_cost)
                     else:
-                        assignment_with_min_cost = max(task.possible_assignments, key=lambda
-                            possible_assignment: possible_assignment.allocation_cost)
+                        assignment_with_desired_cost = max(task.possible_assignments, key=lambda possible_assignment: possible_assignment.allocation_cost)
                 except:
                     print("Task(id={}, name={})".format(task.id, task.name))
 
-                best_cost_of_possible_vms = assignment_with_min_cost.allocation_cost
-                best_vm_of_possible_vms = assignment_with_min_cost.assigned_vm
-                vms.append(best_vm_of_possible_vms)
+                best_cost = assignment_with_desired_cost.allocation_cost
+                vm = assignment_with_desired_cost.assigned_vm
+                vms.append(vm)
 
                 vm_costs_for_task = [DISALLOWED] * len(batch)
                 for i, vm in enumerate(self.vms):
@@ -342,7 +349,7 @@ class AllocationMixed:
                             self.criteria.optimization_criteria == "max" and cost > -1000000000):
                         vm_costs_for_task[i] = cost
 
-                vm_costs_for_task[active_num + t] = best_cost_of_possible_vms
+                vm_costs_for_task[active_num + t] = best_cost
                 cost_matrix.append(vm_costs_for_task)
 
         # calc costs of off tasks
@@ -375,6 +382,7 @@ class AllocationMixed:
 
         return pairs
 
+
     def calcMinTimePairings(self, batch):
         vms = self.vms.copy()
         time_matrix = []
@@ -389,11 +397,9 @@ class AllocationMixed:
 
                 try:
                     if (self.criteria.optimization_criteria == "min"):
-                        assignment_with_min_time = min(task.possible_assignments, key=lambda
-                            possible_assignment: possible_assignment.task_allocation_end)
+                        assignment_with_min_time = min(task.possible_assignments, key=lambda possible_assignment: possible_assignment.task_allocation_end)
                     else:
-                        assignment_with_min_time = max(task.possible_assignments, key=lambda
-                            possible_assignment: possible_assignment.task_allocation_end)
+                        assignment_with_min_time = max(task.possible_assignments, key=lambda possible_assignment: possible_assignment.task_allocation_end)
                 except:
                     print("Task(id={}, name={})".format(task.id, task.name))
 
@@ -439,12 +445,12 @@ class AllocationMixed:
 
         return pairs
 
+
+
     ########## PAIRING and LOGGING ##########
     def applyPairings(self, pairs):
         for pair in pairs:
             vm_status = 'active'
-            if pair[0].id == 18:
-                print()
             if pair[0].type == 'off' and pair[1].status == 'open':
                 continue
             elif pair[0].type == 'task' and pair[1].status == 'open':
@@ -458,19 +464,18 @@ class AllocationMixed:
             pair[1].setPreviousTask(pair[0])
             pair[0].setAssignedVm(pair[1])
             cost = pair[0].allocation_cost - 1
-            self.cost_of_workflow[pair[0].workflow_id] = self.cost_of_workflow[pair[0].workflow_id] + pair[
-                0].allocation_cost - 1
+            self.cost_of_workflow[pair[0].workflow_id] = self.cost_of_workflow[pair[0].workflow_id] + pair[0].allocation_cost - 1
 
-            self.log = self.log._append(
-                {'workflow_id': pair[0].workflow_id, 'vm_id': pair[1].id, 'vm_type': pair[1].type,
-                 'task_id': pair[0].id, 'task_name': pair[0].name, 'task_batch': pair[0].batch,
-                 'task_start': pair[0].start, 'task_end': pair[0].end, 'interval': pair[0].interval,
-                 'vm_start': pair[0].vm_allocation_start, 'vm_input_time': pair[0].vm_input_time,
-                 'task_allocation_start': pair[0].allocation_start,
-                 'task_allocation_end': pair[0].allocation_end,
-                 'vm_output_time': pair[0].vm_output_time, 'vm_end': pair[0].vm_allocation_end,
-                 'allocation_cost': pair[0].allocation_cost - 1, 'idle_time': pair[0].idle_time, 'vm_status': vm_status},
-                ignore_index=True)
+            self.log = self.log._append({'workflow_id': pair[0].workflow_id, 'vm_id': pair[1].id, 'vm_type': pair[1].type,
+                                         'task_id': pair[0].id, 'task_name': pair[0].name, 'task_batch': pair[0].batch,
+                                         'task_start': pair[0].start, 'task_end': pair[0].end, 'interval': pair[0].interval,
+                                         'vm_start': pair[0].vm_allocation_start, 'vm_input_time': pair[0].vm_input_time,
+                                         'task_allocation_start': pair[0].allocation_start, 'task_allocation_end': pair[0].allocation_end,
+                                         'vm_output_time': pair[0].vm_output_time, 'vm_end': pair[0].vm_allocation_end,
+                                         'allocation_cost': pair[0].allocation_cost - 1, 'idle_time': pair[0].idle_time, 'vm_status': vm_status},
+                                        ignore_index=True)
+
+
 
     ########## ALLOCATION BATCHES (VMA ALGORITHM) ##########
     def allocateBatch(self, batch):

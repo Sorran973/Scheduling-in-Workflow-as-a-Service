@@ -27,6 +27,7 @@ class NewVmForEachTask:
                                          'task_allocation_end', 'vm_output_time', 'vm_end', 'allocation_cost', 'idle_time', 'vm_status'])
         self.num_workflow_deadline_met = None
         self.percentage_workflow_deadline_met = None
+        self.batches_size = None
         self.total_cost = None
         self.total_num_leased_vm = None
         self.total_idle_time = None
@@ -209,7 +210,7 @@ class NewVmForEachTask:
 
     ########## CALCULATING ALLOCATION COST ##########
     def calcVmAllocationCost(self, task, vm):
-        if task.id == 99:
+        if task.id == 9:
             y = 0
         # init
         # current_time = -100
@@ -243,7 +244,7 @@ class NewVmForEachTask:
                 for transfer in previous_task.output_transfers:
                     task_to = transfer.task_to
                     # transfer_time = transfer.transfer_time
-                    transfer_time = round(transfer.transfer_time * self.map_vm_perf_for_transfer[vm.perf])
+                    transfer_time = math.ceil(transfer.transfer_time / vm.perf)
                     transfer_end = previous_task.allocation_end + transfer_time
 
                     # meaning time between the time vm can be stopped and it finishes the longest data transfer
@@ -269,7 +270,7 @@ class NewVmForEachTask:
                 #TODO: ? create node_edges and data_center_edges and check their times
                 for transfer in task.input_transfers:
                     task_from = transfer.task_from
-                    transfer_time = round(transfer.transfer_time * self.map_vm_perf_for_transfer[vm.perf])
+                    transfer_time = math.ceil(transfer.transfer_time / vm.perf)
                     transfer_time1 = round(transfer.transfer_size / vm.perf)
 
                     if data_transfer_time_max < transfer_time:
@@ -343,7 +344,7 @@ class NewVmForEachTask:
         cost_matrix = []
         for i, task in enumerate(batch):
             if task.type == 'task':
-                if task.id == 1:
+                if task.id == 9:
                     y = 0
                 possible_vms = [vm for vm in task.possible_vms if self.calcVmAllocationCost(task, vm)[0]]
                 task.possible_vms = possible_vms
@@ -474,9 +475,11 @@ class NewVmForEachTask:
     ########## PAIRING and LOGGING ##########
     def applyPairings(self, pairs):
         for pair in pairs:
+            vm_status = 'active'
             if pair[0].type == 'off' and pair[1].status == 'open':
                 continue
             elif pair[0].type == 'task' and pair[1].status == 'open':
+                vm_status = 'new'
                 pair[1].setStatus('active')
                 self.vms.append(pair[1])
             elif pair[0].type == 'off' and pair[1].status == 'active':
@@ -494,7 +497,7 @@ class NewVmForEachTask:
                                          'vm_start': pair[0].vm_allocation_start, 'vm_input_time': pair[0].vm_input_time,
                                          'task_allocation_start': pair[0].allocation_start, 'task_allocation_end': pair[0].allocation_end,
                                          'vm_output_time': pair[0].vm_output_time, 'vm_end': pair[0].vm_allocation_end,
-                                         'allocation_cost': pair[0].allocation_cost - 1, 'idle_time': pair[0].idle_time, 'vm_status': pair[1].status},
+                                         'allocation_cost': pair[0].allocation_cost - 1, 'idle_time': pair[0].idle_time, 'vm_status': vm_status},
                                         ignore_index=True)
 
 
@@ -516,6 +519,7 @@ class NewVmForEachTask:
         for i, batch in enumerate(batches):
             self.allocateBatch(batch)
             print(f"Batch #{i} out of {n}")
+            print(f"{len(batch)} in the batch #{i}")
 
         self.allocateBatch([])
 

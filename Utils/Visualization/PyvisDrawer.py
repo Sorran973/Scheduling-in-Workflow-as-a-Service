@@ -1,15 +1,13 @@
 import pandas as pd
 from pyvis.network import Network
-import matplotlib
-matplotlib.use('TkAgg')
+# matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
-plt.ion()
+# plt.ion()
 import networkx as nx
 import numpy as np
 from matplotlib.patches import Patch
 
-import Utils.Configuration
-from Utils import Configuration
+import config
 from Utils.Visualization.Drawer import Drawer
 
 
@@ -202,10 +200,10 @@ class PyvisDrawer(Drawer):
 
 
         ##### LEGENDS #####
-        legend_elements = [Patch(facecolor='#E64646', label='Leader'),
-                           Patch(facecolor='#34D05C', label='Batch')]
-
-        ax1.legend(handles=legend_elements, loc='upper center', ncol=5, frameon=False)
+        # legend_elements = [Patch(facecolor='#E64646', label='Leader'),
+        #                    Patch(facecolor='#34D05C', label='Batch')]
+        #
+        # ax1.legend(handles=legend_elements, loc='upper center', ncol=5, frameon=False)
 
         # clean second axis
         ax1.spines['right'].set_visible(False)
@@ -215,10 +213,10 @@ class PyvisDrawer(Drawer):
         ax1.set_xticks([])
         ax1.set_yticks([])
 
-        plt.suptitle(Utils.Configuration.CJM_CRITERIA.__class__.__name__ + " " +
-                     Utils.Configuration.SCHEDULING_OPTIMIZATION_CRITERIA + " " +
-                     Utils.Configuration.VMA_CRITERIA.__class__.__name__ + " " +
-                     Utils.Configuration.ALLOCATION_OPTIMIZATION_CRITERIA)
+        plt.suptitle(config.CJM_CRITERIA.__class__.__name__ + " " +
+                     config.SCHEDULING_OPTIMIZATION_CRITERIA + " " +
+                     config.VMA_CRITERIA.__class__.__name__ + " " +
+                     config.ALLOCATION_OPTIMIZATION_CRITERIA)
         # plt.show()
         fig.savefig(figure_name, format="pdf")
         # fig.savefig(Utils.Configuration.GANTT_FIGURES_BATCHES, format="pdf", bbox_inches='tight')
@@ -278,13 +276,13 @@ class PyvisDrawer(Drawer):
         ax1.set_xticks([])
         ax1.set_yticks([])
 
-        plt.suptitle(Utils.Configuration.CJM_CRITERIA.__class__.__name__ + " " +
-                     Utils.Configuration.SCHEDULING_OPTIMIZATION_CRITERIA + " " +
-                     Utils.Configuration.VMA_CRITERIA.__class__.__name__ + " " +
-                     Utils.Configuration.ALLOCATION_OPTIMIZATION_CRITERIA)
+        plt.suptitle(config.CJM_CRITERIA.__class__.__name__ + " " +
+                     config.SCHEDULING_OPTIMIZATION_CRITERIA + " " +
+                     config.VMA_CRITERIA.__class__.__name__ + " " +
+                     config.ALLOCATION_OPTIMIZATION_CRITERIA)
         # plt.show()
-        fig.savefig(Utils.Configuration.GANTT_FIGURES_BATCHES_ASAP_MOD, format="pdf")
-        # fig.savefig(Utils.Configuration.GANTT_FIGURES_BATCHES_ASAP_MOD, format="pdf", bbox_inches='tight')
+        fig.savefig(config.GANTT_FIGURES_BATCHES_ASAP_MOD, format="pdf")
+        # fig.savefig(Utils.config.GANTT_FIGURES_BATCHES_ASAP_MOD, format="pdf", bbox_inches='tight')
 
 
     def draw_big_batches_gantt(self, tasks, figure_name):
@@ -295,7 +293,7 @@ class PyvisDrawer(Drawer):
 
         ##### PLOT #####
         # fig, (ax, ax1) = plt.subplots(2, figsize=(36, 16), gridspec_kw={'height_ratios': [15, 1]})
-        fig, ax = plt.subplots(figsize=(640, 640))
+        fig, ax = plt.subplots(figsize=(300, 300))
 
 
         # bars
@@ -329,10 +327,10 @@ class PyvisDrawer(Drawer):
         ax.spines['left'].set_position(('outward', 10))
         ax.spines['top'].set_visible(False)
 
-        plt.suptitle(Utils.Configuration.CJM_CRITERIA.__class__.__name__ + " " +
-                     Utils.Configuration.SCHEDULING_OPTIMIZATION_CRITERIA + " " +
-                     Utils.Configuration.VMA_CRITERIA.__class__.__name__ + " " +
-                     Utils.Configuration.ALLOCATION_OPTIMIZATION_CRITERIA)
+        plt.suptitle(config.CJM_CRITERIA.__class__.__name__ + " " +
+                     config.SCHEDULING_OPTIMIZATION_CRITERIA + " " +
+                     config.VMA_CRITERIA.__class__.__name__ + " " +
+                     config.ALLOCATION_OPTIMIZATION_CRITERIA)
 
         fig.savefig(figure_name, format="pdf", bbox_inches='tight')
 
@@ -391,9 +389,9 @@ class PyvisDrawer(Drawer):
             if row.task_name[0] != 'o':
                 if row.vm_status == "new":
                     # ax.barh(rownum, row.vm_input_time, left=row.vm_start, color=row.color, alpha=0.6, fill=False, hatch='|||')
-                    ax.barh(rownum, Configuration.VM_PREP_TIME, left=row.vm_start, color=row.color, alpha=0.6, fill=False, hatch='|||')
+                    ax.barh(rownum, config.VM_PREP_TIME, left=row.vm_start, color=row.color, alpha=0.6, fill=False, hatch='|||')
             else:
-                ax.barh(rownum, Configuration.VM_SHUTDOWN_TIME, left=row.vm_start, color=row.color, alpha=0.6, fill=False, hatch='|||')
+                ax.barh(rownum, config.VM_SHUTDOWN_TIME, left=row.vm_start, color=row.color, alpha=0.6, fill=False, hatch='|||')
             # idle_time
             ax.barh(rownum, row.idle_time, left=row.vm_start - row.idle_time, color='#000000')
 
@@ -447,10 +445,10 @@ class PyvisDrawer(Drawer):
         # ax.spines['left'].set_visible(False)
         # ax.spines['top'].set_visible(False)
 
-        plt.suptitle(Utils.Configuration.CJM_CRITERIA.__class__.__name__ + " " +
-                     Utils.Configuration.SCHEDULING_OPTIMIZATION_CRITERIA + " " +
-                     Utils.Configuration.VMA_CRITERIA.__class__.__name__ + " " +
-                     Utils.Configuration.ALLOCATION_OPTIMIZATION_CRITERIA)
+        plt.suptitle(config.CJM_CRITERIA.__class__.__name__ + " " +
+                     config.SCHEDULING_OPTIMIZATION_CRITERIA + " " +
+                     config.VMA_CRITERIA.__class__.__name__ + " " +
+                     config.ALLOCATION_OPTIMIZATION_CRITERIA)
         # plt.show()
         fig.savefig(figure_name, format="pdf", bbox_inches='tight')
 
@@ -479,10 +477,10 @@ class PyvisDrawer(Drawer):
         # ax.set_xticks(, labels=)
         ax.set_yticks([])
 
-        plt.suptitle(Utils.Configuration.CJM_CRITERIA.__class__.__name__ + " " +
-                     Utils.Configuration.SCHEDULING_OPTIMIZATION_CRITERIA + " " +
-                     Utils.Configuration.VMA_CRITERIA.__class__.__name__ + " " +
-                     Utils.Configuration.ALLOCATION_OPTIMIZATION_CRITERIA)
+        plt.suptitle(Configuration.CJM_CRITERIA.__class__.__name__ + " " +
+                     Configuration.SCHEDULING_OPTIMIZATION_CRITERIA + " " +
+                     Configuration.VMA_CRITERIA.__class__.__name__ + " " +
+                     Configuration.ALLOCATION_OPTIMIZATION_CRITERIA)
         # plt.show()
         fig.savefig(figure_name, format="pdf", bbox_inches='tight')
 
@@ -720,7 +718,7 @@ class PyvisDrawer(Drawer):
         print()
 
     def draw_big_gantt(self, log, figure_name):
-        fig, ax = plt.subplots(figsize=(640, 640))
+        fig, ax = plt.subplots(figsize=(300, 300))
 
         rownum = 0
         for index, row in log.iterrows():

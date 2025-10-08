@@ -5,6 +5,7 @@ from datetime import datetime
 
 import pandas as pd
 
+import config
 from AllocationModule.AllocationASAP_O import AllocationASAP_O
 from AllocationModule.AllocationFTL import AllocationFTL
 from AllocationModule.AllocationMixed import AllocationMixed
@@ -14,7 +15,6 @@ from Utils.CSVHandler import CSVHandler
 from SchedulingModule.CJM.WorkflowSet import WorkflowSet
 from SchedulingModule.CJM.Workflow import Workflow
 from AllocationModule.AllocationASAP import AllocationASAP
-import config
 from Utils.Visualization.PyvisDrawer import PyvisDrawer, rand_color
 from Utils.Visualization import Drawer
 
@@ -33,13 +33,14 @@ if __name__ == '__main__':
     # s.columns = ["A","Count"]
 
     workflow_samples = config.WORKFLOW_SAMPLES
-    vm_types = CSVHandler.read_vms_table(config.VMS_TABLE_FILE)
+    vm_types = CSVHandler.read_vms_table(config.VMS_TABLE_FILE_PATH)
+
     #####################################################
     ################# SCHEDULING MODULE #################
     #####################################################
-    n_worfklow = 15
+    n_worfklow = 30
     period = 60
-    n_workflow_per_period = 5
+    n_workflow_per_period = 30
     current_time = 0
     repeat_workflow_set_flag = "new_test"
     # repeat_workflow_set_flag = "old_test"
@@ -56,7 +57,7 @@ if __name__ == '__main__':
             headers = next(reader)
             for row in reader:
                 indexes.append(int(row[1]))
-                # T_arr.append(int(row[2]))
+                T_arr.append(float(row[2]))
                 starts.append(int(row[3]))
 
 
@@ -69,13 +70,12 @@ if __name__ == '__main__':
             if repeat_workflow_set_flag == "old_test":
                 index_workflow_from_samples = indexes[j]
                 # T = T_arr[j]
-                T = None
+                T = config.T
                 workflow_start_time = starts[j]
                 j += 1
             else:
                 index_workflow_from_samples = random.randint(0, len(workflow_samples) - 1)
-                T = None
-                # T = 2000
+                T = config.T
                 workflow_start_time = random.randint(current_time, current_time + period)
                 indexes.append(index_workflow_from_samples)
                 starts.append(workflow_start_time)
@@ -109,24 +109,6 @@ if __name__ == '__main__':
                    fieldnames[3]: starts[i]}
             writer.writerow(row)
 
-    # workflow_set = WorkflowSet()
-    # workflow_set.addWorkflow(Workflow(XML_FILE=Utils.Configuration.XML_FILE,
-    #                                   T=None,
-    #                                   vm_types=vm_types,
-    #                                   criteria=Utils.Configuration.CJM_CRITERIA,
-    #                                   task_volume_multiplier=1,
-    #                                   data_volume_multiplier=1,
-    #                                   start_time=0))
-    # T_arr_new.append(workflow_set.workflows[0].T)
-    # #
-    # workflow_set.addWorkflow(Workflow(XML_FILE='JobExamples/CYBERSHAKE.n.50.0.dax',
-    #                                   T=None,
-    #                                   vm_types=vm_types,
-    #                                   criteria=Utils.Configuration.CJM_CRITERIA,
-    #                                   task_volume_multiplier=1,
-    #                                   data_volume_multiplier=1,
-    #                                   start_time=0))
-    # T_arr_new.append(workflow_set.workflows[1].T)
 
     drawer: Drawer = PyvisDrawer()
     # drawer.draw_graph(workflow_set.drawn_nodes, workflow_set.drawn_edges)
@@ -148,12 +130,12 @@ if __name__ == '__main__':
 
     allocations = []
     allocations.append(AllocationFTL(config.VMA_CRITERIA, vm_types, deepcopy(tasks)))
-    # allocations.append(AllocationASAP(config.VMA_CRITERIA, vm_types, deepcopy(tasks)))
+    # allocations.append(AllocationASAP(Utils.config.VMA_CRITERIA, vm_types, deepcopy(tasks)))
     allocations.append(AllocationASAP_O(config.VMA_CRITERIA, vm_types, deepcopy(tasks)))
     allocations.append(AllocationMixed(config.VMA_CRITERIA, vm_types, deepcopy(tasks)))
     allocations.append(NewVmForEachTask(config.VMA_CRITERIA, vm_types, deepcopy(tasks)))
-    # allocations.append(RandomAssignment(Utils.Configuration.VMA_CRITERIA, vm_types, deepcopy(tasks)))
-    # allocations.append(StrictRandomAssignment(Utils.Configuration.VMA_CRITERIA, vm_types, deepcopy(tasks)))
+    # allocations.append(RandomAssignment(Utils.config.VMA_CRITERIA, vm_types, deepcopy(tasks)))
+    # allocations.append(StrictRandomAssignment(Utils.config.VMA_CRITERIA, vm_types, deepcopy(tasks)))
 
     batch_time_ftl = 0
     batch_time_asap = 0
@@ -179,7 +161,6 @@ if __name__ == '__main__':
                     for next_task in batches[b+1]:
                         if next_task.id == data_transfer.task_to.id:
                             N_pc += 1
-                            # print(str(task.id) + "-->" + str(next_task.id))
                             break
         print("N_pc: " + str(N_pc))
 
@@ -237,12 +218,12 @@ if __name__ == '__main__':
         log = pd.merge(log, color, on='vm_id', how='left')
         log = log.sort_values(["vm_id", "vm_end"])
         # if isinstance(allocation, AllocationModule):
-        # drawer.draw_result_gantt(log, Utils.Configuration.GANTT_FIGURES_VM_SORT)
+        # drawer.draw_result_gantt(log, Utils.config.GANTT_FIGURES_VM_SORT)
         # if isinstance(allocation, NewVmForEachTask):
-        #     drawer.draw_result_gantt(log, Utils.Configuration.GANTT_FIGURES_NEW_VM_FOR_EACH)
+        #     drawer.draw_result_gantt(log, Utils.config.GANTT_FIGURES_NEW_VM_FOR_EACH)
 
-    # CSVHandler.write_allocation_logfile(Utils.Configuration.ALLOCATION_LOG_FILE, log)
-    # CSVHandler.write_configuration_file(Utils.Configuration.CONFIGURATION_FILE)
+    # CSVHandler.write_allocation_logfile(Utils.config.ALLOCATION_LOG_FILE, log)
+    # CSVHandler.write_config_file(Utils.config.config_FILE)
 
     #####################################################
     ###################### ANALYZING ####################
@@ -344,6 +325,6 @@ if __name__ == '__main__':
     # color["color"] = color.apply(lambda x: rand_color(x), axis=1)
     # log = pd.merge(log, color, on='workflow_id', how='left')
     # log = log.sort_values(["vm_id", "vm_start"])
-    # drawer.draw_result_gantt(log, Utils.Configuration.GANTT_FIGURES_BASIC)
+    # drawer.draw_result_gantt(log, Utils.config.GANTT_FIGURES_BASIC)
     # log = log.sort_values(["vm_id", "vm_end"])
-    # drawer.draw_result_gantt(log, Utils.Configuration.GANTT_FIGURES_VM_SORT)
+    # drawer.draw_result_gantt(log, Utils.config.GANTT_FIGURES_VM_SORT)

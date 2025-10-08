@@ -1,15 +1,17 @@
 import random
 
+from networkx.algorithms.shortest_paths.generic import shortest_path
+
 from SchedulingModule.CJM.Model.Criteria import AverageResourceLoadCriteria, TimeCriteria, CostCriteria
 from SchedulingModule.CJM.Model.Edge import Edge
 from SchedulingModule.CJM.Model.File import File
 from SchedulingModule.CJM.Model.LayerOption import LayerOption
 from SchedulingModule.CJM.Model.Node import Node
 from SchedulingModule.CJM.Model.Layer import Layer
-from Utils.Configuration import DATA_TRANSFER_CHANNEL_SPEED
+from config import DATA_TRANSFER_CHANNEL_SPEED
 from Utils.XMLParser import XMLParser
 from SchedulingModule.CJM.Model.Strategy import Strategy
-import Utils.Configuration
+import config
 
 import math
 import copy
@@ -74,7 +76,8 @@ class Workflow:
         self.task_volume_multiplier = task_volume_multiplier
         self.data_volume_multiplier = data_volume_multiplier
         self.criteria = criteria
-        self.T = T
+        self.T = None
+        self.t = T
         self.global_timer = start_time
         self.xml_file = XML_FILE
 
@@ -86,10 +89,17 @@ class Workflow:
         self.check_duplicate_critical_paths()
         self.find_the_longest_path()
 
-        if self.T is None:
-            # self.T = random.randint(self.critical_paths[0][0], self.longest_path)
+        print("shortest_path = " + str(self.critical_paths[0][0]))
+        print("longest_path = " + str(self.longest_path))
+
+        if self.t == 1:
             self.T = self.critical_paths[0][0]
-            # self.T = self.longest_path
+        elif self.t == 2:
+            self.T = self.longest_path
+        elif self.t == 3:
+            self.T = random.randint(self.critical_paths[0][0], self.longest_path)
+        else:
+            self.T = self.t
 
         self.criteria.set_parameters(len(self.vms_table), self.T)
 
@@ -100,24 +110,31 @@ class Workflow:
 
         for node in soup_nodes:
             name = node.get('id')
-            if round_up(float(node.get('runtime')) * self.task_volume_multiplier) < 5:
-                volume = 5
+            if round_up(float(node.get('runtime')) * self.task_volume_multiplier) < self.vm_types[0].perf:
+                volume = self.vm_types[0].perf
             else:
                 volume = round_up(float(node.get('runtime')) * self.task_volume_multiplier)
             # volume = round_up(float(node.get('runtime')) * self.task_volume_multiplier)
             current_node = Node(name, volume, round_up(volume / self.vm_types[0].perf))
             self.add_node(current_node)
 
-            if current_node.id == 9 or current_node.id == 21:
+            if current_node.id == 94:
                 y = 0
             uses = node.find_all('uses')
             for use in uses:
                 # TODO:
                 if use.get('register') != 'true':
                 # if use.get('link') != 'input':
+                    xml_size = float(use.get('size'))
+                    size = round_up(float(use.get('size')) * self.data_volume_multiplier / 1000000)
+                    if size < self.vm_types[0].perf:
+                        size = self.vm_types[0].perf
+                    else:
+                        size = round_up(float(use.get('size')) * self.data_volume_multiplier / 1000000)
+                        # size = math.ceil(float(use.get('size')) * self.data_volume_multiplier / 1000000)
                     current_node.add_file(File(use.get('file'),
                                                use.get('link'),
-                                               round_up(float(use.get('size')) * self.data_volume_multiplier / 1000000),
+                                               size,
                                                use.get('register')))
             current_node.calculate_transfer_time(DATA_TRANSFER_CHANNEL_SPEED)
 
@@ -256,7 +273,7 @@ class Workflow:
 
             if not self.strategies:
                 layer = self.next_layer_calc(Z1, c_p, 0)  # direct pass
-                if Utils.Configuration.MULTIPLE_STRATEGIES:
+                if config.MULTIPLE_STRATEGIES:
                     self.strategies = self.create_strategies_recursion(layer, c_p)
                 else:
                     strategy = Strategy(len(self.nodes), self.T)
@@ -278,7 +295,7 @@ class Workflow:
 
                     if local_c_p:  # if not all nodes are already calculated
                         layer = self.next_layer_calc(local_Z1, local_c_p, 0)  # direct pass
-                        if Utils.Configuration.MULTIPLE_STRATEGIES:
+                        if config.MULTIPLE_STRATEGIES:
                             new_strategies = self.create_strategies_recursion(layer, c_p, strategy)
                             self.multiple_strategies.extend(new_strategies)
                         else:
@@ -286,10 +303,12 @@ class Workflow:
 
 
                 if self.multiple_strategies:
+                    if len(self.multiple_strategies) > 100:
+                        print("CJM UNSUCCESS")
+                        return
                     self.strategies = self.multiple_strategies
-                    print("multiple_strategies" + str(len(self.multiple_strategies)))
+                    # print("multiple_strategies" + ": " + str(len(self.multiple_strategies)))
                     self.multiple_strategies = []
-                    # print("self.strategies" + str(len(self.strategies)))
 
         res = []
         for strategy in self.strategies:
@@ -309,7 +328,7 @@ class Workflow:
         self.best_strategy = best_strategy
 
 
-        if Utils.Configuration.MULTIPLE_STRATEGIES:
+        if config.MULTIPLE_STRATEGIES:
             self.set_node_times(self.best_strategy.dict)
         self.nodes[0].start_time = self.global_timer
         self.nodes[0].finish_time = self.global_timer
@@ -510,7 +529,7 @@ class Workflow:
                 return
             CF_of_layer = self.criteria.cf_criteria(CF_node) # choosing the optimal option (by criterion) from the array
 
-            if Utils.Configuration.MULTIPLE_STRATEGIES:
+            if config.MULTIPLE_STRATEGIES:
                 indices = [i for i, x in enumerate(CF_node) if x == CF_of_layer]
             else:
                 indices = [CF_node.index(CF_of_layer)] # only one index
