@@ -52,11 +52,15 @@ class AllocationFTL:
         batch = []
         EFT = sys.maxsize
         for task in tasks:
+            if task.id == 40 or task.id == 24:
+                y = 0
             task.possible_start = max(task.start, time)
             task.earliest_finish = task.possible_start + task.calc_time
             EFT = task.earliest_finish if task.earliest_finish < EFT else EFT
 
         for task in tasks:
+            if task.id == 40:
+                y = 0
             if task.earliest_finish == EFT:
                 task.status = 'Leader'
                 task.batch = len(batches)
@@ -276,7 +280,7 @@ class AllocationFTL:
                         assignment_with_desired_cost = max(task.possible_assignments, key=lambda possible_assignment: possible_assignment.allocation_cost)
                 except:
                     print("Task(id={}, name={})".format(task.id, task.name))
-                    # return
+                    return
 
                 best_cost = assignment_with_desired_cost.allocation_cost
                 vm = assignment_with_desired_cost.assigned_vm
@@ -431,8 +435,8 @@ class AllocationFTL:
         # calc allocation costs for matches (munkres algorithm)
         if isinstance(self.criteria, CostCriteria):
             pairings = self.calcMinCostPairings(batch)
-            # if pairings is None:
-            #     return 0
+            if pairings is None:
+                return 0
         elif isinstance(self.criteria, TimeCriteria):
             pairings = self.calcMinTimePairings(batch)
         # pairing and logging
@@ -444,8 +448,8 @@ class AllocationFTL:
         n = len(batches)
         for i, batch in enumerate(batches):
             a = self.allocateBatch(batch)
-            # if a is 0:
-            #     return 0
+            if a is 0:
+                return 0
             print(f"Batch #{i} out of {n}")
             print(f"{len(batch)} in the batch #{i}")
 

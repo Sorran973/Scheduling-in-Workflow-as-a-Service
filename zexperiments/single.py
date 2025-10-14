@@ -26,22 +26,34 @@ if __name__ == '__main__':
 
     vm_types = CSVHandler.read_vms_table(VMS_TABLE_FILE_PATH)
 
+    task_volume_multiplier = 1
+
+    workflow_type = EnumWorkflow.LIGO50
+
+    if workflow_type in (EnumWorkflow.GENOME50, EnumWorkflow.GENOME100, EnumWorkflow.GENOME200,
+                         EnumWorkflow.GENOME300, EnumWorkflow.GENOME400, EnumWorkflow.GENOME500):
+        task_volume_multiplier = 0.1
+
+    workflow_type_str = workflow_type.value
+    xml_file = WORKFLOW_EXAMPLES_DIR + workflow_type_str
+
     workflow_set = WorkflowSet()
-    workflow = Workflow(XML_FILE=LIGO100,
+    workflow = Workflow(XML_FILE=xml_file,
                         T=T,
                         vm_types=vm_types,
-                        criteria=CostCriteria(min),
-                        task_volume_multiplier=1,
+                        criteria=CJM_CRITERIA,
+                        # criteria=TimeCriteria(min),
+                        task_volume_multiplier=task_volume_multiplier,
                         data_volume_multiplier=1,
                         start_time=0)
 
-    # workflow2 = Workflow(XML_FILE=LIGO50,
+    # workflow2 = Workflow(XML_FILE=xml_file,
     #                      T=T,
     #                      vm_types=vm_types,
-    #                      criteria=CostCriteria(min),
-    #                      task_volume_multiplier=1,
+    #                      criteria=CJM_CRITERIA,
+    #                      task_volume_multiplier=task_volume_multiplier,
     #                      data_volume_multiplier=1,
-    #                      start_time=596)
+    #                      start_time=86)
 
     start_time = datetime.now()
     workflow_set.addWorkflow(workflow)
@@ -57,14 +69,14 @@ if __name__ == '__main__':
 
 
     drawer: Drawer = PyvisDrawer()
-    # drawer.draw_graph(workflow_set.drawn_nodes, workflow_set.drawn_edges)
+    drawer.draw_graph(workflow_set.drawn_nodes, workflow_set.drawn_edges)
 
     allocations = []
     allocations.append(AllocationFTL(VMA_CRITERIA, vm_types, deepcopy(tasks)))
     # allocations.append(AllocationASAP(VMA_CRITERIA, vm_types, deepcopy(tasks)))
-    # allocations.append(AllocationASAP_O(VMA_CRITERIA, vm_types, deepcopy(tasks)))
-    # allocations.append(AllocationMixed(VMA_CRITERIA, vm_types, deepcopy(tasks)))
-    # allocations.append(NewVmForEachTask(VMA_CRITERIA, vm_types, deepcopy(tasks)))
+    allocations.append(AllocationASAP_O(VMA_CRITERIA, vm_types, deepcopy(tasks)))
+    allocations.append(AllocationMixed(VMA_CRITERIA, vm_types, deepcopy(tasks)))
+    allocations.append(NewVmForEachTask(VMA_CRITERIA, vm_types, deepcopy(tasks)))
 
     for allocation in allocations:
         time = 0
@@ -128,6 +140,9 @@ if __name__ == '__main__':
             log = pd.merge(log, color, on='workflow_id', how='left')
             log = log.sort_values(["vm_id", "vm_start"])
             drawer.draw_result_gantt(log, GANTT_FIGURES_ASAP)
+            log["vm_all_time"] = (log["vm_end"] - log["vm_start"])
+
+            task_allocation_end - task_allocation_start
         if isinstance(allocation, AllocationASAP_O):
             log = allocation.log
             color = log[["workflow_id"]]
@@ -136,6 +151,7 @@ if __name__ == '__main__':
             log = pd.merge(log, color, on='workflow_id', how='left')
             log = log.sort_values(["vm_id", "vm_start"])
             drawer.draw_result_gantt(log, GANTT_FIGURES_ASAP_O)
+
         if isinstance(allocation, AllocationMixed):
             log = allocation.log
             color = log[["workflow_id"]]

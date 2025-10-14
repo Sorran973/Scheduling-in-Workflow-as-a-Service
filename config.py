@@ -1,66 +1,27 @@
 from SchedulingModule.CJM.Model.Criteria import Criteria, AverageResourceLoadCriteria, TimeCriteria, CostCriteria
+from SchedulingModule.CJM.Model.EnumWorkflow import EnumWorkflow
 
 ########################################################################################################################
-TEST = '/Users/artembulkhak/PycharmProjects/Dissertation/JobExamples/test.xml'
-TEST_1_12 = '/Users/artembulkhak/PycharmProjects/Dissertation/JobExamples/test1_12.xml'
-TEST_1_13 = '/Users/artembulkhak/PycharmProjects/Dissertation/JobExamples/test1_13.xml'
-TEST_HEFT = '/Users/artembulkhak/PycharmProjects/Dissertation/JobExamples/testHEFT.xml'
+TEST = 'test.xml'
+TEST_1_12 = 'test1_12.xml'
+TEST_1_13 = 'test1_13.xml'
+TEST_HEFT = 'testHEFT.xml'
 
-MONTAGE50 = '/Users/artembulkhak/PycharmProjects/Dissertation/JobExamples/MONTAGE.n.50.0.dax'
-MONTAGE100 = '/Users/artembulkhak/PycharmProjects/Dissertation/JobExamples/MONTAGE.n.100.0.dax'
-MONTAGE200 = '/Users/artembulkhak/PycharmProjects/Dissertation/JobExamples/MONTAGE.n.200.0.dax'
-MONTAGE300 = '/Users/artembulkhak/PycharmProjects/Dissertation/JobExamples/MONTAGE.n.300.0.dax'
-MONTAGE400 = '/Users/artembulkhak/PycharmProjects/Dissertation/JobExamples/MONTAGE.n.400.0.dax'
-MONTAGE500 = '/Users/artembulkhak/PycharmProjects/Dissertation/JobExamples/MONTAGE.n.500.0.dax'
-MONTAGE1000 = '/Users/artembulkhak/PycharmProjects/Dissertation/JobExamples/MONTAGE.n.1000.1.dax'
-
-CYBERSHAKE50 = '/Users/artembulkhak/PycharmProjects/Dissertation/JobExamples/CYBERSHAKE.n.50.0.dax'
-CYBERSHAKE100 = '/Users/artembulkhak/PycharmProjects/Dissertation/JobExamples/CYBERSHAKE.n.100.0.dax'
-CYBERSHAKE200 = '/Users/artembulkhak/PycharmProjects/Dissertation/JobExamples/CYBERSHAKE.n.200.0.dax'
-CYBERSHAKE300 = '/Users/artembulkhak/PycharmProjects/Dissertation/JobExamples/CYBERSHAKE.n.300.0.dax'
-CYBERSHAKE400 = '/Users/artembulkhak/PycharmProjects/Dissertation/JobExamples/CYBERSHAKE.n.400.0.dax'
-CYBERSHAKE500 = '/Users/artembulkhak/PycharmProjects/Dissertation/JobExamples/CYBERSHAKE.n.500.0.dax'
-CYBERSHAKE1000 = '/Users/artembulkhak/PycharmProjects/Dissertation/JobExamples/CYBERSHAKE.n.1000.0.dax'
-
-GENOME50 = '/Users/artembulkhak/PycharmProjects/Dissertation/JobExamples/GENOME.n.50.0.dax'
-GENOME100 = '/Users/artembulkhak/PycharmProjects/Dissertation/JobExamples/GENOME.n.100.0.dax'
-GENOME200 = '/Users/artembulkhak/PycharmProjects/Dissertation/JobExamples/GENOME.n.200.0.dax'
-GENOME300 = '/Users/artembulkhak/PycharmProjects/Dissertation/JobExamples/GENOME.n.300.0.dax'
-GENOME400 = '/Users/artembulkhak/PycharmProjects/Dissertation/JobExamples/GENOME.n.400.0.dax'
-GENOME500 = '/Users/artembulkhak/PycharmProjects/Dissertation/JobExamples/GENOME.n.500.0.dax'
-GENOME1000 = '/Users/artembulkhak/PycharmProjects/Dissertation/JobExamples/GENOME.n.1000.0.dax'
-
-LIGO50 = '/Users/artembulkhak/PycharmProjects/Dissertation/JobExamples/LIGO.n.50.0.dax'
-LIGO100 = '/Users/artembulkhak/PycharmProjects/Dissertation/JobExamples/LIGO.n.100.0.dax'
-LIGO200 = '/Users/artembulkhak/PycharmProjects/Dissertation/JobExamples/LIGO.n.200.0.dax'
-LIGO300 = '/Users/artembulkhak/PycharmProjects/Dissertation/JobExamples/LIGO.n.300.0.dax'
-LIGO400 = '/Users/artembulkhak/PycharmProjects/Dissertation/JobExamples/LIGO.n.400.0.dax'
-LIGO500 = '/Users/artembulkhak/PycharmProjects/Dissertation/JobExamples/LIGO.n.500.0.dax'
-LIGO1000 = '/Users/artembulkhak/PycharmProjects/Dissertation/JobExamples/LIGO.n.1000.0.dax'
-
-SIPHT50 = '/Users/artembulkhak/PycharmProjects/Dissertation/JobExamples/SIPHT.n.50.0.dax'
-SIPHT100 = '/Users/artembulkhak/PycharmProjects/Dissertation/JobExamples/SIPHT.n.100.0.dax'
-SIPHT200 = '/Users/artembulkhak/PycharmProjects/Dissertation/JobExamples/SIPHT.n.200.0.dax'
-SIPHT300 = '/Users/artembulkhak/PycharmProjects/Dissertation/JobExamples/SIPHT.n.300.0.dax'
-SIPHT400 = '/Users/artembulkhak/PycharmProjects/Dissertation/JobExamples/SIPHT.n.400.0.dax'
-SIPHT500 = '/Users/artembulkhak/PycharmProjects/Dissertation/JobExamples/SIPHT.n.500.0.dax'
-SIPHT1000 = '/Users/artembulkhak/PycharmProjects/Dissertation/JobExamples/SIPHT.n.1000.0.dax'
 ########################################################################################################################
-WORKFLOW_SAMPLES = [LIGO50]
-# WORKFLOW_SAMPLES = [LIGO50, MONTAGE50, CYBERSHAKE50, GENOME50, SIPHT50,
-#                     LIGO100, MONTAGE100, CYBERSHAKE100, GENOME100, SIPHT100]
-                    # LIGO200, MONTAGE200, CYBERSHAKE200, GENOME200, SIPHT200,
-                    # LIGO300, MONTAGE300, CYBERSHAKE300, GENOME300, SIPHT300]
-                    # LIGO400, MONTAGE400, CYBERSHAKE400, GENOME400, SIPHT400,
-                    # LIGO500, MONTAGE500, CYBERSHAKE500, GENOME500, SIPHT500]
+WORKFLOW_SAMPLES = [EnumWorkflow.LIGO50, EnumWorkflow.MONTAGE50, EnumWorkflow.CYBERSHAKE50, EnumWorkflow.GENOME50, EnumWorkflow.SIPHT50,
+                    EnumWorkflow.LIGO100, EnumWorkflow.MONTAGE100, EnumWorkflow.CYBERSHAKE100, EnumWorkflow.GENOME100, EnumWorkflow.SIPHT100,
+                    EnumWorkflow.LIGO200, EnumWorkflow.MONTAGE200, EnumWorkflow.CYBERSHAKE200, EnumWorkflow.GENOME200, EnumWorkflow.SIPHT200,
+                    EnumWorkflow.LIGO300, EnumWorkflow.MONTAGE300, EnumWorkflow.CYBERSHAKE300, EnumWorkflow.GENOME300, EnumWorkflow.SIPHT300]
+                    # EnumWorkflow.LIGO400, EnumWorkflow.MONTAGE400, EnumWorkflow.CYBERSHAKE400, EnumWorkflow.GENOME400, EnumWorkflow.SIPHT400,
+                    # EnumWorkflow.LIGO500, EnumWorkflow.MONTAGE500, EnumWorkflow.CYBERSHAKE500, EnumWorkflow.GENOME500, EnumWorkflow.SIPHT500]
 
-# VMS_TABLE_FILE = "/vms_table_5_base.csv"
-VMS_TABLE_FILE = "/vms_table_5.csv"
-# VMS_TABLE_FILE = "/vms_table_n.csv"
+# VMS_TABLE_FILE = "/vms_table_for_x2.csv"
+VMS_TABLE_FILE = "/vms_table_for_1-2.csv"
+# VMS_TABLE_FILE = "/vms_table_test.csv"
 
-T = 917
+T = 1
 
-VM_PREP_TIME = 10
+VM_PREP_TIME = 2
 VM_SHUTDOWN_TIME = 1
 MULTIPLE_STRATEGIES = True
 
@@ -85,6 +46,8 @@ VMA_CRITERIA: Criteria = CostCriteria(ALLOCATION_OPTIMIZATION_CRITERIA)
 
 
 ########################################################################################################################
+WORKFLOW_EXAMPLES_DIR = "/Users/artembulkhak/PycharmProjects/Dissertation/JobExamples/"
+
 INPUT_DIR = "/Users/artembulkhak/PycharmProjects/Dissertation/Input"
 VMS_FOLDER = INPUT_DIR + "/VMsets"
 VMS_TABLE_FILE_PATH = VMS_FOLDER + VMS_TABLE_FILE

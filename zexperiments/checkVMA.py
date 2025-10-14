@@ -32,9 +32,22 @@ if __name__ == '__main__':
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
 
+    success_T_file = "/Users/artembulkhak/PycharmProjects/Dissertation/zexperiments/LIGO_success_for_base_VM_pool/LIGO_success_cases_for_prep2/LIGO200_success_T.csv"
+    arr_T = []
+    with open(success_T_file, newline='') as csvfile:
+        reader = csv.reader(csvfile, delimiter=',', quotechar='|')
+        headers = next(reader)
+        prev_T = -1
+        for row in reader:
+            t = int(row[0])
+            if (row[2] == "SUCCESS") and (t != prev_T):
+                arr_T.append(int(row[0]))
+                prev_T = int(row[0])
+
+    print(arr_T)
     task_volume_multiplier = 1
 
-    workflow_type = EnumWorkflow.LIGO200
+    workflow_type = EnumWorkflow.LIGO100
     if workflow_type in (EnumWorkflow.GENOME50, EnumWorkflow.GENOME100, EnumWorkflow.GENOME200,
                          EnumWorkflow.GENOME300, EnumWorkflow.GENOME400, EnumWorkflow.GENOME500):
         task_volume_multiplier = 0.1
@@ -42,7 +55,7 @@ if __name__ == '__main__':
     workflow_type_str = workflow_type.value
     xml_file = WORKFLOW_EXAMPLES_DIR + workflow_type_str
 
-    for t in range(704, 1396):
+    for t in range(656, 1300):
         workflow_set = WorkflowSet()
         start_time = datetime.now()
         Node.id = 0
@@ -57,37 +70,28 @@ if __name__ == '__main__':
 
         workflow_set.addWorkflow(workflow)
         end_time = datetime.now()
-        if len(workflow_set.success_scheduled_workflow) > 0:
 
-            print('Duration of scheduling (CJM): {}'.format(end_time - start_time))
-            print(len(workflow_set.success_scheduled_workflow))
-            print()
-            cjm_status = 'SUCCESS'
-
-            for i in workflow_set.success_scheduled_workflow:
-                print(i)
-
-            tasks = CSVHandler.read_task_time_table(TASK_TIME_TABLE_FILE)
-            workload_start_time = tasks[0].start
-            workload_end_time = max(tasks, key=lambda task: task.end).end
-            print(f"\n\tWorkload Limit Time: {workload_end_time - workload_start_time}")
-            data_transfer = CSVHandler.read_data_transfer_table(TRANSFER_SIZE_TABLE_FILE, tasks)
+        tasks = CSVHandler.read_task_time_table(TASK_TIME_TABLE_FILE)
+        workload_start_time = tasks[0].start
+        workload_end_time = max(tasks, key=lambda task: task.end).end
+        print(f"\n\tWorkload Limit Time: {workload_end_time - workload_start_time}")
+        data_transfer = CSVHandler.read_data_transfer_table(TRANSFER_SIZE_TABLE_FILE, tasks)
 
 
-            drawer: Drawer = PyvisDrawer()
+        drawer: Drawer = PyvisDrawer()
         # drawer.draw_graph(workflow_set.drawn_nodes, workflow_set.drawn_edges)
 
-            allocations = []
-            allocations.append(AllocationFTL(VMA_CRITERIA, vm_types, deepcopy(tasks)))
+        allocations = []
+        allocations.append(AllocationFTL(VMA_CRITERIA, vm_types, deepcopy(tasks)))
         # allocations.append(AllocationASAP(VMA_CRITERIA, vm_types, deepcopy(tasks)))
-        #     allocations.append(AllocationASAP_O(VMA_CRITERIA, vm_types, deepcopy(tasks)))
+        allocations.append(AllocationASAP_O(VMA_CRITERIA, vm_types, deepcopy(tasks)))
         # allocations.append(AllocationMixed(VMA_CRITERIA, vm_types, deepcopy(tasks)))
-        # allocations.append(NewVmForEachTask(VMA_CRITERIA, vm_types, deepcopy(tasks)))
+        allocations.append(NewVmForEachTask(VMA_CRITERIA, vm_types, deepcopy(tasks)))
 
-            for allocation in allocations:
-                time = 0
-                batches = allocation.formParallelBatches(time)
-                allocation.batches_size = len(batches)
+        for allocation in allocations:
+            time = 0
+            batches = allocation.formParallelBatches(time)
+            allocation.batches_size = len(batches)
 
         # N_pc = 0
         # for b in range(0, len(batches)-1):
@@ -112,23 +116,22 @@ if __name__ == '__main__':
     #     if isinstance(allocation, NewVmForEachTask):
     #         drawer.draw_batches_gantt(allocation.tasks, GANTT_FIGURES_BATCHES_NEW_VM_FOR_EACH)
     #
-                a = allocation.vma(batches)
-                if a == 0:
-                    vma_status = 'UNSUCCESS'
-                    print("VMA UNSUCCESS")
-                else:
-                    vma_status = 'SUCCESS'
-                    print("VMA SUCCESS")
+            a = allocation.vma(batches)
 
-                with open(LOG_FILE, 'a') as f:
-                    fieldnames = ['workflow_T', 'cjm_status', 'vma_status']
+        for allocation in allocations:
+            Analyzer.analyze_allocation(allocation, t)
 
-                    writer = csv.DictWriter(f, fieldnames=fieldnames)
+        percents = Analyzer.print_comparison_table(allocations)
 
-                    row = {fieldnames[0]: t,
-                           fieldnames[1]: cjm_status,
-                           fieldnames[2]: vma_status}
-                    writer.writerow(row)
+        with open(LOG_FILE, 'a') as f:
+            fieldnames = ['workflow_T', 'ftl', 'asap']
+
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+
+            row = {fieldnames[0]: t,
+                   fieldnames[1]: percents[0],
+                   fieldnames[2]: percents[1]}
+            writer.writerow(row)
 
     #
     #

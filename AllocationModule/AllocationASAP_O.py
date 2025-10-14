@@ -66,11 +66,7 @@ class AllocationASAP_O:
 
         for task in tasks:
             if task.id == 53:
-                r = 0
-            if list(filter(lambda transfer: transfer.task_from.status is None, task.input_transfers)):
-                y=0
-            if task.possible_start >= EFT:
-                t=0
+                y = 0
             if (list(filter(lambda transfer: transfer.task_from.status is None, task.input_transfers))
                     or task.possible_start >= EFT):
             # if list(filter(lambda transfer: transfer.task_from.status is None, task.input_transfers)):
@@ -337,6 +333,7 @@ class AllocationASAP_O:
                         assignment_with_desired_cost = max(task.possible_assignments, key=lambda possible_assignment: possible_assignment.allocation_cost)
                 except:
                     print("Task(id={}, name={})".format(task.id, task.name))
+                    return
 
                 best_cost = assignment_with_desired_cost.allocation_cost
                 vm = assignment_with_desired_cost.assigned_vm
@@ -484,6 +481,8 @@ class AllocationASAP_O:
         # calc allocation costs for matches (munkres algorithm)
         if isinstance(self.criteria, CostCriteria):
             pairings = self.calcMinCostPairings(batch)
+            if pairings is None:
+                return 0
         elif isinstance(self.criteria, TimeCriteria):
             pairings = self.calcMinTimePairings(batch)
         # pairing and logging
@@ -492,7 +491,9 @@ class AllocationASAP_O:
     def vma(self, batches):
         n = len(batches)
         for i, batch in enumerate(batches):
-            self.allocateBatch(batch)
+            a = self.allocateBatch(batch)
+            if a is 0:
+                return 0
             print(f"Batch #{i} out of {n}")
             print(f"{len(batch)} in the batch #{i}")
 

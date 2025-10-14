@@ -13,6 +13,25 @@ class Analyzer:
         log = allocation.log
         log["vm_all_time"] = (log["vm_end"] - log["vm_start"])
         log["vm_processing_time"] = (log["task_allocation_end"] - log["task_allocation_start"])
+        # log2 = log[(log['vm_processing_time'] != 0)]
+        log2 = log[~log['task_name'].str.contains('off')]
+        median = log2['vm_processing_time'].median()
+        mean = log2['vm_processing_time'].mean()
+        print(allocation.__class__)
+        print("Median = " + str(median))
+        print("Mean = " + str(mean))
+        # x2
+        # Montage mean = 7 (7), median = 8 (8)
+        # CyberShake mean = 19 (20), median = 16 (16)
+        # LIGO mean = 22 (48), median = 17 (19)
+        # SIPHT mean = 14 (32), median = 1 (1)
+        # GENOME mean = 9 (19), median = 1 (1)
+        # 1-2
+        # Montage mean = 7 (11), median = 8 (11)
+        # CyberShake mean = 20 (23), median = 9 (12)
+        # LIGO mean = 148 (228), median = 19 (19)
+        # SIPHT mean = 102 (173), median = 2 (2)
+        # GENOME mean = 90 (117), median = 2 (2)
         log["vm_setting_time"] = (log["vm_all_time"] - log["vm_processing_time"] - log["vm_input_time"] - log["vm_output_time"])
         log["vm_all_time"] = (log["vm_all_time"] + log["idle_time"])
 
@@ -96,6 +115,8 @@ class Analyzer:
         total_idle_time = 0
 
         for i, workflow_log in enumerate(workflow_log_list):
+            a = workflow_log.task_allocation_end.max()
+            b = workflow_log.task_allocation_start.min()
             workflow_time_without_first_and_last_vm = workflow_log.task_allocation_end.max() - workflow_log.task_allocation_start.min()
             if workflow_time_without_first_and_last_vm <= cjm_workflow_list[i]:
                 num_workflow_deadline_met += 1
@@ -132,13 +153,13 @@ class Analyzer:
         allocation.total_vm_setting_time = log.vm_setting_time.sum()
 
         print("Total Workload Statistics:")
-        print(f"\tTotal number of workflows: {allocation.__class__}")
+        print(f"\tAllocation algorithm: {allocation.__class__}")
         print(f"\tTotal number of workflows: {allocation.num_workflows}")
         print(f"\tTotal number of deadlines met: {allocation.num_workflow_deadline_met}")
         print(f"\tPercentage of deadlines met: {allocation.percentage_workflow_deadline_met}")
         print(f"\tTotal cost: {allocation.total_cost}")
-        print(f"\tWorkload Time: {allocation.workload_time}")
-        # print(f"\tWorkload Time (without the first VM preparation time and the last VM shutdown time): {allocation.workload_time_without_first_and_last_vm}")
+        # print(f"\tWorkload Time: {allocation.workload_time}")
+        print(f"\tWorkload Time: {allocation.workload_time_without_first_and_last_vm}") # (without the first VM preparation time and the last VM shutdown time)
         # print(f"\tThe sum of all workflows time total: {allocation.sum_of_workflows_time_total}")
         # print(f"\tThe sum of all workflows time (without the first VM preparation time and the last VM shutdown time): {allocation.sum_of_workflows_time_without_first_and_last_vm}")
         print(f"\tThe sum of only vms time: {allocation.only_vm_time_total}")
@@ -233,11 +254,11 @@ class Analyzer:
         print(f"\tTotal number of leased VM of ASAP_MIXED: {allocation_ASAP_MIXED.total_num_leased_vm}")
         print(f"\tTotal number of leased VM of New_VM: {allocation_NewVM.total_num_leased_vm}")
         print()
-        print(f"\tWorkload Time of FTL: {allocation_FTL.workload_time}")
-        # print(f"\tWorkload Time of ASAP: {allocation_ASAP.workload_time}")
-        print(f"\tWorkload Time of ASAP_0: {allocation_ASAP_O.workload_time}")
-        print(f"\tWorkload Time of ASAP_MIXED: {allocation_ASAP_MIXED.workload_time}")
-        print(f"\tWorkload Time of New_VM: {allocation_NewVM.workload_time}")
+        print(f"\tWorkload Time of FTL: {allocation_FTL.workload_time_without_first_and_last_vm}")
+        # print(f"\tWorkload Time of ASAP: {allocation_ASAP.workload_time_without_first_and_last_vm}")
+        print(f"\tWorkload Time of ASAP_0: {allocation_ASAP_O.workload_time_without_first_and_last_vm}")
+        print(f"\tWorkload Time of ASAP_MIXED: {allocation_ASAP_MIXED.workload_time_without_first_and_last_vm}")
+        print(f"\tWorkload Time of New_VM: {allocation_NewVM.workload_time_without_first_and_last_vm}")
         print()
         print(f"\tFTL %: {FTL_percent}")
         # print(f"\tASAP %: {ASAP_percent}")
@@ -245,5 +266,7 @@ class Analyzer:
         print(f"\tASAP_MIXED %: {ASAP_MIXED_percent}")
         print(f"\tNew_VM %: -")
         print()
+
+        return [FTL_percent, ASAP_O_percent]
 
 

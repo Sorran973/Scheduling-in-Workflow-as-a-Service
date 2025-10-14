@@ -87,8 +87,9 @@ class NewVmForEachTask:
             EFT = task.earliest_finish if task.earliest_finish < EFT else EFT
 
         for task in tasks:
-            if (list(filter(lambda transfer: transfer.task_from.status is None, task.input_transfers))
-                    or task.possible_start >= EFT):
+            # if (list(filter(lambda transfer: transfer.task_from.status is None, task.input_transfers))
+            #         or task.possible_start >= EFT):
+            if list(filter(lambda transfer: transfer.task_from.status is None, task.input_transfers)):
                 continue
             else:
                 task.batch = len(batches)

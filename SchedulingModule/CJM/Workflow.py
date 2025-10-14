@@ -23,6 +23,8 @@ def round_up(n, decimals=0):
 
 
 def dfs(node):
+    if node.id == 40 or node.id == 41:
+        y = 0
     node.visited = True
     node_edges = node.edges_to
 
@@ -303,11 +305,11 @@ class Workflow:
 
 
                 if self.multiple_strategies:
-                    if len(self.multiple_strategies) > 100:
-                        print("CJM UNSUCCESS")
-                        return
+                    # if len(self.multiple_strategies) > 100:
+                    #     print("CJM UNSUCCESS")
+                    #     return
                     self.strategies = self.multiple_strategies
-                    # print("multiple_strategies" + ": " + str(len(self.multiple_strategies)))
+                    print("multiple_strategies" + ": " + str(len(self.multiple_strategies)))
                     self.multiple_strategies = []
 
         res = []
