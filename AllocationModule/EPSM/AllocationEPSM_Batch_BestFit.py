@@ -140,7 +140,7 @@ class AllocationEPSM_Batch_BestFit:
     ########## CALCULATING ALLOCATION COST ##########
     def calcVmAllocationCost(self, task, vm):
         # if task.id == 0 or task.id == 45 or task.id == 48:
-        if task.id == 2:
+        if task.id == 1:
             y = 0
         # init
         # current_time = -100
@@ -212,7 +212,7 @@ class AllocationEPSM_Batch_BestFit:
                         data_transfer_time_max = transfer_time
 
                     if task_from.name == "entry":
-                        task_from_allocation_time_end = task.start
+                        task_from_allocation_time_end = task_from.end
                     else:
                         task_from_allocation_time_end = task_from.allocation_end
 

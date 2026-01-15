@@ -130,7 +130,6 @@ class Workflow:
             for use in uses:
                 # TODO:
                 if use.get('register') != 'true':
-                # if use.get('link') != 'input':
                     xml_size = float(use.get('size'))
                     size = round_up(float(use.get('size')) * self.data_volume_multiplier / 1000000)
                     if size < self.vm_types[0].perf:
@@ -138,6 +137,13 @@ class Workflow:
                     else:
                         size = round_up(float(use.get('size')) * self.data_volume_multiplier / 1000000)
                         # size = math.ceil(float(use.get('size')) * self.data_volume_multiplier / 1000000)
+                    current_node.add_file(File(use.get('file'),
+                                               use.get('link'),
+                                               size,
+                                               use.get('register')))
+                else:
+                    xml_size = float(use.get('size'))
+                    size = round_up(float(use.get('size')) * self.data_volume_multiplier / 1000000)
                     current_node.add_file(File(use.get('file'),
                                                use.get('link'),
                                                size,

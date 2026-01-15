@@ -36,14 +36,14 @@ if __name__ == '__main__':
     task_volume_multiplier = 1
     # transfer_volume_ = 1
 
-    workflow_type = EnumWorkflow.SIPHT50
+    workflow_type = EnumWorkflow.CYBERSHAKE50
 
     if workflow_type in (EnumWorkflow.GENOME50, EnumWorkflow.GENOME100, EnumWorkflow.GENOME200,
                          EnumWorkflow.GENOME300, EnumWorkflow.GENOME400, EnumWorkflow.GENOME500):
         task_volume_multiplier = 0.1
 
-    workflow_type_str = workflow_type.value
-    # workflow_type_str = "MyTestDAXes/test.xml"
+    # workflow_type_str = workflow_type.value
+    workflow_type_str = "MyTestDAXes/test.xml"
     xml_file = WORKFLOW_EXAMPLES_DIR + workflow_type_str
 
     workflow_set = WorkflowSet()
@@ -80,10 +80,10 @@ if __name__ == '__main__':
     drawer.draw_graph(workflow_set.drawn_nodes, workflow_set.drawn_edges)
 
     allocations = []
-    allocations.append(AllocationBestFit(VMA_CRITERIA, vm_types, deepcopy(tasks)))
-    allocations.append(AllocationBestFitASAP(VMA_CRITERIA, vm_types, deepcopy(tasks)))
-    allocations.append(AllocationBestFitFTLEPSM(VMA_CRITERIA, vm_types, deepcopy(tasks)))
-    allocations.append(AllocationBestFitASAPEPSM(VMA_CRITERIA, vm_types, deepcopy(tasks)))
+    # allocations.append(AllocationBestFit(VMA_CRITERIA, vm_types, deepcopy(tasks)))
+    # allocations.append(AllocationBestFitASAP(VMA_CRITERIA, vm_types, deepcopy(tasks)))
+    # allocations.append(AllocationBestFitFTLEPSM(VMA_CRITERIA, vm_types, deepcopy(tasks)))
+    # allocations.append(AllocationBestFitASAPEPSM(VMA_CRITERIA, vm_types, deepcopy(tasks)))
 
     allocations.append(AllocationFTL(VMA_CRITERIA, vm_types, deepcopy(tasks)))
     allocations.append(AllocationASAP_O(VMA_CRITERIA, vm_types, deepcopy(tasks)))

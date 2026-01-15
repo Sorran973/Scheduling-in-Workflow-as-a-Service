@@ -25,7 +25,7 @@ VMS_TABLE_FILE = "/vms_table_for_x2_new_prices.csv"
 # VMS_TABLE_FILE = "/vms_table_for_1-2.csv"
 # VMS_TABLE_FILE = "/vms_table_test.csv"
 
-T = 2
+T = 1
 
 VM_PREP_TIME = 10
 VM_SHUTDOWN_TIME = 1

@@ -48,7 +48,7 @@ if __name__ == '__main__':
 
     task_volume_multiplier = 1
 
-    workflow_type = EnumWorkflow.SIPHT50
+    workflow_type = EnumWorkflow.CYBERSHAKE50
 
     if workflow_type in (EnumWorkflow.GENOME50, EnumWorkflow.GENOME100, EnumWorkflow.GENOME200,
                          EnumWorkflow.GENOME300, EnumWorkflow.GENOME400, EnumWorkflow.GENOME500):

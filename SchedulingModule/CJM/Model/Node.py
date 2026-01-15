@@ -24,14 +24,36 @@ class Node:
         self.input = []
         self.input_size = 0
         self.input_time = 0
+        self.input_register = []
+        self.input_register_size = 0
+        self.input_register_time = 0
         self.output = []
         self.output_size = 0
         self.output_time = 0
+        self.output_register = []
+        self.output_register_size = 0
+        self.output_register_time = 0
         self.weight = None
         self.extra_time = None
         self.budget = None
         Node.id += 1
 
+
+    def add_file_register(self, file):
+        if file.link == 'input':
+            if file.register == 'true':
+                self.input_register.append(file)
+                self.input_register_size += file.size
+            else:
+                self.input.append(file)
+                self.input_size += file.size
+        else:
+            if file.register == 'true':
+                self.output_register.append(file)
+                self.output_register_size += file.size
+            else:
+                self.output.append(file)
+                self.output_size += file.size
 
     def add_file(self, file):
         if file.link == 'input':
@@ -51,6 +73,9 @@ class Node:
     def calculate_transfer_time(self, data_transfer_channel):
         self.input_time = math.ceil(self.input_size / data_transfer_channel)
         self.output_time = math.ceil(self.output_size / data_transfer_channel)
+
+        self.input_register_time = math.ceil(self.input_register_size / data_transfer_channel)
+        self.output_register_time = math.ceil(self.output_register_size / data_transfer_channel)
 
 
     def __str__(self):

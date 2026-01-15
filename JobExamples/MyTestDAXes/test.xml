@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <adag name="leadmm" jobCount="11" fileCount="0" childCount="5">
 	<job id="1" namespace="leadmm" name="TerrainPreProcessor" runtime="20" cores="1">
+		<uses file="sipht_input.txt" link="input" register="true" size="278680"/>
 		<uses file="p1.txt" link="output" size="140672"/>
 	</job>
 	<job id="2" namespace="leadmm" name="LateralBoundaryInterpolator" runtime="30" cores="1">
-		<uses file="p_input.txt" link="input" size="140672"/>
 		<uses file="p1.txt" link="input" size="140672"/>
 		<uses file="p2.txt" link="output" size="140672"/>
 	</job>
@@ -20,8 +20,12 @@
 		<uses file="p5.txt" link="output" size="140672"/>
 	</job>
 	<job id="6" namespace="leadmm" name="WRF" runtime="20" cores="1">
+		<uses file="sipht_input.txt" link="input" register="true" size="2786800000"/>
+		<uses file="genome_input.txt" link="input" register="true" size="1789084580"/>
 		<uses file="p4.txt" link="input" size="140672"/>
 		<uses file="p5.txt" link="input" size="140672"/>
+		<uses file="sipht_output.txt" link="output" register="true" size="610000000"/>
+		<uses file="genome_output.txt" link="output" register="true" size="342638650"/>
 	</job>
 	<child ref="2">
 		<parent ref="1"/>

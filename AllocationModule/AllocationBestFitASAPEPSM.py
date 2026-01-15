@@ -253,7 +253,7 @@ class AllocationBestFitASAPEPSM:
                         data_transfer_time_max = transfer_time
 
                     if task_from.name == "entry":
-                        task_from_allocation_time_end = task.start
+                        task_from_allocation_time_end = task_from.end
                     else:
                         task_from_allocation_time_end = task_from.allocation_end
 
