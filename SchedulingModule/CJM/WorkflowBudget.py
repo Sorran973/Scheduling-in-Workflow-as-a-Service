@@ -1,5 +1,6 @@
 import csv
 import random
+from collections import deque
 
 from networkx.algorithms.shortest_paths.generic import shortest_path
 
@@ -9,6 +10,7 @@ from SchedulingModule.CJM.Model.File import File
 from SchedulingModule.CJM.Model.LayerOption import LayerOption
 from SchedulingModule.CJM.Model.Node import Node
 from SchedulingModule.CJM.Model.Layer import Layer
+from SchedulingModule.CJM.Model.StrategyBudget import StrategyBudget
 from config import DATA_TRANSFER_CHANNEL_SPEED
 from Utils.XMLParser import XMLParser
 from SchedulingModule.CJM.Model.Strategy import Strategy
@@ -23,8 +25,8 @@ def round_up(n, decimals=0):
     return math.ceil(n * multiplier) / multiplier
 
 
-def dfs(node):
-    if node.id == 40 or node.id == 41:
+def dfs(node, best_vm_type):
+    if node.id == 40:
         y = 0
     node.visited = True
     node_edges = node.edges_to
@@ -32,10 +34,21 @@ def dfs(node):
     for node_edge in node_edges:
         node_child = node_edge.node_to
         if not node_child.visited:
-            dfs(node_child)
+            dfs(node_child, best_vm_type)
 
         for critical_path in node_child.critical_paths:
-            node.critical_paths.append((round(node.runtime + node_edge.transfer_time + critical_path[0], 2),
+            # node.critical_paths.append((round(node.runtime + node_edge.transfer_time + critical_path[0], 2),
+            #                             [node, node_edge] + critical_path[1]))
+
+            a = node.runtime
+            b = round_up(node_edge.transfer_size / best_vm_type.perf)
+            c = critical_path[0]
+            d = round(node.runtime +
+                      round_up(node_edge.transfer_size / best_vm_type.perf) +
+                      critical_path[0], 2)
+            node.critical_paths.append((round(node.runtime +
+                                              round_up(node_edge.transfer_size / best_vm_type.perf) +
+                                              critical_path[0], 2),
                                         [node, node_edge] + critical_path[1]))
 
 
@@ -58,9 +71,9 @@ def common_member(list_a, list_b, first_id):
 
 
 
-class Workflow:
+class WorkflowBudget:
 
-    def __init__(self, XML_FILE, T, vm_types, criteria,
+    def __init__(self, XML_FILE, B, vm_types, criteria,
                  task_volume_multiplier, data_volume_multiplier, start_time=0):
         self.nodes = []
         self.first_id: int
@@ -81,10 +94,11 @@ class Workflow:
         self.data_volume_multiplier = data_volume_multiplier
         self.criteria = criteria
         self.T = None
-        self.t = T
+        self.t = B
         self.global_timer = start_time
         self.xml_file = XML_FILE
         self.preliminary_total_cost = 0
+        self.Z1 = None
 
         # Steps
         soup_nodes, soup_edges = XMLParser.parse(XML_FILE)
@@ -93,12 +107,12 @@ class Workflow:
         self.find_all_critical_paths()
         self.check_duplicate_critical_paths()
         self.find_the_longest_path()
+        self.calc_budget()
 
-        print("shortest_path = " + str(self.critical_paths[0][0]))
-        print("longest_path = " + str(self.longest_path))
 
         if self.t == 1:
-            self.T = self.critical_paths[0][0]
+            # self.T = self.critical_paths[0][0]
+            self.T = B
         elif self.t == 2:
             self.T = self.longest_path
         elif self.t == 3:
@@ -109,6 +123,29 @@ class Workflow:
             self.T = self.t
 
         self.criteria.set_parameters(len(self.vms_table), self.T)
+
+    def calc_budget(self):
+        budget = 0
+        for node in self.nodes:
+            budget += node.runtime * self.vm_types[0].cost
+
+        for edge in self.edges:
+            budget += round_up(edge.transfer_size / self.vm_types[0].perf) * self.vm_types[0].cost
+
+        print("shortest_path = " + str(self.critical_paths[0][0]))
+        print("shortest_path_budget = " + str(budget))
+        print()
+
+        budget = 0
+        for node in self.nodes:
+            budget += round_up(node.volume / self.vm_types[-1].perf) * self.vm_types[-1].cost
+
+        for edge in self.edges:
+            budget += round_up(edge.transfer_size / self.vm_types[-1].perf) * self.vm_types[-1].cost
+        print("longest_path = " + str(self.longest_path))
+        print("longest_path_budget = " + str(budget))
+
+
 
     def create_graph(self, soup_nodes, soup_edges):
         # Add entry_node into graph
@@ -124,7 +161,7 @@ class Workflow:
             current_node = Node(name, volume, round_up(volume / self.vm_types[0].perf))
             self.add_node(current_node)
 
-            if current_node.id == 17:
+            if current_node.id == 94:
                 y = 0
             uses = node.find_all('uses')
             for use in uses:
@@ -186,7 +223,7 @@ class Workflow:
     def find_all_critical_paths(self):
         for node in self.nodes:
             if not node.visited:
-                dfs(node)
+                dfs(node, self.vm_types[0])
 
         # sorting of all critical paths based on process time (length) in descending order
         self.nodes[0].critical_paths.sort(key=sort_for_critical_paths, reverse=True)
@@ -237,7 +274,7 @@ class Workflow:
             if isinstance(elem, Node):
                 longest_path += round_up(elem.volume / self.vm_types[-1].perf)
             else:
-                longest_path += elem.transfer_time
+                longest_path += elem.transfer_size / self.vm_types[-1].perf
 
         self.longest_path = longest_path
 
@@ -266,6 +303,11 @@ class Workflow:
     def schedule(self):
         multiple_strategies_flag = False
 
+        self.Z1 = self.T  # Z1 = reserve budget
+        for edge in self.edges:
+            transfer_cost = round_up(edge.transfer_size / self.vm_types[0].perf * self.vm_types[0].cost)
+            self.Z1 -= transfer_cost
+
         for critical_path in self.critical_paths:
             self.multiple_strategies = []
             layer = Layer()
@@ -273,22 +315,20 @@ class Workflow:
             del c_p[-1]  # delete finish node and edge
             del c_p[0]  # delete entry node and edge
 
-            Z1 = self.T # Z1 = reserve time
             for i in range(len(c_p) - 1, -1, -2):  # delete edges(transfer time)
-                Z1 -= c_p[i].transfer_time
                 del c_p[i]
+            Z1 = self.Z1
 
             if not self.strategies:
                 layer = self.next_layer_calc(Z1, c_p, 0)  # direct pass
                 if config.MULTIPLE_STRATEGIES:
                     self.strategies = self.create_strategies_recursion(layer, c_p)
-                    # for strategy in self.strategies:
-                    #     # self.set_strategy_times_recursion(c_p, c_p, layer, strategy)
-                    #     self.set_node_times_for_strategy(c_p, strategy)
                 else:
-                    strategy = Strategy(len(self.nodes), self.T)
+                    strategy = StrategyBudget(len(self.nodes), self.T)
                     self.strategies.append(strategy)
                     self.set_strategy_times(c_p, c_p, layer)  # reverse pass
+
+                self.Z1 = Z1
             else:
                 # for strategy in self.strategies:
                 #     a = strategy.time[1]
@@ -452,8 +492,7 @@ class Workflow:
         index = c_p.index(node)
         strategy = self.strategies[0]
         if index == 0:
-            node.start_time = float(self.global_timer + node.input_time)
-            node.finish_time = round(node.start_time + round_up(layer.layer_options[0].t_current_node), 2)
+            node.budget = layer.layer_options[0].t_current_node
 
             strategy.change(node.id - self.first_id,
                                 layer.layer_options[0].t_current_node,
@@ -475,8 +514,7 @@ class Workflow:
 
     def set_next_node_strategy_times(self, previous_node, current_node, layer):
         strategy = self.strategies[0]
-        current_node.start_time = previous_node.finish_time + previous_node.output_time
-        current_node.finish_time = round(current_node.start_time + round_up(layer.layer_options[0].t_current_node), 2)
+        current_node.budget = layer.layer_options[0].t_current_node
 
         strategy.change(current_node.id - self.first_id,
                         layer.layer_options[0].t_current_node,
@@ -489,9 +527,9 @@ class Workflow:
     def create_strategies_recursion(self, layer, c_p, strategy=None, previous_node=None):
         if layer.previous_layers is None:
             if strategy is None:
-                new_strategy = Strategy(len(self.nodes), self.T)
+                new_strategy = StrategyBudget(len(self.nodes), self.T)
             else:
-                new_strategy = Strategy(len(self.nodes), self.T, strategy)
+                new_strategy = StrategyBudget(len(self.nodes), self.T, strategy)
 
             current_node = layer.node
             current_node_index = c_p.index(current_node)
@@ -508,20 +546,24 @@ class Workflow:
 
             if current_node.id == 2:
                 y = 0
-            possible_time_for_perform = new_strategy.change(current_node.id - self.first_id,
+            possible_budget_for_perform = new_strategy.change(current_node.id - self.first_id,
                             layer.layer_options[0].t_current_node,
                             layer.layer_options[0].C_current_node) # (perform time) + (time left from reserve)
 
             dest_times = []
-            transfer_times = []
-            #TODO: ? make up with something to handle input_time
+            transfer_cost = []
             for edge in current_node.edges_from:
                 if edge.node_from.id == previous_node.id:
-                    transfer_times.append(edge.transfer_time)
-            input_time = max(transfer_times)
+                    transfer_cost.append(round_up(edge.transfer_size / self.vm_types[0].perf) * self.vm_types[0].cost)
+            input_sum_cost = sum(transfer_cost)
+
+            transfer_cost = []
+            for edge in current_node.edges_to:
+                if edge.node_from.id == next_node.id:
+                    transfer_cost.append(round_up(edge.transfer_size / self.vm_types[0].perf) * self.vm_types[0].cost)
+            input_sum_cost = sum(transfer_cost)
 
             for edge in current_node.edges_to:
-                # if edge.node_to.id in new_strategy.dict:
                 if edge.node_to.id == next_node.id:
                     if next_node.id == self.nodes[-1].id:
                         dest_start_time = new_strategy.dict[edge.node_to.id - self.first_id][0] - current_node.output_time
@@ -530,8 +572,8 @@ class Workflow:
                     dest_times.append(dest_start_time)
             dest_start_time = max(dest_times)
 
-            # start_time = round(dest_start_time - current_node.output_time - possible_time_for_perform - input_time, 2)
-            start_time = round(dest_start_time - possible_time_for_perform - input_time, 2)
+            # start_time = round(dest_start_time - current_node.output_time - possible_budget_for_perform - input_time, 2)
+            start_time = round(dest_start_time - possible_budget_for_perform - input_sum_cost, 2)
             # finish_time = dest_start_time - current_node.output_time
             finish_time = dest_start_time
             new_strategy.dict[layer.node.id - self.first_id] = [start_time, finish_time]
@@ -556,20 +598,20 @@ class Workflow:
                         else:
                             previous_node = c_p[current_node_index - 1]
 
-                    transfer_times = []
+                    transfer_cost = []
                     for edge in current_node.edges_from:
                         if previous_node is None:
                             if edge.node_from.id == self.nodes[0].id:
-                                transfer_times.append(edge.transfer_time)
+                                transfer_cost.append(edge.transfer_time)
                         else:
                             if edge.node_from.id == previous_node.id:
-                                transfer_times.append(edge.transfer_time)
-                    if transfer_times is None:
+                                transfer_cost.append(edge.transfer_time)
+                    if transfer_cost is None:
                         print()
-                    input_time = max(transfer_times)
+                    input_sum_cost = max(transfer_cost)
 
                     dest_time = new_strategy.dict[l.node.id - self.first_id][0]
-                    start_time = round(dest_time - perform_time - input_time, 2)
+                    start_time = round(dest_time - perform_time - input_sum_cost, 2)
                     # start_time = round(dest_time - current_node.output_time - perform_time - input_time, 2)
                     finish_time = new_strategy.dict[l.node.id - self.first_id][0]
                     # finish_time = new_strategy.dict[l.node.id][0] - current_node.output_time
@@ -580,28 +622,30 @@ class Workflow:
             return new_strategies
 
 
-    def next_layer_calc(self, reserve, c_p, node_index):
+    def next_layer_calc(self, reserve, c_p, node_index, vm_type_index=0):
 
         if node_index == len(c_p) - 1:  # if the layer is the last one
-            t_node = reserve
-            index = self.find_index(t_node, c_p[node_index].id - self.first_id - 1)
-            C_node = self.calc_c_node(index, c_p, node_index)
+            # t_node = reserve
+            t_node = self.vms_table[vm_type_index][c_p[node_index].id - self.first_id - 1] * self.vm_types[vm_type_index].cost
+            C_node = self.calc_c_node(vm_type_index, c_p, node_index)
             CF_node = C_node
 
             return Layer(c_p[node_index], CF_node, [LayerOption(t_node, None, None, C_node, CF_node)], None)
 
         else:
             Z_next_node = []
+            # [56.8, 57.6, 57.75, 58.0, 58.2]
             Z_min = 0
             for i in range(len(self.vms_table)):
                 vm_type_id = i
                 task_id = c_p[node_index].id - self.first_id - 1 # +1
                 task_time = self.vms_table[i][c_p[node_index].id - self.first_id - 1]
-                z = reserve - self.vms_table[i][c_p[node_index].id - self.first_id - 1]
+                task_cost = task_time * self.vm_types[i].cost
+                z = round_up(reserve - task_cost)
                 Z_min = 0
                 # rest reserve on the fastest vms
                 for j in range(node_index + 1, len(c_p)):
-                    Z_min += self.vms_table[0][c_p[j].id - self.first_id - 1]
+                    Z_min += self.vms_table[0][c_p[j].id - self.first_id - 1] * self.vm_types[i].cost
                 if z >= Z_min:
                     Z_next_node.append(z)
                 else:
@@ -610,17 +654,17 @@ class Workflow:
             if not Z_next_node:
                 return
 
-            t_node = [self.vms_table[i][c_p[node_index].id - self.first_id - 1] for i in range(0, len(Z_next_node))]
+            t_node = [self.vms_table[i][c_p[node_index].id - self.first_id - 1] * self.vm_types[i].cost for i in range(0, len(Z_next_node))]
 
             # add Z_next_node on the fastest vms
-            if Z_next_node[-1] > Z_min:
-                Z_next_node.append(Z_min)
-                t_node += [reserve - Z_min]
+            # if Z_next_node[-1] > Z_min:
+            #     Z_next_node.append(Z_min)
+            #     t_node += [reserve - Z_min]
 
             C_node = []
             for i in range(0, len(t_node)):
-                index = self.find_index(t_node[i], c_p[node_index].id - self.first_id - 1)
-                c_node = self.calc_c_node(index, c_p, node_index)
+                # index = self.find_index(t_node[i], c_p[node_index].id - self.first_id - 1)
+                c_node = self.calc_c_node(i, c_p, node_index)
                 C_node.append(c_node)
 
             # seen = {}
@@ -641,8 +685,8 @@ class Workflow:
             # recursion
             CF_next_node = []
             previous_layers = []
-            for z in Z_next_node:
-                previous_layer = self.next_layer_calc(z, c_p, node_index + 1)
+            for i, z in enumerate(Z_next_node):
+                previous_layer = self.next_layer_calc(z, c_p, node_index + 1, i)
                 if not previous_layer:
                     continue
                 else:

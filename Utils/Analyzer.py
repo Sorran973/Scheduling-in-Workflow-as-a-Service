@@ -1,9 +1,11 @@
 import math
 
-from AllocationModule.AllocationASAP import AllocationASAP
 from AllocationModule.AllocationASAP_O import AllocationASAP_O
+from AllocationModule.AllocationBestFit import AllocationBestFit
+from AllocationModule.AllocationBestFitASAP import AllocationBestFitASAP
+from AllocationModule.AllocationBestFitASAPEPSM import AllocationBestFitASAPEPSM
+from AllocationModule.AllocationBestFitFTLEPSM import AllocationBestFitFTLEPSM
 from AllocationModule.AllocationFTL import AllocationFTL
-from AllocationModule.AllocationMixed import AllocationMixed
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -207,63 +209,85 @@ class Analyzer:
     def print_comparison_table(allocations):
 
         allocation_FTL = None
-        allocation_ASAP = None
         allocation_ASAP_O = None
-        allocation_ASAP_MIXED = None
         allocation_NewVM = None
+        allocation_BEST_FIT_FTL = None
+        allocation_BEST_FIT_ASAP = None
+        allocation_BEST_FIT_FTL_EPSM = None
+        allocation_BEST_FIT_ASAP_EPSM = None
+
 
         for allocation in allocations:
             if isinstance(allocation, AllocationFTL):
                 allocation_FTL = allocation
-            elif isinstance(allocation, AllocationASAP):
-                allocation_ASAP = allocation
             elif isinstance(allocation, AllocationASAP_O):
                 allocation_ASAP_O = allocation
-            elif isinstance(allocation, AllocationMixed):
-                allocation_ASAP_MIXED = allocation
+            elif isinstance(allocation, AllocationBestFit):
+                allocation_BEST_FIT_FTL = allocation
+            elif isinstance(allocation, AllocationBestFitASAP):
+                allocation_BEST_FIT_ASAP = allocation
+            elif isinstance(allocation, AllocationBestFitFTLEPSM):
+                allocation_BEST_FIT_FTL_EPSM = allocation
+            elif isinstance(allocation, AllocationBestFitASAPEPSM):
+                allocation_BEST_FIT_ASAP_EPSM = allocation
             else:
                 allocation_NewVM = allocation
 
 
         FTL_percent = round(100 - allocation_FTL.total_cost * 100 / allocation_NewVM.total_cost, 2)
-        # ASAP_percent = round(100 - allocation_ASAP.total_cost * 100 / allocation_NewVM.total_cost, 2)
         ASAP_O_percent = round(100 - allocation_ASAP_O.total_cost * 100 / allocation_NewVM.total_cost, 2)
-        ASAP_MIXED_percent = round(100 - allocation_ASAP_MIXED.total_cost * 100 / allocation_NewVM.total_cost, 2)
+        BEST_FIT_FTL_percent = round(100 - allocation_BEST_FIT_FTL.total_cost * 100 / allocation_NewVM.total_cost, 2)
+        BEST_FIT_ASAP_percent = round(100 - allocation_BEST_FIT_ASAP.total_cost * 100 / allocation_NewVM.total_cost, 2)
+        BEST_FIT_FTL_EPSM_percent = round(100 - allocation_BEST_FIT_FTL_EPSM.total_cost * 100 / allocation_NewVM.total_cost, 2)
+        BEST_FIT_ASAP_EPSM_percent = round(100 - allocation_BEST_FIT_ASAP_EPSM.total_cost * 100 / allocation_NewVM.total_cost, 2)
+
 
         print(f"\tTotal idle time of FTL: {allocation_FTL.total_idle_time}")
-        # print(f"\tTotal idle time of ASAP: {allocation_ASAP.total_idle_time}")
         print(f"\tTotal idle time of ASAP_0: {allocation_ASAP_O.total_idle_time}")
-        print(f"\tTotal idle time of ASAP_MIXED: {allocation_ASAP_MIXED.total_idle_time}")
+        print(f"\tTotal idle time of BEST_FIT_FTL: {allocation_BEST_FIT_FTL.total_idle_time}")
+        print(f"\tTotal idle time of BEST_FIT_ASAP: {allocation_BEST_FIT_ASAP.total_idle_time}")
+        print(f"\tTotal idle time of BEST_FIT_FTL_EPSM: {allocation_BEST_FIT_FTL_EPSM.total_idle_time}")
+        print(f"\tTotal idle time of BEST_FIT_ASAP_EPSM: {allocation_BEST_FIT_ASAP_EPSM.total_idle_time}")
         print(f"\tTotal idle time of New_VM: {allocation_NewVM.total_idle_time}")
         print()
         print(f"\tTotal cost of FTL: {allocation_FTL.total_cost}")
-        # print(f"\tTotal cost of ASAP: {allocation_ASAP.total_cost}")
         print(f"\tTotal cost of ASAP_0: {allocation_ASAP_O.total_cost}")
-        print(f"\tTotal cost of ASAP_MIXED: {allocation_ASAP_MIXED.total_cost}")
+        print(f"\tTotal cost of BEST_FIT_FTL: {allocation_BEST_FIT_FTL.total_cost}")
+        print(f"\tTotal cost of BEST_FIT_ASAP: {allocation_BEST_FIT_ASAP.total_cost}")
+        print(f"\tTotal cost of BEST_FIT_FTL_EPSM: {allocation_BEST_FIT_FTL_EPSM.total_cost}")
+        print(f"\tTotal cost of BEST_FIT_ASAP_EPSM: {allocation_BEST_FIT_ASAP_EPSM.total_cost}")
         print(f"\tTotal cost of New_VM: {allocation_NewVM.total_cost}")
         print()
         print(f"\tFTL batches num: {allocation_FTL.batches_size}")
-        # print(f"\tASAP batches num: {allocation_ASAP.batches_size}")
         print(f"\tASAP_0 batches num: {allocation_ASAP_O.batches_size}")
-        print(f"\tASAP_MIXED batches num: {allocation_ASAP_MIXED.batches_size}")
+        print(f"\tBEST_FIT_FTL batches num: {allocation_BEST_FIT_FTL.batches_size}")
+        print(f"\tBEST_FIT_ASAP batches num: {allocation_BEST_FIT_ASAP.batches_size}")
+        print(f"\tBEST_FIT_FTL_EPSM batches num: {allocation_BEST_FIT_FTL_EPSM.batches_size}")
+        print(f"\tBEST_FIT_ASAP_EPSM batches num: {allocation_BEST_FIT_ASAP_EPSM.batches_size}")
         print(f"\tNew_VM batches num: {allocation_NewVM.batches_size}")
         print()
         print(f"\tTotal number of leased VM of FTL: {allocation_FTL.total_num_leased_vm}")
-        # print(f"\tTotal number of leased VM of ASAP: {allocation_ASAP.total_num_leased_vm}")
         print(f"\tTotal number of leased VM of ASAP_0: {allocation_ASAP_O.total_num_leased_vm}")
-        print(f"\tTotal number of leased VM of ASAP_MIXED: {allocation_ASAP_MIXED.total_num_leased_vm}")
+        print(f"\tTotal number of leased VM of BEST_FIT_FTL: {allocation_BEST_FIT_FTL.total_num_leased_vm}")
+        print(f"\tTotal number of leased VM of BEST_FIT_ASAP: {allocation_BEST_FIT_ASAP.total_num_leased_vm}")
+        print(f"\tTotal number of leased VM of BEST_FIT_FTL_EPSM: {allocation_BEST_FIT_FTL_EPSM.total_num_leased_vm}")
+        print(f"\tTotal number of leased VM of BEST_FIT_ASAP_EPSM: {allocation_BEST_FIT_ASAP_EPSM.total_num_leased_vm}")
         print(f"\tTotal number of leased VM of New_VM: {allocation_NewVM.total_num_leased_vm}")
         print()
         print(f"\tWorkload Time of FTL: {allocation_FTL.workload_time_without_first_and_last_vm}")
-        # print(f"\tWorkload Time of ASAP: {allocation_ASAP.workload_time_without_first_and_last_vm}")
         print(f"\tWorkload Time of ASAP_0: {allocation_ASAP_O.workload_time_without_first_and_last_vm}")
-        print(f"\tWorkload Time of ASAP_MIXED: {allocation_ASAP_MIXED.workload_time_without_first_and_last_vm}")
         print(f"\tWorkload Time of New_VM: {allocation_NewVM.workload_time_without_first_and_last_vm}")
+        print(f"\tWorkload Time of BEST_FIT_FTL: {allocation_BEST_FIT_FTL.workload_time_without_first_and_last_vm}")
+        print(f"\tWorkload Time of BEST_FIT_ASAP: {allocation_BEST_FIT_ASAP.workload_time_without_first_and_last_vm}")
+        print(f"\tWorkload Time of BEST_FIT_FTL_EPSM: {allocation_BEST_FIT_FTL_EPSM.workload_time_without_first_and_last_vm}")
+        print(f"\tWorkload Time of BEST_FIT_ASAP_EPSM: {allocation_BEST_FIT_ASAP_EPSM.workload_time_without_first_and_last_vm}")
         print()
         print(f"\tFTL %: {FTL_percent}")
-        # print(f"\tASAP %: {ASAP_percent}")
         print(f"\tASAP_0 %: {ASAP_O_percent}")
-        print(f"\tASAP_MIXED %: {ASAP_MIXED_percent}")
+        print(f"\tBEST_FIT_FTL %: {BEST_FIT_FTL_percent}")
+        print(f"\tBEST_FIT_ASAP %: {BEST_FIT_ASAP_percent}")
+        print(f"\tBEST_FIT_FTL_EPSM %: {BEST_FIT_FTL_EPSM_percent}")
+        print(f"\tBEST_FIT_ASAP_EPSM %: {BEST_FIT_ASAP_EPSM_percent}")
         print(f"\tNew_VM %: -")
         print()
 

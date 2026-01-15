@@ -2,6 +2,7 @@ import math
 import random
 import sys
 from datetime import datetime
+from logging import critical
 
 import pandas as pd
 from munkres import Munkres, print_matrix, DISALLOWED, make_cost_matrix
@@ -10,7 +11,7 @@ from AllocationModule.Model.PossibleAssignment import PossibleAssignment
 from AllocationModule.Model.Task import Task
 from AllocationModule.Model.VM import VM
 from AllocationModule.Model.VMType import VMType
-from SchedulingModule.CJM.Model.Criteria import CostCriteria, TimeCriteria
+from SchedulingModule.CJM.Model.Criteria import CostCriteria, TimeCriteria, AverageResourceLoadCriteria
 from SchedulingModule.CJM.Workflow import round_up
 
 
@@ -61,15 +62,12 @@ class AllocationASAP_O:
         for task in tasks:
             task.possible_start = max(task.start, time)
             task.earliest_finish = task.possible_start + task.calc_time
-            a = task.earliest_finish
             EFT = task.earliest_finish if task.earliest_finish < EFT else EFT
 
         for task in tasks:
             if task.id == 53:
                 y = 0
-            if (list(filter(lambda transfer: transfer.task_from.status is None, task.input_transfers))
-                    or task.possible_start >= EFT):
-            # if list(filter(lambda transfer: transfer.task_from.status is None, task.input_transfers)):
+            if (list(filter(lambda transfer: transfer.task_from.status is None, task.input_transfers)) or task.possible_start >= EFT):
                 continue
             else:
                 task.batch = len(batches)
@@ -109,52 +107,7 @@ class AllocationASAP_O:
 
         return batch
 
-    def addNewVmsRandomly(self, num, vm_perf_factor):
-        if vm_perf_factor < 10:
-            # 1. take more samples then required by factor of vm_perf_factor
-            initial_sample_num = num * vm_perf_factor if vm_perf_factor >= 1 else num / vm_perf_factor
-            initial_sample_num = math.ceil(initial_sample_num)
-
-            # random_types = self.vm_types.sample(initial_sample_num, replace=True)
-            random_types = random.choices(self.vm_types, k=initial_sample_num)
-
-            # 2. if needed - pick first n by perf
-            if vm_perf_factor != 1:
-                # ???? initial_sample_num vs num ????
-                # random_types = random_types.nlargest(num, 'perf') if vm_perf_factor >= 1 else random_types.nsmallest(num, 'perf')
-                if vm_perf_factor >= 1:
-                    random_types = random_types.sort(key=lambda vm_type: vm_type.perf, reverse=True)[:num]
-                else:
-                    random_types = random_types.sort(key=lambda vm_type: vm_type.perf)[:num]
-
-        else:
-            # take all max perf VMs in case vm_perf_factor is really big
-            # ???? initial_sample_num vs num ????
-            # maxPerf = vm_types.perf.max()
-            # random_types = vm_types[vm_types.perf == maxPerf].sample(num, replace=True)
-            max_perf_vm_type = max(self.vm_types, key=lambda vm_type: vm_type.perf)
-            random_types = [VMType(max_perf_vm_type.type,
-                                   max_perf_vm_type.perf,
-                                   max_perf_vm_type.cost) for i in range(num)]
-
-        for vm_type in random_types:
-            self.vms.append(VM(vm_type.type,
-                               vm_type.perf,
-                               vm_type.cost,
-                               vm_type.prep_time,
-                               vm_type.shutdown_time))
-
-    def addActiveVms(self, task):
-        for vm in self.vms:
-            task.possible_vms.append(vm)
-
     def addNewVms(self, task):
-        # if task.id >= 27 and task.id <= 37:
-        #     for vm_type in self.vm_types:
-        #         if vm_type.perf == 3:
-        #             task.possible_vms.append(
-        #                 VM(vm_type.type, vm_type.perf, vm_type.cost, vm_type.prep_time, vm_type.shutdown_time))
-        # else:
             for vm_type in self.vm_types:
                 task.possible_vms.append(VM(vm_type.type, vm_type.perf, vm_type.cost, vm_type.prep_time, vm_type.shutdown_time))
 
@@ -165,11 +118,9 @@ class AllocationASAP_O:
         if self.vms:
             self.vms = self.getActiveVms()
 
-        vms_to_add = 0
         off_tasks_to_add = 0
 
         if self.vms:
-            vms_to_add += additional_vms_num
             off_tasks_to_add += len(self.vms)
             batch = self.addOffTasks(batch, off_tasks_to_add, len(batch) + 1)  # use len(batch) + 1 to avoid name collisions
 
@@ -182,8 +133,8 @@ class AllocationASAP_O:
 
     ########## CALCULATING ALLOCATION COST ##########
     def calcVmAllocationCost(self, task, vm):
-
-        if task.id == 40 or task.id == 45 or task.id == 48:
+        # if task.id == 0 or task.id == 45 or task.id == 48:
+        if task.id == 2:
             y = 0
         # init
         # current_time = -100
@@ -297,6 +248,7 @@ class AllocationASAP_O:
             possible_assignment.output_data_transfer_time = output_data_transfer_time
 
             allocation_cost = math.ceil((vm_runtime + idle_time) * vm.cost)
+            load = round((expected_task_end - expected_task_start) / (expected_vm_end - expected_vm_start), 2)
 
         if self.criteria.optimization_criteria == "max":
             allocation_cost = -allocation_cost
@@ -305,11 +257,145 @@ class AllocationASAP_O:
         allocation_cost += 1
         if possible_assignment.task_allocation_start is not None:
             possible_assignment.allocation_cost = allocation_cost
-            task.possible_assignments.append(possible_assignment)
+            possible_assignment.load = load
+            task.new_possible_assignments.append(possible_assignment)
             return True, allocation_cost, possible_assignment
         else:
             return False, allocation_cost, possible_assignment
 
+
+
+    ########## CALCULATING ALLOCATION COST ##########
+    def calcVmAllocationLoad(self, task, vm):
+        # if task.id == 0 or task.id == 45 or task.id == 48:
+        if task.id == 1:
+            y = 0
+        # init
+        # current_time = -100
+        current_time = -sys.maxsize
+        idle_time = 0  # time vm idle between end of previous task and start of current task (len)
+        preparation_time = 0  # time needed to prepare vm to start task (usually start vm + get data) (len)
+        task_runtime = 0  # actual task runtime (len)
+        shutdown_time = 0  # time needed to cleanup vm and copy its data before turn off (len)
+        max_data_transfer_time = 0  # max time needed to transfer all data from all source tasks (len)
+
+        earliest_data_ready_time = 0  # earliest time all data can be copied from source tasks (moment)
+        input_data_transfer_time = 0
+        output_data_transfer_time = 0
+
+        # if new vm
+        if (vm.status == 'open'):
+            possible_vm_start = current_time  # can start now
+        else:
+            possible_vm_start = vm.previous_task.allocation_end
+
+        # if turning off
+        if task.type == 'off':
+            possible_task_start = current_time  # release task can be started any time (no input data/logic restrictions)
+
+            # calculate time needed to transfer data before shut down vm
+            shutdown_time = vm.shutdown_time
+            previous_task = vm.previous_task
+
+            if previous_task is not None and previous_task.output_size > 0:
+                output_data_transfer_time_max = -sys.maxsize
+                for transfer in previous_task.output_transfers:
+                    # transfer_time = transfer.transfer_time
+                    transfer_time = math.ceil(transfer.transfer_time / vm.perf)
+                    transfer_end = previous_task.allocation_end + transfer_time
+
+                    # meaning time between the time vm can be stopped and it finishes the longest data transfer
+                    if output_data_transfer_time_max < (transfer_end - possible_vm_start):
+                        output_data_transfer_time_max = transfer_end - possible_vm_start
+
+                if output_data_transfer_time_max < 0:
+                    y = 0
+                output_data_transfer_time_max = max(output_data_transfer_time_max, 0)  # can't be negative
+                shutdown_time = shutdown_time + output_data_transfer_time_max
+                output_data_transfer_time = output_data_transfer_time_max
+
+        # if perform calculations
+        else:
+            task_runtime = math.ceil(task.volume / vm.perf)
+            # runtime = task.volume / vm.perf
+            if (vm.status == 'open'):
+                preparation_time += vm.prep_time  # add vm startup time
+
+            # calculate additional preparation time to copy required input data
+            earliest_data_ready_time_max = -sys.maxsize
+            data_transfer_time_max = -sys.maxsize
+
+            if task.input_transfers:
+                #TODO: ? create node_edges and data_center_edges and check their times
+                for transfer in task.input_transfers:
+                    task_from = transfer.task_from
+
+                    if transfer.task_from.assigned_vm is vm:
+                        transfer_time = 0
+                    else:
+                        # transfer_time = transfer.transfer_time
+                        transfer_time = math.ceil(transfer.transfer_time / vm.perf)
+
+                    if data_transfer_time_max < transfer_time:
+                        data_transfer_time_max = transfer_time
+
+                    if task_from.name == "entry":
+                        task_from_allocation_time_end = task.start
+                    else:
+                        task_from_allocation_time_end = task_from.allocation_end
+
+                    try:
+                        if earliest_data_ready_time_max < task_from_allocation_time_end + transfer_time:
+                            earliest_data_ready_time_max = task_from_allocation_time_end + transfer_time
+                    except:
+                        print("calcVmAllocationCost\ntask_id={}, task_name={}".format(task.id, task.name))
+
+                preparation_time = preparation_time + data_transfer_time_max
+                input_data_transfer_time = data_transfer_time_max
+
+            # possibly check if can start earlier, i.e. remove row.start from max
+            # possible_task_start = min(task.start, earliest_data_ready_time_max)
+            possible_task_start = earliest_data_ready_time_max
+
+        vm_runtime = preparation_time + task_runtime + shutdown_time
+
+        expected_vm_start = max(possible_vm_start, possible_task_start - preparation_time)
+        expected_vm_end = expected_vm_start + vm_runtime
+        if (vm.status != 'open'):
+            # idle time between previous assignment and new assignment
+            idle_time = (expected_vm_start - possible_vm_start)
+
+        expected_task_start = expected_vm_start + preparation_time
+        expected_task_end = expected_task_start + task_runtime
+
+        possible_assignment = PossibleAssignment(vm)
+
+        if expected_task_end > task.end and task.type == 'task':
+            allocation_cost = 10000000000  # can't execute task
+        else:
+            possible_assignment.task_allocation_start = expected_task_start
+            possible_assignment.task_allocation_end = expected_task_end
+            possible_assignment.vm_allocation_start = expected_vm_start
+            possible_assignment.vm_allocation_end = expected_vm_end
+            possible_assignment.idle_time = idle_time
+            possible_assignment.input_data_transfer_time = input_data_transfer_time
+            possible_assignment.output_data_transfer_time = output_data_transfer_time
+
+            allocation_cost = math.ceil((vm_runtime + idle_time) * vm.cost)
+            load = round((expected_task_end - expected_task_start) / (expected_vm_end - expected_vm_start), 2)
+
+        if self.criteria.optimization_criteria == "max":
+            allocation_cost = -allocation_cost
+
+        # allocation_cost + 1 because zeros are bad for optimization for Munkres function
+        allocation_cost += 1
+        if possible_assignment.task_allocation_start is not None:
+            possible_assignment.allocation_cost = allocation_cost
+            possible_assignment.load = load
+            task.new_possible_assignments.append(possible_assignment)
+            return True, allocation_cost, possible_assignment
+        else:
+            return False, allocation_cost, possible_assignment
 
 
     ########## CHOOSING THE BEST MATCHES (MUNKRES ALGORITHM) ##########
@@ -321,23 +407,30 @@ class AllocationASAP_O:
         for t, task in enumerate(batch):
             assignment_with_desired_cost = None
             if task.type == 'task':
-                if task.id >= 27 and task.id <= 37:
+                if task.id == 2:
                     y = 0
                 possible_vms = [vm for vm in task.possible_vms if self.calcVmAllocationCost(task, vm)[0]]
                 task.possible_vms = possible_vms
 
                 try:
                     if (self.criteria.optimization_criteria == "min"):
-                        assignment_with_desired_cost = min(task.possible_assignments, key=lambda possible_assignment: possible_assignment.allocation_cost)
+                        # assignment_with_desired_cost = min(task.possible_assignments, key=lambda possible_assignment: possible_assignment.allocation_cost)
+                        min_cost = sys.maxsize
+                        for assignment in task.new_possible_assignments:
+                            cost = assignment.allocation_cost
+                            if cost <= min_cost:
+                                assignment_with_desired_cost = assignment
+                                min_cost = cost
                     else:
-                        assignment_with_desired_cost = max(task.possible_assignments, key=lambda possible_assignment: possible_assignment.allocation_cost)
+                        assignment_with_desired_cost = max(task.new_possible_assignments, key=lambda possible_assignment: possible_assignment.allocation_cost)
                 except:
                     print("Task(id={}, name={})".format(task.id, task.name))
-                    return
+                    # return
 
                 best_cost = assignment_with_desired_cost.allocation_cost
                 vm = assignment_with_desired_cost.assigned_vm
                 vms.append(vm)
+
 
                 vm_costs_for_task = [DISALLOWED] * len(batch)
                 for i, vm in enumerate(self.vms):
@@ -348,6 +441,7 @@ class AllocationASAP_O:
 
                 vm_costs_for_task[active_num + t] = best_cost
                 cost_matrix.append(vm_costs_for_task)
+
 
         # calc costs of off tasks
         off_tasks = list(filter(lambda task: task.type == 'off', batch))
@@ -365,7 +459,7 @@ class AllocationASAP_O:
             cost_matrix.append(vm_costs_for_task)
 
             for i in range(1, len(off_tasks)):
-                off_tasks[i].possible_assignments = possible_assignments_for_off_tasks
+                off_tasks[i].new_possible_assignments = possible_assignments_for_off_tasks
                 cost_matrix.append(vm_costs_for_task)
 
         m = Munkres()
@@ -394,9 +488,9 @@ class AllocationASAP_O:
 
                 try:
                     if (self.criteria.optimization_criteria == "min"):
-                        assignment_with_min_time = min(task.possible_assignments, key=lambda possible_assignment: possible_assignment.task_allocation_end)
+                        assignment_with_min_time = min(task.new_possible_assignments, key=lambda possible_assignment: possible_assignment.task_allocation_end)
                     else:
-                        assignment_with_min_time = max(task.possible_assignments, key=lambda possible_assignment: possible_assignment.task_allocation_end)
+                        assignment_with_min_time = max(task.new_possible_assignments, key=lambda possible_assignment: possible_assignment.task_allocation_end)
                 except:
                     print("Task(id={}, name={})".format(task.id, task.name))
 
@@ -428,7 +522,7 @@ class AllocationASAP_O:
             time_matrix.append(vm_times_for_task)
 
             for i in range(1, len(off_tasks)):
-                off_tasks[i].possible_assignments = possible_assignments_for_off_tasks
+                off_tasks[i].new_possible_assignments = possible_assignments_for_off_tasks
                 time_matrix.append(vm_times_for_task)
 
         m = Munkres()
@@ -443,6 +537,78 @@ class AllocationASAP_O:
         return pairs
 
 
+    def calcAverageResourceLoadPairings(self, batch):
+        vms = self.vms.copy()
+        load_matrix = []
+        active_num = len(self.vms)
+
+        for t, task in enumerate(batch):
+            assignment_with_desired_load = None
+            if task.type == 'task':
+                if task.id >= 13:
+                    y = 0
+                possible_vms = [vm for vm in task.possible_vms if self.calcVmAllocationLoad(task, vm)[0]]
+                task.possible_vms = possible_vms
+
+                try:
+                    if (self.criteria.optimization_criteria == "max"):
+                        # assignment_with_desired_load = min(task.possible_assignments, key=lambda possible_assignment: possible_assignment.allocation_cost)
+                        min_load = -sys.maxsize
+                        for assignment in task.new_possible_assignments:
+                            load = assignment.load
+                            if load >= min_load:
+                                assignment_with_desired_load = assignment
+                                min_load = load
+                    else:
+                        assignment_with_desired_load = min(task.new_possible_assignments, key=lambda possible_assignment: possible_assignment.load)
+                except:
+                    print("Task(id={}, name={})".format(task.id, task.name))
+                    # return
+
+                best_load = assignment_with_desired_load.load
+                vm = assignment_with_desired_load.assigned_vm
+                vms.append(vm)
+
+
+                vm_load_for_task = [DISALLOWED] * len(batch)
+                for i, vm in enumerate(self.vms):
+                    bool, cost, assign_info = self.calcVmAllocationCost(task, vm)
+                    if (self.criteria.optimization_criteria == "min" and cost < 1000000000 or
+                            self.criteria.optimization_criteria == "max" and cost > -1000000000):
+                        vm_load_for_task[i] = assign_info.load
+                vm_load_for_task[active_num + t] = best_load
+                load_matrix.append(vm_load_for_task)
+
+
+        # calc costs of off tasks
+        off_tasks = list(filter(lambda task: task.type == 'off', batch))
+        if off_tasks:
+            off_task = off_tasks[0]
+
+            vm_load_for_task = [DISALLOWED] * len(batch)
+            possible_assignments_for_off_tasks = []
+            for i, vm in enumerate(vms):
+                bool, cost, assign_info = self.calcVmAllocationLoad(off_task, vm)
+                if (self.criteria.optimization_criteria == "min" and cost < 1000000000 or
+                        self.criteria.optimization_criteria == "max" and cost > -1000000000):
+                    vm_load_for_task[i] = assign_info.load
+                    possible_assignments_for_off_tasks.append(assign_info)
+            load_matrix.append(vm_load_for_task)
+
+            for i in range(1, len(off_tasks)):
+                off_tasks[i].new_possible_assignments = possible_assignments_for_off_tasks
+                load_matrix.append(vm_load_for_task)
+
+        m = Munkres()
+        result = m.compute(load_matrix)
+
+        pairs = []
+        for row, column in result:
+            task = batch[row]
+            vm = vms[column]
+            pairs.append((task, vm))
+
+        return pairs
 
     ########## PAIRING and LOGGING ##########
     def applyPairings(self, pairs):
@@ -476,6 +642,34 @@ class AllocationASAP_O:
 
     ########## ALLOCATION BATCHES (VMA ALGORITHM) ##########
     def allocateBatch(self, batch):
+        #TODO
+        # batches = []
+        # pairings_result = []
+        #
+        # critical_batch_size = 10
+        # if len(batch) > critical_batch_size:
+        #     arr_batch = [batch[pos:pos + critical_batch_size] for pos in range(0, len(batch), critical_batch_size)]
+        #     batches += arr_batch
+        # else:
+        #     batches.append(batch)
+        #
+        # for batch in batches:
+        #     # prepare tasks and vms for matching
+        #     batch = self.prepareVmMatchings(batch, additional_vms_num=len(batch))
+        #
+        #     # calc allocation costs for matches (munkres algorithm)
+        #     if isinstance(self.criteria, CostCriteria):
+        #         pairings = self.calcMinCostPairings(batch)
+        #         pairings_result += pairings
+        #         if pairings is None:
+        #             return 0
+        #     elif isinstance(self.criteria, TimeCriteria):
+        #         pairings = self.calcMinTimePairings(batch)
+        #         pairings_result += pairings
+        #
+        # # pairing and logging
+        # self.applyPairings(pairings_result)
+
         # prepare tasks and vms for matching
         batch = self.prepareVmMatchings(batch, additional_vms_num=len(batch))
         # calc allocation costs for matches (munkres algorithm)
@@ -485,6 +679,8 @@ class AllocationASAP_O:
                 return 0
         elif isinstance(self.criteria, TimeCriteria):
             pairings = self.calcMinTimePairings(batch)
+        elif isinstance(self.criteria, AverageResourceLoadCriteria):
+            pairings = self.calcAverageResourceLoadPairings(batch)
         # pairing and logging
         self.applyPairings(pairings)
 

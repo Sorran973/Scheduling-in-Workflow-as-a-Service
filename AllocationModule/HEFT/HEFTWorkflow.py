@@ -15,9 +15,9 @@ def round_up(n, decimals=0):
 def dfs(node, first_id):
     node.visited = True
     w = 0
-    if node.name is 'entry':
+    if node.name == 'entry':
         a = 1
-    elif node.name is 'finish':
+    elif node.name == 'finish':
         a = 1
     else:
         w = sum(node.exec_times_by_vm) / len(node.exec_times_by_vm)

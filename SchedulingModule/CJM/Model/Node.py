@@ -11,6 +11,10 @@ class Node:
         self.runtime = runtime
         self.start_time = None
         self.finish_time = None
+        self.EST = None
+        self.LST = None
+        self.EFT = None
+        self.LFT = None
         self.visited = False
         self.in_critical_path = False
         self.edges_from = []          # edges from other nodes into this node
@@ -23,6 +27,9 @@ class Node:
         self.output = []
         self.output_size = 0
         self.output_time = 0
+        self.weight = None
+        self.extra_time = None
+        self.budget = None
         Node.id += 1
 
 

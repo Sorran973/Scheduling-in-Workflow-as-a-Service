@@ -13,3 +13,4 @@ class PossibleAssignment:
         self.input_data_transfer_time = None
         self.output_data_transfer_time = None
         self.idle_time = None
+        self.load = None

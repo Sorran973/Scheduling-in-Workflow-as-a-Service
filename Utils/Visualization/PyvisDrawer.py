@@ -23,7 +23,7 @@ def rand_color(row):
 
 class PyvisDrawer(Drawer):
 
-    GRAPH_OUTPUT = 'Output/pyvis_graph.html'
+    GRAPH_OUTPUT = '/Users/artembulkhak/PycharmProjects/Dissertation/Output/LIGO50/pyvis_graph.html'
 
     def draw_graph(self, nodes, edges):
         # G = Network(directed=True)
@@ -175,6 +175,69 @@ class PyvisDrawer(Drawer):
             # ax.barh(rownum, task.calc_time, left=task.latest_start, color=task.color, fill=False, hatch='///')
 
             ax.text(task.end + 0.1, rownum, task.batch, va='center', alpha=0.8)
+            ax.text(task.start - 0.1, rownum, task.id, va='center', ha='right', alpha=0.7)
+            rownum += 1
+
+
+        # grid lines
+        ax.set_axisbelow(True)
+        ax.xaxis.grid(color='gray', linestyle='dashed', alpha=0.2, which='both')
+
+        # ticks
+        end_max = max(tasks, key=lambda x: x.end).end
+        xticks = np.arange(0, end_max + 1, int((end_max + 1) / 5))
+        # xticks_labels = pd.date_range(0, end=tasks.end.max()).strftime("%m/%d")
+        # xticks_minor = np.arange(0, tasks.end.max() + 1, 1)
+        ax.set_xticks(xticks)
+        # ax.set_xticks(xticks_minor, minor=True)
+        ax.set_yticks([])
+
+        # remove spines
+        ax.spines['right'].set_visible(False)
+        ax.spines['left'].set_visible(False)
+        ax.spines['left'].set_position(('outward', 10))
+        ax.spines['top'].set_visible(False)
+
+
+        ##### LEGENDS #####
+        # legend_elements = [Patch(facecolor='#E64646', label='Leader'),
+        #                    Patch(facecolor='#34D05C', label='Batch')]
+        #
+        # ax1.legend(handles=legend_elements, loc='upper center', ncol=5, frameon=False)
+
+        # clean second axis
+        ax1.spines['right'].set_visible(False)
+        ax1.spines['left'].set_visible(False)
+        ax1.spines['top'].set_visible(False)
+        ax1.spines['bottom'].set_visible(False)
+        ax1.set_xticks([])
+        ax1.set_yticks([])
+
+        plt.suptitle(config.CJM_CRITERIA.__class__.__name__ + " " +
+                     config.SCHEDULING_OPTIMIZATION_CRITERIA + " " +
+                     config.VMA_CRITERIA.__class__.__name__ + " " +
+                     config.ALLOCATION_OPTIMIZATION_CRITERIA)
+        # plt.show()
+        fig.savefig(figure_name, format="pdf")
+        # fig.savefig(Utils.Configuration.GANTT_FIGURES_BATCHES, format="pdf", bbox_inches='tight')
+
+    def draw_batches_gantt_epsm(self, tasks, figure_name):
+        c_dict = {'Leader': '#E64646', 'Batch': '#34D05C', 'CPU 2': '#E69646', 'CPU 4': '#34D0C3', 'CPU 5': '#3475D0',
+                  'None': '#000000', 'IO': '#44D05C'}
+        for task in tasks:
+            task.color = '#E64646'
+
+        # plt.ion()
+        ##### PLOT #####
+        fig, (ax, ax1) = plt.subplots(2, figsize=(36, 16), gridspec_kw={'height_ratios': [15, 1]})
+
+        # bars
+        rownum = 0
+        for task in tasks:
+            ax.barh(rownum, task.interval, left=task.start, color=task.color, alpha=0.3)
+            # ax.barh(rownum, task.calc_time, left=task.latest_start, color=task.color)
+            # ax.barh(rownum, task.calc_time, left=task.latest_start, color=task.color, fill=False, hatch='///')
+
             ax.text(task.start - 0.1, rownum, task.id, va='center', ha='right', alpha=0.7)
             rownum += 1
 
@@ -477,10 +540,10 @@ class PyvisDrawer(Drawer):
         # ax.set_xticks(, labels=)
         ax.set_yticks([])
 
-        plt.suptitle(Configuration.CJM_CRITERIA.__class__.__name__ + " " +
-                     Configuration.SCHEDULING_OPTIMIZATION_CRITERIA + " " +
-                     Configuration.VMA_CRITERIA.__class__.__name__ + " " +
-                     Configuration.ALLOCATION_OPTIMIZATION_CRITERIA)
+        plt.suptitle(config.CJM_CRITERIA.__class__.__name__ + " " +
+                     config.SCHEDULING_OPTIMIZATION_CRITERIA + " " +
+                     config.VMA_CRITERIA.__class__.__name__ + " " +
+                     config.ALLOCATION_OPTIMIZATION_CRITERIA)
         # plt.show()
         fig.savefig(figure_name, format="pdf", bbox_inches='tight')
 

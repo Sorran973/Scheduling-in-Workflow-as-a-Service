@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<adag name="leadmm" jobCount="11" fileCount="0" childCount="5">
+	<job id="1" namespace="leadmm" name="TerrainPreProcessor" runtime="20" cores="1">
+		<uses file="p1.txt" link="output" size="140672"/>
+	</job>
+	<job id="2" namespace="leadmm" name="LateralBoundaryInterpolator" runtime="30" cores="1">
+		<uses file="p1.txt" link="input" size="140672"/>
+		<uses file="p2.txt" link="output" size="140672"/>
+	</job>
+	<job id="3" namespace="leadmm" name="LateralBoundaryInterpolator" runtime="30" cores="1">
+		<uses file="p2.txt" link="output" size="140672"/>
+	</job>
+	<child ref="2">
+		<parent ref="1"/>
+	</child>
+</adag>

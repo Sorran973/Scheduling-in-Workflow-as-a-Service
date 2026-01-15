@@ -2,10 +2,11 @@ from datetime import datetime
 
 import pandas as pd
 
-from AllocationModule.HEFT.HEFT import HEFT
+from AllocationModule.HEFT.AllocationHEFT import HEFT
 from AllocationModule.HEFT.HEFTVM import HEFTVM
 from AllocationModule.HEFT.HEFTWorkflow import HEFTWorkflow
 from SchedulingModule.CJM.Model.Criteria import CostCriteria
+from SchedulingModule.CJM.Model.EnumWorkflow import EnumWorkflow
 from Utils.CSVHandler import CSVHandler
 from SchedulingModule.CJM.WorkflowSet import WorkflowSet
 
@@ -16,8 +17,8 @@ from Utils.Visualization import Drawer
 
 
 if __name__ == '__main__':
-    vm_types = CSVHandler.read_vms_table(Configuration.VMS_TABLE_FILE)
-    workflow_samples = Configuration.WORKFLOW_SAMPLES
+    vm_types = CSVHandler.read_vms_table(config.VMS_TABLE_FILE_PATH)
+    workflow_samples = config.WORKFLOW_SAMPLES
 
     # FTL: 142
     # ASAP: 122
@@ -29,7 +30,7 @@ if __name__ == '__main__':
     # 2X: 33
     # 3X: 21
     # XXX: 21
-    vm_numbers = [21, 21, 33, 15, 60]
+    vm_numbers = [11, 4, 7, 8, 1]
     vms = []
     for i, num in enumerate(vm_numbers):
         for j in range(num):
@@ -43,8 +44,7 @@ if __name__ == '__main__':
         # self.vms_table.append(vms_value)
         # self.vms_cost.append(i.cost)
 
-
-    T = None
+    # T = None
     # T = 38
 
     # workflow_set = WorkflowSet()
@@ -123,37 +123,49 @@ if __name__ == '__main__':
 
     workflow_set = WorkflowSet()
     start_time = datetime.now()
-    workflow = HEFTWorkflow(XML_FILE=Configuration.LIGO50,
-                            T=T,
+
+    task_volume_multiplier = 1
+
+    workflow_type = EnumWorkflow.LIGO50
+
+    if workflow_type in (EnumWorkflow.GENOME50, EnumWorkflow.GENOME100, EnumWorkflow.GENOME200,
+                         EnumWorkflow.GENOME300, EnumWorkflow.GENOME400, EnumWorkflow.GENOME500):
+        task_volume_multiplier = 0.1
+
+    workflow_type_str = workflow_type.value
+    xml_file = config.WORKFLOW_EXAMPLES_DIR + workflow_type_str
+
+    workflow = HEFTWorkflow(XML_FILE=xml_file,
+                            T=config.T,
                             vm_types=vm_types,
                             vms=vms,
-                            criteria=CostCriteria(min),
-                            task_volume_multiplier=1,
+                            criteria=config.CJM_CRITERIA,
+                            task_volume_multiplier=task_volume_multiplier,
                             data_volume_multiplier=1,
                             start_time=0)
 
-    workflow2 = HEFTWorkflow(XML_FILE=Configuration.LIGO50,
-                             T=T,
-                             vm_types=vm_types,
-                             vms=vms,
-                             criteria=CostCriteria(min),
-                             task_volume_multiplier=1,
-                             data_volume_multiplier=1,
-                             start_time=60)
-
-    workflow3 = HEFTWorkflow(XML_FILE=Configuration.LIGO50,
-                             T=T,
-                             vm_types=vm_types,
-                             vms=vms,
-                             criteria=CostCriteria(min),
-                             task_volume_multiplier=1,
-                             data_volume_multiplier=1,
-                             start_time=120)
+    # workflow2 = HEFTWorkflow(XML_FILE=Configuration.LIGO50,
+    #                          T=T,
+    #                          vm_types=vm_types,
+    #                          vms=vms,
+    #                          criteria=CostCriteria(min),
+    #                          task_volume_multiplier=1,
+    #                          data_volume_multiplier=1,
+    #                          start_time=60)
+    #
+    # workflow3 = HEFTWorkflow(XML_FILE=Configuration.LIGO50,
+    #                          T=T,
+    #                          vm_types=vm_types,
+    #                          vms=vms,
+    #                          criteria=CostCriteria(min),
+    #                          task_volume_multiplier=1,
+    #                          data_volume_multiplier=1,
+    #                          start_time=120)
 
 
     workflow_set.addHEFTWorkflow(workflow)
-    workflow_set.addHEFTWorkflow(workflow2)
-    workflow_set.addHEFTWorkflow(workflow3)
+    # workflow_set.addHEFTWorkflow(workflow2)
+    # workflow_set.addHEFTWorkflow(workflow3)
 
     heft = HEFT(vms, workflow_set)
     end_time = datetime.now()
@@ -169,7 +181,7 @@ if __name__ == '__main__':
     color["color"] = color.apply(lambda x: rand_color(x), axis=1)
     log = pd.merge(log, color, on='workflow_id', how='left')
     log = log.sort_values(["vm_id", "vm_start"])
-    drawer.draw_result_gantt_HEFT(log, Configuration.GANTT_FIGURES_HEFT)
+    drawer.draw_result_gantt_HEFT(log, config.GANTT_FIGURES_HEFT)
     # drawer.draw_result_gantt_HEFT_vms(heft.vms, Utils.Configuration.GANTT_FIGURES_HEFT)
     # drawer.draw_result_gantt_HEFT_nodes(heft.nodes, heft.vms, Utils.Configuration.GANTT_FIGURES_HEFT)
 

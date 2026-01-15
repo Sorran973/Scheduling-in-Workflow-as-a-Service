@@ -86,8 +86,6 @@ class AllocationASAP:
             EFT = task.earliest_finish if task.earliest_finish < EFT else EFT
 
         for task in tasks:
-            # if (list(filter(lambda transfer: transfer.task_from.status is None, task.input_transfers))
-            #         or task.possible_start >= EFT):
             if list(filter(lambda transfer: transfer.task_from.status is None, task.input_transfers)):
                 continue
             else:
@@ -328,7 +326,7 @@ class AllocationASAP:
         allocation_cost += 1
         if possible_assignment.task_allocation_start is not None:
             possible_assignment.allocation_cost = allocation_cost
-            task.possible_assignments.append(possible_assignment)
+            task.new_possible_assignments.append(possible_assignment)
             return True, allocation_cost, possible_assignment
         else:
             return False, allocation_cost, possible_assignment
@@ -350,9 +348,9 @@ class AllocationASAP:
 
                 try:
                     if (self.criteria.optimization_criteria == "min"):
-                        assignment_with_min_cost = min(task.possible_assignments, key=lambda possible_assignment: possible_assignment.allocation_cost)
+                        assignment_with_min_cost = min(task.new_possible_assignments, key=lambda possible_assignment: possible_assignment.allocation_cost)
                     else:
-                        assignment_with_min_cost = max(task.possible_assignments, key=lambda possible_assignment: possible_assignment.allocation_cost)
+                        assignment_with_min_cost = max(task.new_possible_assignments, key=lambda possible_assignment: possible_assignment.allocation_cost)
                 except:
                     print("Task(id={}, name={})".format(task.id, task.name))
 
@@ -386,7 +384,7 @@ class AllocationASAP:
             cost_matrix.append(vm_costs_for_task)
 
             for i in range(1, len(off_tasks)):
-                off_tasks[i].possible_assignments = possible_assignments_for_off_tasks
+                off_tasks[i].new_possible_assignments = possible_assignments_for_off_tasks
                 cost_matrix.append(vm_costs_for_task)
 
         m = Munkres()
@@ -415,9 +413,9 @@ class AllocationASAP:
 
                 try:
                     if (self.criteria.optimization_criteria == "min"):
-                        assignment_with_min_time = min(task.possible_assignments, key=lambda possible_assignment: possible_assignment.task_allocation_end)
+                        assignment_with_min_time = min(task.new_possible_assignments, key=lambda possible_assignment: possible_assignment.task_allocation_end)
                     else:
-                        assignment_with_min_time = max(task.possible_assignments, key=lambda possible_assignment: possible_assignment.task_allocation_end)
+                        assignment_with_min_time = max(task.new_possible_assignments, key=lambda possible_assignment: possible_assignment.task_allocation_end)
                 except:
                     print("Task(id={}, name={})".format(task.id, task.name))
 
@@ -449,7 +447,7 @@ class AllocationASAP:
             time_matrix.append(vm_times_for_task)
 
             for i in range(1, len(off_tasks)):
-                off_tasks[i].possible_assignments = possible_assignments_for_off_tasks
+                off_tasks[i].new_possible_assignments = possible_assignments_for_off_tasks
                 time_matrix.append(vm_times_for_task)
 
         m = Munkres()

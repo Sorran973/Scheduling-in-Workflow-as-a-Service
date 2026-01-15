@@ -59,21 +59,23 @@ class AllocationFTL:
             EFT = task.earliest_finish if task.earliest_finish < EFT else EFT
 
         for task in tasks:
-            if task.id == 40:
+            if task.id == 2:
                 y = 0
-            if task.earliest_finish == EFT:
-                task.status = 'Leader'
-                task.batch = len(batches)
-                task.finish_time = EFT
-                batch.append(task)
-                continue
-            if task.latest_start < EFT:
-                task.status = 'Batch'
-                task.batch = len(batches)
-                task.finish_time = EFT
-                batch.append(task)
+            if all(transfer.task_from.status is not None for transfer in task.input_transfers):
+                if task.earliest_finish == EFT:
+                    task.status = 'Leader'
+                    task.batch = len(batches)
+                    task.finish_time = EFT
+                    batch.append(task)
+                    continue
+                if task.latest_start < EFT:
+                    task.status = 'Batch'
+                    task.batch = len(batches)
+                    task.finish_time = EFT
+                    batch.append(task)
 
-        batches.append(batch)
+        if batch:
+            batches.append(batch)
 
         return EFT
 
@@ -131,7 +133,7 @@ class AllocationFTL:
     ########## CALCULATING ALLOCATION COST ##########
     def calcVmAllocationCost(self, task, vm):
 
-        if task.id == 22 or task.id == 45 or task.id == 48:
+        if task.id == 2:
             y = 0
         # init
         # current_time = -100
@@ -208,6 +210,8 @@ class AllocationFTL:
                         task_from_allocation_time_end = task_from.allocation_end
 
                     try:
+                        if task_from_allocation_time_end is None:
+                            y = 0
                         if earliest_data_ready_time_max < task_from_allocation_time_end + transfer_time:
                             earliest_data_ready_time_max = task_from_allocation_time_end + transfer_time
                     except:
@@ -253,7 +257,7 @@ class AllocationFTL:
         allocation_cost += 1
         if possible_assignment.task_allocation_start is not None:
             possible_assignment.allocation_cost = allocation_cost
-            task.possible_assignments.append(possible_assignment)
+            task.new_possible_assignments.append(possible_assignment)
             return True, allocation_cost, possible_assignment
         else:
             return False, allocation_cost, possible_assignment
@@ -268,20 +272,26 @@ class AllocationFTL:
         for t, task in enumerate(batch):
             assignment_with_desired_cost = None
             if task.type == 'task':
-                if task.id == 48:
+                if task.id == 0:
                     y = 0
                 possible_vms = [vm for vm in task.possible_vms if self.calcVmAllocationCost(task, vm)[0]]
                 task.possible_vms = possible_vms
 
                 try:
                     if (self.criteria.optimization_criteria == "min"):
-                        assignment_with_desired_cost = min(task.possible_assignments, key=lambda possible_assignment: possible_assignment.allocation_cost)
+                        # assignment_with_desired_cost = min(task.possible_assignments, key=lambda possible_assignment: possible_assignment.allocation_cost)
+                        min_cost = sys.maxsize
+                        for assignment in task.new_possible_assignments:
+                            cost = assignment.allocation_cost
+                            if cost <= min_cost:
+                                assignment_with_desired_cost = assignment
+                                min_cost = cost
                     else:
-                        assignment_with_desired_cost = max(task.possible_assignments, key=lambda possible_assignment: possible_assignment.allocation_cost)
+                        assignment_with_desired_cost = max(task.new_possible_assignments, key=lambda possible_assignment: possible_assignment.allocation_cost)
                 except:
                     print("Task(id={}, name={})".format(task.id, task.name))
-                    return
-
+                if assignment_with_desired_cost.allocation_cost is None:
+                    y = 0
                 best_cost = assignment_with_desired_cost.allocation_cost
                 vm = assignment_with_desired_cost.assigned_vm
                 vms.append(vm)
@@ -312,7 +322,7 @@ class AllocationFTL:
             cost_matrix.append(vm_costs_for_task)
 
             for i in range(1, len(off_tasks)):
-                off_tasks[i].possible_assignments = possible_assignments_for_off_tasks
+                off_tasks[i].new_possible_assignments = possible_assignments_for_off_tasks
                 cost_matrix.append(vm_costs_for_task)
 
         m = Munkres()
@@ -341,10 +351,10 @@ class AllocationFTL:
 
                 try:
                     if (self.criteria.optimization_criteria == "min"):
-                        assignment_with_min_time = min(task.possible_assignments, key=lambda
+                        assignment_with_min_time = min(task.new_possible_assignments, key=lambda
                             possible_assignment: possible_assignment.task_allocation_end)
                     else:
-                        assignment_with_min_time = max(task.possible_assignments, key=lambda
+                        assignment_with_min_time = max(task.new_possible_assignments, key=lambda
                             possible_assignment: possible_assignment.task_allocation_end)
                 except:
                     print("Task(id={}, name={})".format(task.id, task.name))
@@ -377,7 +387,7 @@ class AllocationFTL:
             time_matrix.append(vm_times_for_task)
 
             for i in range(1, len(off_tasks)):
-                off_tasks[i].possible_assignments = possible_assignments_for_off_tasks
+                off_tasks[i].new_possible_assignments = possible_assignments_for_off_tasks
                 time_matrix.append(vm_times_for_task)
 
         m = Munkres()
@@ -447,6 +457,8 @@ class AllocationFTL:
 
         n = len(batches)
         for i, batch in enumerate(batches):
+            if i == 48:
+                y=0
             a = self.allocateBatch(batch)
             if a is 0:
                 return 0

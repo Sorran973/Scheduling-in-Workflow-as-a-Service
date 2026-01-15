@@ -328,7 +328,7 @@ class NewVmForEachTask:
         allocation_cost += 1
         if possible_assignment.task_allocation_start is not None:
             possible_assignment.allocation_cost = allocation_cost
-            task.possible_assignments.append(possible_assignment)
+            task.new_possible_assignments.append(possible_assignment)
             return True, allocation_cost, possible_assignment
         else:
             return False, allocation_cost, possible_assignment
@@ -337,6 +337,7 @@ class NewVmForEachTask:
 
     ########## CHOOSING THE BEST MATCHES (MUNKRES ALGORITHM) ##########
     def calcMinCostPairings(self, batch):
+        assignment_with_desired_cost = None
         off_vms = self.vms.copy()
         new_vms = []
         pairs = []
@@ -352,14 +353,20 @@ class NewVmForEachTask:
 
                 try:
                     if (self.criteria.optimization_criteria == "min"):
-                        assignment_with_min_cost = min(task.possible_assignments, key=lambda possible_assignment: possible_assignment.allocation_cost)
+                        # assignment_with_min_cost = min(task.possible_assignments, key=lambda possible_assignment: possible_assignment.allocation_cost)
+                        min_cost = sys.maxsize
+                        for assignment in task.new_possible_assignments:
+                            cost = assignment.allocation_cost
+                            if cost <= min_cost:
+                                assignment_with_desired_cost = assignment
+                                min_cost = cost
                     else:
-                        assignment_with_min_cost = max(task.possible_assignments, key=lambda possible_assignment: possible_assignment.allocation_cost)
+                        assignment_with_min_cost = max(task.new_possible_assignments, key=lambda possible_assignment: possible_assignment.allocation_cost)
                 except:
                     print("Task(id={}, name={})".format(task.id, task.name))
 
                 # min_cost = assignment_with_min_cost.allocation_cost
-                vm = assignment_with_min_cost.assigned_vm
+                vm = assignment_with_desired_cost.assigned_vm
                 pairs.append((task, vm))
         #         new_vms.append(vm)
         #
@@ -392,7 +399,7 @@ class NewVmForEachTask:
             cost_matrix.append(vm_costs_for_task)
 
             for i in range(1, len(off_tasks)):
-                off_tasks[i].possible_assignments = possible_assignments_for_off_tasks
+                off_tasks[i].new_possible_assignments = possible_assignments_for_off_tasks
                 cost_matrix.append(vm_costs_for_task)
 
             m = Munkres()
@@ -421,9 +428,9 @@ class NewVmForEachTask:
 
                 try:
                     if (self.criteria.optimization_criteria == "min"):
-                        assignment_with_min_time = min(task.possible_assignments, key=lambda possible_assignment: possible_assignment.task_allocation_end)
+                        assignment_with_min_time = min(task.new_possible_assignments, key=lambda possible_assignment: possible_assignment.task_allocation_end)
                     else:
-                        assignment_with_min_time = max(task.possible_assignments, key=lambda possible_assignment: possible_assignment.task_allocation_end)
+                        assignment_with_min_time = max(task.new_possible_assignments, key=lambda possible_assignment: possible_assignment.task_allocation_end)
                 except:
                     print("Task(id={}, name={})".format(task.id, task.name))
 
@@ -459,7 +466,7 @@ class NewVmForEachTask:
             time_matrix.append(vm_times_for_task)
 
             for i in range(1, len(off_tasks)):
-                off_tasks[i].possible_assignments = possible_assignments_for_off_tasks
+                off_tasks[i].new_possible_assignments = possible_assignments_for_off_tasks
                 time_matrix.append(vm_times_for_task)
 
             m = Munkres()
