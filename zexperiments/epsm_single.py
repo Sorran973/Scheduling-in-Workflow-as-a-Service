@@ -49,7 +49,7 @@ if __name__ == '__main__':
 
     vm_types = CSVHandler.read_vms_table(VMS_TABLE_FILE_PATH)
 
-    workflow_type = EnumWorkflow.CYBERSHAKE50
+    workflow_type = EnumWorkflow.MONTAGE50
 
     workflow_type_str = workflow_type.value
     # workflow_type = None
@@ -147,7 +147,7 @@ if __name__ == '__main__':
     # allocations.append(AllocationEPSM(VMA_CRITERIA, vm_types, deepcopy(tasks)))
     allocations.append(AllocationEPSM_BestFit(VMA_CRITERIA, vm_types, deepcopy(tasks)))
     allocations.append(AllocationNewVM(VMA_CRITERIA, vm_types, deepcopy(tasks)))
-    allocations.append(AllocationEPSM_VMA(VMA_CRITERIA, vm_types, deepcopy(tasks)))
+    # allocations.append(AllocationEPSM_VMA(VMA_CRITERIA, vm_types, deepcopy(tasks)))
 
     for allocation in allocations:
         time = 0

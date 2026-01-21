@@ -104,7 +104,7 @@ class EPSMWorkflow:
             self.T = self.cp_paths_by_vm_type[-1]
         elif self.t == 3:
             self.T = round_up((self.cp_paths_by_vm_type[2] + self.cp_paths_by_vm_type[3]) / 2)
-            self.T = round_up((self.cp_paths_by_vm_type[1] + self.cp_paths_by_vm_type[2]) / 2)
+            # self.T = round_up((self.cp_paths_by_vm_type[1] + self.cp_paths_by_vm_type[2]) / 2)
             # self.T = self.cp_paths_by_vm_type[3]
         elif self.t == 4:
             self.T = random.randint(self.cp_paths_by_vm_type[0], self.cp_paths_by_vm_type[-1])

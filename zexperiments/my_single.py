@@ -33,7 +33,7 @@ if __name__ == '__main__':
 
     vm_types = CSVHandler.read_vms_table(VMS_TABLE_FILE_PATH)
 
-    workflow_type = EnumWorkflow.CYBERSHAKE50
+    workflow_type = EnumWorkflow.MONTAGE50
 
     workflow_type_str = workflow_type.value
     # workflow_type = None
@@ -173,7 +173,7 @@ if __name__ == '__main__':
 
     #####################################################
     workflow_costs = allocations[0].workflow_costs
-    with open("/Users/artembulkhak/PycharmProjects/Scheduling-in-Workflow-as-a-Service/Output/ftl_workflow_costs.cs", 'w') as f:
+    with open("/Users/artembulkhak/PycharmProjects/Scheduling-in-Workflow-as-a-Service/Output/ftl_workflow_costs.csv", 'w') as f:
         fieldnames = ['workflow_id', 'allocation_cost']
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
