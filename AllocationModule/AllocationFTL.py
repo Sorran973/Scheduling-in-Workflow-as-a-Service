@@ -2,6 +2,8 @@ import math
 import sys
 from datetime import datetime
 
+import numpy as np
+from scipy.optimize import linear_sum_assignment
 import pandas as pd
 from munkres import DISALLOWED, Munkres
 
@@ -9,6 +11,7 @@ from AllocationModule.Model.PossibleAssignment import PossibleAssignment
 from AllocationModule.Model.Task import Task
 from AllocationModule.Model.VM import VM
 from SchedulingModule.CJM.Model.Criteria import CostCriteria, TimeCriteria
+from config import DATA_TRANSFER_CHANNEL_SPEED
 
 
 class AllocationFTL:
@@ -20,7 +23,8 @@ class AllocationFTL:
         self.vms = []
         self.criteria = criteria
         self.log = pd.DataFrame(columns=['workflow_id', 'vm_id', 'vm_type', 'task_id', 'task_name', 'task_batch', 'task_start',
-                                         'task_end', 'interval', 'vm_start', 'vm_input_time', 'task_allocation_start',
+                                         'task_end', 'interval', 'vm_start', 'vm_input_time', 'vm_input_size', 'vm_output_size',
+                                         'task_allocation_start',
                                          'task_allocation_end', 'vm_output_time', 'vm_end', 'allocation_cost', 'idle_time', 'vm_status'])
         self.num_workflow_deadline_met = None
         self.percentage_workflow_deadline_met = None
@@ -36,6 +40,8 @@ class AllocationFTL:
         self.sum_of_workflows_time_without_first_and_last_vm = None
         self.only_vm_time_total = None
         self.only_task_time_total = None
+        self.workflow_costs = None
+        self.different_workflow_reuse_vm_counter = 0
 
         self.map_vm_perf_for_transfer = None
         self.create_vm_for_transfer()
@@ -52,8 +58,8 @@ class AllocationFTL:
         batch = []
         EFT = sys.maxsize
         for task in tasks:
-            if task.id == 40 or task.id == 24:
-                y = 0
+            # if task.id == 40 or task.id == 24:
+            #     y = 0
             task.possible_start = max(task.start, time)
             task.earliest_finish = task.possible_start + task.calc_time
             EFT = task.earliest_finish if task.earliest_finish < EFT else EFT
@@ -133,7 +139,7 @@ class AllocationFTL:
     ########## CALCULATING ALLOCATION COST ##########
     def calcVmAllocationCost(self, task, vm):
 
-        if task.id == 3:
+        if task.id == 5:
             y = 0
         # init
         # current_time = -100
@@ -147,6 +153,8 @@ class AllocationFTL:
         earliest_data_ready_time = 0  # earliest time all data can be copied from source tasks (moment)
         input_data_transfer_time = 0
         output_data_transfer_time = 0
+        input_data_transfer_size = 0
+        output_data_transfer_size = 0
 
         # if new vm
         if (vm.status == 'open'):
@@ -164,20 +172,27 @@ class AllocationFTL:
 
             if previous_task is not None and previous_task.output_size > 0:
                 output_data_transfer_time_max = -sys.maxsize
+                output_data_transfer_size_max = -sys.maxsize
                 for transfer in previous_task.output_transfers:
                     # transfer_time = transfer.transfer_time
-                    transfer_time = math.ceil(transfer.transfer_time / vm.perf)
+                    # transfer_time = math.ceil(transfer.transfer_time / vm.perf)
+                    # transfer_time = math.ceil(transfer.transfer_size / vm.perf)
+                    transfer_time = math.ceil(transfer.transfer_size / DATA_TRANSFER_CHANNEL_SPEED)
+                    transfer_size = transfer.transfer_size
+
                     transfer_end = previous_task.allocation_end + transfer_time
 
                     # meaning time between the time vm can be stopped, and it finishes the longest data transfer
                     if output_data_transfer_time_max < (transfer_end - possible_vm_start):
                         output_data_transfer_time_max = transfer_end - possible_vm_start
+                        output_data_transfer_size_max = transfer_size
 
                 if output_data_transfer_time_max < 0:
                     y = 0
                 output_data_transfer_time_max = max(output_data_transfer_time_max, 0)  # can't be negative
                 shutdown_time = shutdown_time + output_data_transfer_time_max
                 output_data_transfer_time = output_data_transfer_time_max
+                output_data_transfer_size = output_data_transfer_size_max
 
         # if perform calculations
         else:
@@ -189,6 +204,7 @@ class AllocationFTL:
             # calculate additional preparation time to copy required input data
             earliest_data_ready_time_max = -sys.maxsize
             data_transfer_time_max = -sys.maxsize
+            data_transfer_size_max = -sys.maxsize
 
             if task.input_transfers:
                 # TODO: ? create node_edges and data_center_edges and check their times
@@ -197,12 +213,17 @@ class AllocationFTL:
 
                     if transfer.task_from.assigned_vm is vm:
                         transfer_time = 0
+                        transfer_size = 0
                     else:
                         # transfer_time = transfer.transfer_time
-                        transfer_time = math.ceil(transfer.transfer_time / vm.perf)
+                        # transfer_time = math.ceil(transfer.transfer_time / vm.perf)
+                        # transfer_time = math.ceil(transfer.transfer_size / vm.perf)
+                        transfer_time = math.ceil(transfer.transfer_size / DATA_TRANSFER_CHANNEL_SPEED)
+                        transfer_size = transfer.transfer_size
 
                     if data_transfer_time_max < transfer_time:
                         data_transfer_time_max = transfer_time
+                        data_transfer_size_max = transfer_size
 
                     if task_from.name == "entry":
                         task_from_allocation_time_end = task_from.end
@@ -219,6 +240,7 @@ class AllocationFTL:
 
                 preparation_time = preparation_time + data_transfer_time_max
                 input_data_transfer_time = data_transfer_time_max
+                input_data_transfer_size = data_transfer_size_max
 
             # possibly check if it can start earlier, i.e. remove row.start from max
             # possible_task_start = min(task.start, earliest_data_ready_time_max)
@@ -247,6 +269,8 @@ class AllocationFTL:
             possible_assignment.idle_time = idle_time
             possible_assignment.input_data_transfer_time = input_data_transfer_time
             possible_assignment.output_data_transfer_time = output_data_transfer_time
+            possible_assignment.input_data_transfer_size = input_data_transfer_size
+            possible_assignment.output_data_transfer_size = output_data_transfer_size
 
             allocation_cost = math.ceil((vm_runtime + idle_time) * vm.cost)
 
@@ -296,7 +320,7 @@ class AllocationFTL:
                 vm = assignment_with_desired_cost.assigned_vm
                 vms.append(vm)
 
-                vm_costs_for_task = [DISALLOWED] * len(batch)
+                vm_costs_for_task = [np.inf] * len(batch)
                 for i, vm in enumerate(self.vms):
                     cost = self.calcVmAllocationCost(task, vm)[1]
                     if (self.criteria.optimization_criteria == "min" and cost < 1000000000 or
@@ -311,7 +335,7 @@ class AllocationFTL:
         if off_tasks:
             off_task = off_tasks[0]
 
-            vm_costs_for_task = [DISALLOWED] * len(batch)
+            vm_costs_for_task = [np.inf] * len(batch)
             possible_assignments_for_off_tasks = []
             for i, vm in enumerate(vms):
                 bool, cost, assign_info = self.calcVmAllocationCost(off_task, vm)
@@ -325,13 +349,19 @@ class AllocationFTL:
                 off_tasks[i].new_possible_assignments = possible_assignments_for_off_tasks
                 cost_matrix.append(vm_costs_for_task)
 
-        m = Munkres()
-        result = m.compute(cost_matrix)
+        # m = Munkres()
+        # result = m.compute(cost_matrix)
+
+        row_ind, col_ind = linear_sum_assignment(cost_matrix)
+
 
         pairs = []
-        for row, column in result:
-            task = batch[row]
-            vm = vms[column]
+        # print("Оптимальные назначения (индексы):")
+        for r, c in zip(row_ind, col_ind):
+            # print(f"Работник {r} -> Задача {c} (стоимость: {cost_matrix[r, c]})")
+        # for row, column in result:
+            task = batch[r]
+            vm = vms[c]
             pairs.append((task, vm))
 
         return pairs
@@ -353,9 +383,6 @@ class AllocationFTL:
                     if (self.criteria.optimization_criteria == "min"):
                         assignment_with_min_time = min(task.new_possible_assignments, key=lambda
                             possible_assignment: possible_assignment.task_allocation_end)
-                    else:
-                        assignment_with_min_time = max(task.new_possible_assignments, key=lambda
-                            possible_assignment: possible_assignment.task_allocation_end)
                 except:
                     print("Task(id={}, name={})".format(task.id, task.name))
 
@@ -363,7 +390,7 @@ class AllocationFTL:
                 vm = assignment_with_min_time.assigned_vm
                 vms.append(vm)
 
-                vm_times_for_task = [DISALLOWED] * len(batch)
+                vm_times_for_task = [np.inf] * len(batch)
                 for i, vm in enumerate(self.vms):
                     res = self.calcVmAllocationCost(task, vm)
                     if res[0]:
@@ -377,7 +404,7 @@ class AllocationFTL:
         if off_tasks:
             off_task = off_tasks[0]
 
-            vm_times_for_task = [DISALLOWED] * len(batch)
+            vm_times_for_task = [np.inf] * len(batch)
             possible_assignments_for_off_tasks = []
             for i, vm in enumerate(vms):
                 res = self.calcVmAllocationCost(off_task, vm)
@@ -390,13 +417,19 @@ class AllocationFTL:
                 off_tasks[i].new_possible_assignments = possible_assignments_for_off_tasks
                 time_matrix.append(vm_times_for_task)
 
-        m = Munkres()
-        result = m.compute(time_matrix)
+        # m = Munkres()
+        # result = m.compute(cost_matrix)
+
+        row_ind, col_ind = linear_sum_assignment(time_matrix)
+
 
         pairs = []
-        for row, column in result:
-            task = batch[row]
-            vm = vms[column]
+        # print("Оптимальные назначения (индексы):")
+        for r, c in zip(row_ind, col_ind):
+            # print(f"Работник {r} -> Задача {c} (стоимость: {cost_matrix[r, c]})")
+        # for row, column in result:
+            task = batch[r]
+            vm = vms[c]
             pairs.append((task, vm))
 
         return pairs
@@ -408,6 +441,9 @@ class AllocationFTL:
             vm_status = 'active'
             if pair[0].id == 18:
                 print()
+            if pair[0].type == 'task' and pair[1].status == 'active':
+                if pair[1].previous_task.workflow_id != pair[0].workflow_id:
+                    self.different_workflow_reuse_vm_counter += 1
             if pair[0].type == 'off' and pair[1].status == 'open':
                 continue
             elif pair[0].type == 'task' and pair[1].status == 'open':
@@ -426,12 +462,12 @@ class AllocationFTL:
             self.cost_of_workflow[pair[0].workflow_id] = self.cost_of_workflow[pair[0].workflow_id] + pair[
                 0].allocation_cost - 1
 
-
             self.log = self.log._append(
                 {'workflow_id': pair[0].workflow_id, 'vm_id': pair[1].id, 'vm_type': pair[1].type,
                  'task_id': pair[0].id, 'task_name': pair[0].name, 'task_batch': pair[0].batch,
                  'task_start': pair[0].start, 'task_end': pair[0].end, 'interval': pair[0].interval,
                  'vm_start': pair[0].vm_allocation_start, 'vm_input_time': pair[0].vm_input_time,
+                 'vm_input_size': pair[0].vm_input_size, 'vm_output_size': pair[0].vm_output_size,
                  'task_allocation_start': pair[0].allocation_start, 'task_allocation_end': pair[0].allocation_end,
                  'vm_output_time': pair[0].vm_output_time, 'vm_end': pair[0].vm_allocation_end,
                  'allocation_cost': pair[0].allocation_cost - 1, 'idle_time': pair[0].idle_time, 'vm_status': vm_status},

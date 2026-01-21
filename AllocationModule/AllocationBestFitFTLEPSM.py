@@ -249,7 +249,9 @@ class AllocationBestFitFTLEPSM:
                 output_data_transfer_time_max = -sys.maxsize
                 for transfer in previous_task.output_transfers:
                     # transfer_time = transfer.transfer_time
-                    transfer_time = math.ceil(transfer.transfer_time / vm.perf)
+                    # transfer_time = math.ceil(transfer.transfer_time / vm.perf)
+                    transfer_time = math.ceil(transfer.transfer_size / vm.perf)
+
                     transfer_end = previous_task.allocation_end + transfer_time
 
                     # meaning time between the time vm can be stopped and it finishes the longest data transfer
@@ -282,7 +284,8 @@ class AllocationBestFitFTLEPSM:
                         transfer_time = 0
                     else:
                         # transfer_time = transfer.transfer_time
-                        transfer_time = math.ceil(transfer.transfer_time / vm.perf)
+                        # transfer_time = math.ceil(transfer.transfer_time / vm.perf)
+                        transfer_time = math.ceil(transfer.transfer_size / vm.perf)
 
                     if data_transfer_time_max < transfer_time:
                         data_transfer_time_max = transfer_time

@@ -1,3 +1,4 @@
+import csv
 import random
 from copy import deepcopy
 from datetime import datetime
@@ -12,7 +13,6 @@ from AllocationModule.AllocationFTL import AllocationFTL
 from AllocationModule.AllocationASAP import AllocationASAP
 from AllocationModule.AllocationBestFitASAP import AllocationBestFitASAP
 from AllocationModule.AllocationMixed import AllocationMixed
-from AllocationModule.EPSM.AllocationEPSM_Batch_BestFit import AllocationEPSM_Batch_BestFit
 from AllocationModule.EPSM.EPSMWorkflow import EPSMWorkflow
 from AllocationModule.HEFT.HEFTNode import HEFTNode
 from AllocationModule.NewVmForEachTask import NewVmForEachTask
@@ -33,18 +33,70 @@ if __name__ == '__main__':
 
     vm_types = CSVHandler.read_vms_table(VMS_TABLE_FILE_PATH)
 
-    task_volume_multiplier = 1
-    # transfer_volume_ = 1
-
     workflow_type = EnumWorkflow.CYBERSHAKE50
 
-    if workflow_type in (EnumWorkflow.GENOME50, EnumWorkflow.GENOME100, EnumWorkflow.GENOME200,
-                         EnumWorkflow.GENOME300, EnumWorkflow.GENOME400, EnumWorkflow.GENOME500):
-        task_volume_multiplier = 0.1
-
-    # workflow_type_str = workflow_type.value
-    workflow_type_str = "MyTestDAXes/test.xml"
+    workflow_type_str = workflow_type.value
+    # workflow_type = None
+    # workflow_type_str = "MyTestDAXes/test.xml"
+    # task_volume_multiplier = 1
+    # data_volume_multiplier = 1
     xml_file = WORKFLOW_EXAMPLES_DIR + workflow_type_str
+
+    # 50, 100, 500 норм
+    if workflow_type in (EnumWorkflow.MONTAGE50, EnumWorkflow.MONTAGE100, EnumWorkflow.MONTAGE200,
+                         EnumWorkflow.MONTAGE300, EnumWorkflow.MONTAGE400, EnumWorkflow.MONTAGE500):
+        # task_volume_multiplier = 44
+        # data_volume_multiplier = 7
+        task_volume_multiplier = 12
+        data_volume_multiplier = 5
+
+    # 50, 100, 500 норм, в других выигрыш либо нулевой, либо вообще отрицательный
+    if workflow_type in (EnumWorkflow.CYBERSHAKE50, EnumWorkflow.CYBERSHAKE100, EnumWorkflow.CYBERSHAKE500):
+        # task_volume_multiplier = 20
+        # data_volume_multiplier = 0.05
+        task_volume_multiplier = 17
+        data_volume_multiplier = 0.04
+    if workflow_type in (EnumWorkflow.CYBERSHAKE200, EnumWorkflow.CYBERSHAKE300, EnumWorkflow.CYBERSHAKE400, EnumWorkflow.CYBERSHAKE500):
+        task_volume_multiplier = 80
+        data_volume_multiplier = 1.5
+    # ------------------------------------------------------------------------------------------------------------------
+    # все норм
+    if workflow_type in (EnumWorkflow.LIGO50, EnumWorkflow.LIGO100, EnumWorkflow.LIGO200,
+                         EnumWorkflow.LIGO300, EnumWorkflow.LIGO500):
+        task_volume_multiplier = 3
+        data_volume_multiplier = 7
+        # task_volume_multiplier = 3
+        # data_volume_multiplier = 7
+    if workflow_type is EnumWorkflow.LIGO400:
+        task_volume_multiplier = 8
+        data_volume_multiplier = 75
+    # ------------------------------------------------------------------------------------------------------------------
+    # все хорошо
+    if workflow_type in (EnumWorkflow.SIPHT50, EnumWorkflow.SIPHT100):
+        # task_volume_multiplier = 1
+        # data_volume_multiplier = 5
+        task_volume_multiplier = 0.25
+        data_volume_multiplier = 0.1
+    if workflow_type in (EnumWorkflow.SIPHT200, EnumWorkflow.SIPHT300, EnumWorkflow.SIPHT400, EnumWorkflow.SIPHT500):
+        task_volume_multiplier = 3
+        data_volume_multiplier = 50
+    # ------------------------------------------------------------------------------------------------------------------
+    # все норм
+    if workflow_type in (EnumWorkflow.GENOME50, EnumWorkflow.GENOME100):
+        # task_volume_multiplier = 0.25
+        # data_volume_multiplier = 1
+        task_volume_multiplier = 0.013
+        data_volume_multiplier = 0.15
+    if workflow_type in (EnumWorkflow.GENOME200,EnumWorkflow.GENOME300):
+        task_volume_multiplier = 0.4
+        data_volume_multiplier = 9
+    if workflow_type is EnumWorkflow.GENOME400:
+        task_volume_multiplier = 0.8
+        data_volume_multiplier = 8
+    if workflow_type is EnumWorkflow.GENOME500:
+        task_volume_multiplier = 0.2
+        data_volume_multiplier = 8
+
 
     workflow_set = WorkflowSet()
     workflow = Workflow(XML_FILE=xml_file,
@@ -52,7 +104,7 @@ if __name__ == '__main__':
                         vm_types=vm_types,
                         criteria=CJM_CRITERIA,
                         task_volume_multiplier=task_volume_multiplier,
-                        data_volume_multiplier=1,
+                        data_volume_multiplier=data_volume_multiplier,
                         start_time=0)
 
     # workflow2 = Workflow(XML_FILE=xml_file,
@@ -60,8 +112,8 @@ if __name__ == '__main__':
     #                      vm_types=vm_types,
     #                      criteria=CJM_CRITERIA,
     #                      task_volume_multiplier=task_volume_multiplier,
-    #                      data_volume_multiplier=1,
-    #                      start_time=10)
+    #                      data_volume_multiplier=data_volume_multiplier,
+    #                      start_time=700)
 
     start_time = datetime.now()
     workflow_set.addWorkflow(workflow)
@@ -86,63 +138,52 @@ if __name__ == '__main__':
     # allocations.append(AllocationBestFitASAPEPSM(VMA_CRITERIA, vm_types, deepcopy(tasks)))
 
     allocations.append(AllocationFTL(VMA_CRITERIA, vm_types, deepcopy(tasks)))
-    allocations.append(AllocationASAP_O(VMA_CRITERIA, vm_types, deepcopy(tasks)))
-    allocations.append(NewVmForEachTask(VMA_CRITERIA, vm_types, deepcopy(tasks)))
+    # allocations.append(AllocationASAP_O(VMA_CRITERIA, vm_types, deepcopy(tasks)))
+    allocations.append(AllocationASAP(VMA_CRITERIA, vm_types, deepcopy(tasks)))
+    # allocations.append(NewVmForEachTask(VMA_CRITERIA, vm_types, deepcopy(tasks)))
 
-    #---------
-    # Node.id = 0
-    # workflow_set = WorkflowSet()
-    # workflow = EPSMWorkflow(XML_FILE=xml_file,
-    #                         T=T,
-    #                         vm_types=vm_types,
-    #                         criteria=CJM_CRITERIA,
-    #                         task_volume_multiplier=task_volume_multiplier,
-    #                         data_volume_multiplier=1,
-    #                         start_time=0)
-    #
-    # start_time = datetime.now()
-    # workflow_set.addEPSMWorkflow(workflow)
-    # end_time = datetime.now()
-    # print('Duration of scheduling (EPSM): {}'.format(end_time - start_time))
-    #
-    # tasks = CSVHandler.read_task_time_table(TASK_TIME_TABLE_FILE)
-    # workload_start_time = tasks[0].start
-    # workload_end_time = max(tasks, key=lambda task: task.end).end
-    # print(f"\n\tWorkload Limit Time: {workload_end_time - workload_start_time}")
-    # data_transfer = CSVHandler.read_data_transfer_table(TRANSFER_SIZE_TABLE_FILE, tasks)
-    #
-    # allocations.append(AllocationEPSM_Batch_BestFit(VMA_CRITERIA, vm_types, deepcopy(tasks)))
-    # #---------
 
     for allocation in allocations:
         time = 0
         batches = allocation.formParallelBatches(time)
         allocation.batches_size = len(batches)
 
-        N_pc = 0
-        for b in range(0, len(batches)-1):
-            for task in batches[b]:
-                for data_transfer in task.output_transfers:
-                    for next_task in batches[b+1]:
-                        if next_task.id == data_transfer.task_to.id:
-                            N_pc += 1
-                            # print(str(task.id) + "-->" + str(next_task.id))
-                            break
-        print("N_pc: " + str(N_pc))
-
 
         if isinstance(allocation, AllocationFTL):
             drawer.draw_batches_gantt(allocation.tasks, GANTT_FIGURES_BATCHES_FTL)
         if isinstance(allocation, AllocationASAP_O):
             drawer.draw_batches_gantt(allocation.tasks, GANTT_FIGURES_BATCHES_ASAP_O)
+        if isinstance(allocation, AllocationASAP):
+            drawer.draw_batches_gantt(allocation.tasks, GANTT_FIGURES_BATCHES_ASAP)
         if isinstance(allocation, NewVmForEachTask):
             drawer.draw_batches_gantt(allocation.tasks, GANTT_FIGURES_BATCHES_NEW_VM_FOR_EACH)
 
         allocation.vma(batches)
 
 
+    #####################################################
+    ###################### ANALYZING ####################
+    #####################################################
+    T_arr = list(map(lambda workflow: workflow.T, workflow_set.workflows))
+    for allocation in allocations:
+        Analyzer.analyze_allocation(allocation, T_arr)
+
+    Analyzer.print_comparison_table(allocations)
 
 
+    #####################################################
+    workflow_costs = allocations[0].workflow_costs
+    with open("/Users/artembulkhak/PycharmProjects/Scheduling-in-Workflow-as-a-Service/Output/ftl_workflow_costs.cs", 'w') as f:
+        fieldnames = ['workflow_id', 'allocation_cost']
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+
+        for i, cost in enumerate(workflow_costs):
+            row = {fieldnames[0]: i,
+                   fieldnames[1]: cost}
+            writer.writerow(row)
+
+    a = 0
 
     #####################################################
     ################# DRAWING GANTT PLOTS ###############
@@ -189,6 +230,7 @@ if __name__ == '__main__':
             log = pd.merge(log, color, on='workflow_id', how='left')
             log = log.sort_values(["vm_id", "vm_start"])
             drawer.draw_result_gantt(log, GANTT_FIGURES_FTL)
+            # drawer.draw_big_gantt(log, GANTT_FIGURES_FTL)
         if isinstance(allocation, AllocationASAP_O):
             log = allocation.log
             color = log[["workflow_id"]]
@@ -197,22 +239,11 @@ if __name__ == '__main__':
             log = pd.merge(log, color, on='workflow_id', how='left')
             log = log.sort_values(["vm_id", "vm_start"])
             drawer.draw_result_gantt(log, GANTT_FIGURES_ASAP_O)
-        if isinstance(allocation, NewVmForEachTask):
+        if isinstance(allocation, AllocationASAP):
             log = allocation.log
             color = log[["workflow_id"]]
             color = color.drop_duplicates()
             color["color"] = color.apply(lambda x: rand_color(x), axis=1)
             log = pd.merge(log, color, on='workflow_id', how='left')
-            drawer.draw_result_gantt(log, GANTT_FIGURES_NEW_VM_FOR_EACH)
-
-    #####################################################
-    ###################### ANALYZING ####################
-    #####################################################
-    T_arr = list(map(lambda workflow: workflow.T, workflow_set.workflows))
-    for allocation in allocations:
-        Analyzer.analyze_allocation(allocation, T_arr)
-
-
-    Analyzer.print_comparison_table(allocations)
-
-    a = 0
+            log = log.sort_values(["vm_id", "vm_start"])
+            drawer.draw_result_gantt(log, GANTT_FIGURES_ASAP)

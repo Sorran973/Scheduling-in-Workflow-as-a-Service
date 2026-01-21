@@ -9,59 +9,55 @@ TEST_1_13 = 'MyTestDAXes/test1_13.xml'
 TEST_HEFT = 'MyTestDAXes/testHEFT.xml'
 
 ########################################################################################################################
-# WORKFLOW_SAMPLES = [EnumWorkflow.MONTAGE50,EnumWorkflow.MONTAGE100, EnumWorkflow.MONTAGE200]
-#                     # EnumWorkflow.LIGO400, EnumWorkflow.MONTAGE400, EnumWorkflow.CYBERSHAKE400, EnumWorkflow.GENOME400, EnumWorkflow.SIPHT400,
-#                     # EnumWorkflow.LIGO500, EnumWorkflow.MONTAGE500, EnumWorkflow.CYBERSHAKE500, EnumWorkflow.GENOME500, EnumWorkflow.SIPHT500]
-
-WORKFLOW_SAMPLES = [EnumWorkflow.LIGO50, EnumWorkflow.MONTAGE50, EnumWorkflow.CYBERSHAKE50, EnumWorkflow.GENOME50, EnumWorkflow.SIPHT50,
-                    EnumWorkflow.LIGO100, EnumWorkflow.MONTAGE100, EnumWorkflow.CYBERSHAKE100, EnumWorkflow.GENOME100, EnumWorkflow.SIPHT100,
-                    EnumWorkflow.LIGO200, EnumWorkflow.MONTAGE200, EnumWorkflow.CYBERSHAKE200, EnumWorkflow.GENOME200, EnumWorkflow.SIPHT200,
-                    EnumWorkflow.LIGO300, EnumWorkflow.MONTAGE300, EnumWorkflow.CYBERSHAKE300, EnumWorkflow.GENOME300, EnumWorkflow.SIPHT300]
+WORKFLOW_SAMPLES = [EnumWorkflow.MONTAGE50,EnumWorkflow.CYBERSHAKE50, EnumWorkflow.LIGO50, EnumWorkflow.SIPHT50, EnumWorkflow.GENOME50]
+                    # EnumWorkflow.MONTAGE50,EnumWorkflow.CYBERSHAKE50, EnumWorkflow.LIGO50, EnumWorkflow.SIPHT50, EnumWorkflow.GENOME50]
                     # EnumWorkflow.LIGO400, EnumWorkflow.MONTAGE400, EnumWorkflow.CYBERSHAKE400, EnumWorkflow.GENOME400, EnumWorkflow.SIPHT400,
                     # EnumWorkflow.LIGO500, EnumWorkflow.MONTAGE500, EnumWorkflow.CYBERSHAKE500, EnumWorkflow.GENOME500, EnumWorkflow.SIPHT500]
 
-VMS_TABLE_FILE = "/vms_table_for_x2_new_prices.csv"
+# WORKFLOW_SAMPLES = [EnumWorkflow.LIGO50, EnumWorkflow.MONTAGE50, EnumWorkflow.CYBERSHAKE50, EnumWorkflow.GENOME50, EnumWorkflow.SIPHT50,
+#                     EnumWorkflow.LIGO100, EnumWorkflow.MONTAGE100, EnumWorkflow.CYBERSHAKE100, EnumWorkflow.GENOME100, EnumWorkflow.SIPHT100,
+#                     EnumWorkflow.LIGO200, EnumWorkflow.MONTAGE200, EnumWorkflow.CYBERSHAKE200, EnumWorkflow.GENOME200, EnumWorkflow.SIPHT200,
+#                     EnumWorkflow.LIGO300, EnumWorkflow.MONTAGE300, EnumWorkflow.CYBERSHAKE300, EnumWorkflow.GENOME300, EnumWorkflow.SIPHT300]
+#                     # EnumWorkflow.LIGO400, EnumWorkflow.MONTAGE400, EnumWorkflow.CYBERSHAKE400, EnumWorkflow.GENOME400, EnumWorkflow.SIPHT400,
+#                     # EnumWorkflow.LIGO500, EnumWorkflow.MONTAGE500, EnumWorkflow.CYBERSHAKE500, EnumWorkflow.GENOME500, EnumWorkflow.SIPHT500]
+
+# VMS_TABLE_FILE = "/vms_table_for_x2_new_prices.csv"
 # VMS_TABLE_FILE = "/vms_table_for_x2.csv"
 # VMS_TABLE_FILE = "/vms_table_for_1-2.csv"
-# VMS_TABLE_FILE = "/vms_table_test.csv"
+VMS_TABLE_FILE = "/vms_table_test.csv"
 
-T = 1
+T = 2
 
-VM_PREP_TIME = 10
-VM_SHUTDOWN_TIME = 1
+VM_PREP_TIME = 30
+VM_SHUTDOWN_TIME = 10
 MULTIPLE_STRATEGIES = False
+DATA_TRANSFER_CHANNEL_SPEED = 1.0
 
-# SCHEDULING_OPTIMIZATION_CRITERIA = 'max'
 SCHEDULING_OPTIMIZATION_CRITERIA = 'min'
-# CJM_CRITERIA: Criteria = AverageResourceLoadCriteria(SCHEDULING_OPTIMIZATION_CRITERIA)
 CJM_CRITERIA: Criteria = CostCriteria(SCHEDULING_OPTIMIZATION_CRITERIA)
 # CJM_CRITERIA: Criteria = TimeCriteria(SCHEDULING_OPTIMIZATION_CRITERIA)
 
-# DATA_TRANSFER_CHANNEL_SPEED = 0.001
-# DATA_TRANSFER_CHANNEL_SPEED = 0.015
-# DATA_TRANSFER_CHANNEL_SPEED = 0.1
-DATA_TRANSFER_CHANNEL_SPEED = 1.0
-# DATA_TRANSFER_CHANNEL_SPEED = 10.0
-# DATA_TRANSFER_CHANNEL_SPEED = 100.0
-
 ALLOCATION_OPTIMIZATION_CRITERIA = 'min'
-# ALLOCATION_OPTIMIZATION_CRITERIA = 'max' #????
-# VMA_CRITERIA: Criteria = AverageResourceLoadCriteria(ALLOCATION_OPTIMIZATION_CRITERIA)
 VMA_CRITERIA: Criteria = CostCriteria(ALLOCATION_OPTIMIZATION_CRITERIA)
 # VMA_CRITERIA: Criteria = TimeCriteria(ALLOCATION_OPTIMIZATION_CRITERIA)
 
 
 ########################################################################################################################
-WORKFLOW_EXAMPLES_DIR = "/Users/artembulkhak/PycharmProjects/Dissertation/JobExamples/"
+WORKFLOW_EXAMPLES_DIR = "/Users/artembulkhak/PycharmProjects/Scheduling-in-Workflow-as-a-Service/JobExamples/"
 
-INPUT_DIR = "/Users/artembulkhak/PycharmProjects/Dissertation/Input"
+PROCESSOR_TABLE_FILE = '/Users/artembulkhak/PycharmProjects/Scheduling-in-Workflow-as-a-Service/Output/processor_table.csv'
+TASK_TIME_TABLE_FILE = '/Users/artembulkhak/PycharmProjects/Scheduling-in-Workflow-as-a-Service/Output/task_time_table.csv'
+TRANSFER_SIZE_TABLE_FILE = '/Users/artembulkhak/PycharmProjects/Scheduling-in-Workflow-as-a-Service/Output/transfer_size_table.csv'
+GRAPH_OUTPUT = '/Users/artembulkhak/PycharmProjects/Scheduling-in-Workflow-as-a-Service/Output/pyvis_graph.html'
+
+
+INPUT_DIR = "/Users/artembulkhak/PycharmProjects/Scheduling-in-Workflow-as-a-Service/Input"
 VMS_FOLDER = INPUT_DIR + "/VMsets"
 VMS_TABLE_FILE_PATH = VMS_FOLDER + VMS_TABLE_FILE
-
-OUTPUT_DIR = "/Users/artembulkhak/PycharmProjects/Dissertation/Output"
+OUTPUT_DIR = "/Users/artembulkhak/PycharmProjects/Scheduling-in-Workflow-as-a-Service/Output"
 FOLDER = '/LIGO50'
-TASK_TIME_TABLE_FILE = OUTPUT_DIR + "/task_time_table.csv"
-TRANSFER_SIZE_TABLE_FILE = OUTPUT_DIR + "/transfer_size_table.csv"
+# TASK_TIME_TABLE_FILE = OUTPUT_DIR + "/task_time_table.csv"
+# TRANSFER_SIZE_TABLE_FILE = OUTPUT_DIR + "/transfer_size_table.csv"
 ALLOCATION_LOG_FILE = OUTPUT_DIR + FOLDER + "/allocation_log.csv"
 CONFIGURATION_FILE = OUTPUT_DIR + FOLDER + "/configuration.csv"
 GANTT_FIGURES = OUTPUT_DIR + FOLDER + "/gantt_figures"

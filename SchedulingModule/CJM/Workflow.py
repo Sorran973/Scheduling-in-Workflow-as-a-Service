@@ -85,6 +85,8 @@ class Workflow:
         self.global_timer = start_time
         self.xml_file = XML_FILE
         self.preliminary_total_cost = 0
+        self.major_vm_type_index = None
+        self.cp_paths_by_vm_type = []
 
         # Steps
         soup_nodes, soup_edges = XMLParser.parse(XML_FILE)
@@ -96,19 +98,55 @@ class Workflow:
 
         print("shortest_path = " + str(self.critical_paths[0][0]))
         print("longest_path = " + str(self.longest_path))
+        print("shortest_path = " + str(self.cp_paths_by_vm_type[0]))
+        print("longest_path = " + str(self.cp_paths_by_vm_type[-1]))
+
+        # if self.t == 1:
+        #     self.T = self.critical_paths[0][0]
+        #     self.major_vm_type_index = 0
+        # elif self.t == 2:
+        #     self.T = self.longest_path
+        #     self.major_vm_type_index = -1
+        # elif self.t == 3:
+        #     self.T = round((self.longest_path + self.critical_paths[0][0]) / 2)
+        # elif self.t == 4:
+        #     self.T = random.randint(self.critical_paths[0][0], self.longest_path)
+        # else:
+        #     self.T = self.t
 
         if self.t == 1:
-            self.T = self.critical_paths[0][0]
+            self.T = self.cp_paths_by_vm_type[0]
         elif self.t == 2:
-            self.T = self.longest_path
+            self.T = self.cp_paths_by_vm_type[-1]
         elif self.t == 3:
-            self.T = round((self.longest_path + self.critical_paths[0][0]) / 2)
+            self.T = round_up((self.cp_paths_by_vm_type[2] + self.cp_paths_by_vm_type[3]) / 2)
+            # self.T = round_up((self.cp_paths_by_vm_type[1] + self.cp_paths_by_vm_type[2]) / 2)
+            # self.T = self.cp_paths_by_vm_type[2]
         elif self.t == 4:
-            self.T = random.randint(self.critical_paths[0][0], self.longest_path)
+            self.T = random.randint(self.cp_paths_by_vm_type[0], self.cp_paths_by_vm_type[-1])
         else:
             self.T = self.t
 
         self.criteria.set_parameters(len(self.vms_table), self.T)
+        self.check_global_deadline()
+
+
+    def find_vm_type(self, deadline):
+        for i, path in enumerate(self.cp_paths_by_vm_type):
+            if path > deadline:
+                return i-1
+            elif path == deadline:
+                return i
+
+        return len(self.cp_paths_by_vm_type) - 1
+
+
+    def check_global_deadline(self):
+        vm_type_index = self.find_vm_type(self.T)
+        if vm_type_index == -1:
+            print("Deadline is too small")
+            return
+        self.major_vm_type_index = vm_type_index
 
     def create_graph(self, soup_nodes, soup_edges):
         # Add entry_node into graph
@@ -124,7 +162,7 @@ class Workflow:
             current_node = Node(name, volume, round_up(volume / self.vm_types[0].perf))
             self.add_node(current_node)
 
-            if current_node.id == 17:
+            if current_node.id == 39:
                 y = 0
             uses = node.find_all('uses')
             for use in uses:
@@ -148,7 +186,7 @@ class Workflow:
                                                use.get('link'),
                                                size,
                                                use.get('register')))
-            current_node.calculate_transfer_time(DATA_TRANSFER_CHANNEL_SPEED)
+            current_node.calculate_transfer_time(self.vm_types[0].perf, DATA_TRANSFER_CHANNEL_SPEED)
 
         # Add finish_node into graph
         self.add_node(Node('finish', 0.0, 0.0))
@@ -161,7 +199,7 @@ class Workflow:
             for parent in parents:
                 node_from = self.node_dict.get(parent.get('ref'))
                 node_to = self.node_dict.get(edge.get('ref'))
-                e = Edge(node_from, node_to, node_from.output, DATA_TRANSFER_CHANNEL_SPEED)
+                e = Edge(node_from, node_to, node_from.output, self.vm_types[0].perf, DATA_TRANSFER_CHANNEL_SPEED)
                 self.add_edge(e)
                 node_from.add_edge_to(e)
                 node_to.add_edge_from(e)
@@ -210,9 +248,9 @@ class Workflow:
             next_node = self.nodes[i]
             if self.entry_edges[i] == 0:
                 if next_node.input:
-                    edge = Edge(entry_node, next_node, next_node.input, DATA_TRANSFER_CHANNEL_SPEED)
+                    edge = Edge(entry_node, next_node, next_node.input, self.vm_types[0].perf, DATA_TRANSFER_CHANNEL_SPEED)
                 else:
-                    edge = Edge(entry_node, next_node, [File('empty_file', 'input', 0, 'false')], DATA_TRANSFER_CHANNEL_SPEED)
+                    edge = Edge(entry_node, next_node, [File('empty_file', 'input', 0, 'false')], self.vm_types[0].perf, DATA_TRANSFER_CHANNEL_SPEED)
                 self.add_edge(edge)
                 entry_node.add_edge_to(edge)
                 next_node.add_edge_from(edge)
@@ -221,7 +259,7 @@ class Workflow:
         for i in range(1, n - 1):
             previous_node = self.nodes[i]
             if self.finish_edges[i] == 0:
-                edge = Edge(previous_node, finish_node, previous_node.output, DATA_TRANSFER_CHANNEL_SPEED)
+                edge = Edge(previous_node, finish_node, previous_node.output, self.vm_types[0].perf, DATA_TRANSFER_CHANNEL_SPEED)
                 self.add_edge(edge)
                 previous_node.add_edge_to(edge)
                 finish_node.add_edge_from(edge)
@@ -237,15 +275,28 @@ class Workflow:
 
 
     def find_the_longest_path(self):
-        longest_path = 0
+        # longest_path = 0
+        # c_p = self.critical_paths[0][1]
+        # for elem in c_p:
+        #     if isinstance(elem, Node):
+        #         longest_path += round_up(elem.volume / self.vm_types[-1].perf)
+        #     else:
+        #         longest_path += elem.transfer_size / self.vm_types[-1].perf
+        #
+        # self.longest_path = longest_path
         c_p = self.critical_paths[0][1]
-        for elem in c_p:
-            if isinstance(elem, Node):
-                longest_path += round_up(elem.volume / self.vm_types[-1].perf)
-            else:
-                longest_path += elem.transfer_time
 
-        self.longest_path = longest_path
+        for vm_type in self.vm_types:
+            path = 0
+            for elem in c_p:
+                if isinstance(elem, Node):
+                    path += round_up(elem.volume / vm_type.perf)
+                else:
+                    # path += round_up(elem.transfer_size / vm_type.perf)
+                    # path += round_up(elem.transfer_size)
+                    path += round_up(elem.transfer_size / DATA_TRANSFER_CHANNEL_SPEED)
+
+            self.cp_paths_by_vm_type.append(path)
 
 
     def create_vms_table(self, vm_types):
@@ -281,7 +332,14 @@ class Workflow:
 
             Z1 = self.T # Z1 = reserve time
             for i in range(len(c_p) - 1, -1, -2):  # delete edges(transfer time)
-                Z1 -= c_p[i].transfer_time
+                # TODO
+                # if self.t == 1:
+                #     Z1 -= round_up(c_p[i].transfer_size / self.vm_types[0].perf)
+                # if self.t == 2:
+                #     Z1 -= round_up(c_p[i].transfer_size / self.vm_types[-1].perf)
+                # Z1 -= round_up(c_p[i].transfer_size / self.vm_types[self.major_vm_type_index].perf)
+                # Z1 -= round_up(c_p[i].transfer_size)
+                Z1 -= round_up(c_p[i].transfer_size / DATA_TRANSFER_CHANNEL_SPEED)
                 del c_p[i]
 
             if not self.strategies:
@@ -412,7 +470,7 @@ class Workflow:
         node = local_c_p[0]
         index = c_p.index(node)
         if index == 0:
-            start_time = float(self.global_timer + node.input_time)
+            start_time = float(self.global_timer + round_up(node.input_size / DATA_TRANSFER_CHANNEL_SPEED))
             finish_time = round(start_time + round_up(layer.layer_options[0].t_current_node), 2)
 
             strategy.add_dict_element(node.id - self.first_id, start_time, finish_time)
@@ -422,7 +480,7 @@ class Workflow:
                             layer.layer_options[0].C_current_node)
         else:
             previous_node = c_p[index - 1]
-            start_time = strategy.dict[previous_node.id - self.first_id][1] + previous_node.output_time
+            start_time = strategy.dict[previous_node.id - self.first_id][1] + round_up(previous_node.output_time / DATA_TRANSFER_CHANNEL_SPEED)
             # start_time = strategy.dict[previous_node.id][1] + previous_node.output_time
             finish_time = round(start_time + round_up(layer.layer_options[0].t_current_node), 2)
 
@@ -438,7 +496,7 @@ class Workflow:
                                               layer.previous_layers[0], strategy)
 
     def set_next_node_strategy_times_recursion(self, previous_node, current_node, layer, strategy):
-        start_time = strategy.dict[previous_node.id - self.first_id][1] + previous_node.output_time
+        start_time = strategy.dict[previous_node.id - self.first_id][1] + round_up(previous_node.output_time / DATA_TRANSFER_CHANNEL_SPEED)
         finish_time = round(start_time + round_up(layer.layer_options[0].t_current_node), 2)
 
         strategy.add_dict_element(current_node.id - self.first_id, start_time, finish_time)
@@ -458,7 +516,9 @@ class Workflow:
         index = c_p.index(node)
         strategy = self.strategies[0]
         if index == 0:
-            node.start_time = float(self.global_timer + node.input_time)
+            # node.start_time = float(self.global_timer + round_up(node.input_size / self.vm_types[self.major_vm_type_index].perf))
+            # node.start_time = float(self.global_timer + round_up(node.input_size))
+            node.start_time = float(self.global_timer + round_up(node.input_size / DATA_TRANSFER_CHANNEL_SPEED))
             node.finish_time = round(node.start_time + round_up(layer.layer_options[0].t_current_node), 2)
 
             strategy.change(node.id - self.first_id,
@@ -466,7 +526,9 @@ class Workflow:
                                 layer.layer_options[0].C_current_node)
         else:
             previous_node = c_p[index - 1]
-            node.start_time = previous_node.finish_time + previous_node.output_time
+            # node.start_time = previous_node.finish_time + round_up(previous_node.output_size / self.vm_types[self.major_vm_type_index].perf)
+            # node.start_time = previous_node.finish_time + round_up(previous_node.output_size)
+            node.start_time = previous_node.finish_time + round_up(previous_node.output_size / DATA_TRANSFER_CHANNEL_SPEED)
             node.finish_time = round(node.start_time + round_up(layer.layer_options[0].t_current_node), 2)
 
             strategy.change(node.id - self.first_id,
@@ -481,7 +543,9 @@ class Workflow:
 
     def set_next_node_strategy_times(self, previous_node, current_node, layer):
         strategy = self.strategies[0]
-        current_node.start_time = previous_node.finish_time + previous_node.output_time
+        # current_node.start_time = previous_node.finish_time + round_up(previous_node.output_size / self.vm_types[self.major_vm_type_index].perf)
+        # current_node.start_time = previous_node.finish_time + round_up(previous_node.output_size)
+        current_node.start_time = previous_node.finish_time + round_up(previous_node.output_size / DATA_TRANSFER_CHANNEL_SPEED)
         current_node.finish_time = round(current_node.start_time + round_up(layer.layer_options[0].t_current_node), 2)
 
         strategy.change(current_node.id - self.first_id,

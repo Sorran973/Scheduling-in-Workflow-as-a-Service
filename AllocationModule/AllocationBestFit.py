@@ -250,7 +250,9 @@ class AllocationBestFit:
                 output_data_transfer_time_max = -sys.maxsize
                 for transfer in previous_task.output_transfers:
                     # transfer_time = transfer.transfer_time
-                    transfer_time = math.ceil(transfer.transfer_time / vm.perf)
+                    # transfer_time = math.ceil(transfer.transfer_time / vm.perf)
+                    transfer_time = math.ceil(transfer.transfer_size / vm.perf)
+
                     transfer_end = previous_task.allocation_end + transfer_time
 
                     # meaning time between the time vm can be stopped and it finishes the longest data transfer
@@ -283,7 +285,8 @@ class AllocationBestFit:
                         transfer_time = 0
                     else:
                         # transfer_time = transfer.transfer_time
-                        transfer_time = math.ceil(transfer.transfer_time / vm.perf)
+                        # transfer_time = math.ceil(transfer.transfer_time / vm.perf)
+                        transfer_time = math.ceil(transfer.transfer_size / vm.perf)
 
                     if data_transfer_time_max < transfer_time:
                         data_transfer_time_max = transfer_time
@@ -346,7 +349,7 @@ class AllocationBestFit:
 
 
 
-    ########## CHOOSING THE BEST MATCHES (MUNKRES ALGORITHM) ##########
+    ########## CHOOSING THE BEST MATCHES ##########
     def calcMinCostPairings(self, batch):
         vms_dict = {vm: -1 for vm in self.vms}
         tasks_dict = {task: -1 for task in batch}

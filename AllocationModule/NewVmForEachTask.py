@@ -23,7 +23,8 @@ class NewVmForEachTask:
         self.vms = []
         self.criteria = criteria
         self.log = pd.DataFrame(columns=['workflow_id', 'vm_id', 'vm_type', 'task_id', 'task_name', 'task_batch', 'task_start',
-                                         'task_end', 'interval', 'vm_start', 'vm_input_time', 'task_allocation_start',
+                                         'task_end', 'interval', 'vm_start', 'vm_input_time', 'vm_input_size', 'vm_output_size',
+                                         'task_allocation_start',
                                          'task_allocation_end', 'vm_output_time', 'vm_end', 'allocation_cost', 'idle_time', 'vm_status'])
         self.num_workflow_deadline_met = None
         self.percentage_workflow_deadline_met = None
@@ -225,6 +226,8 @@ class NewVmForEachTask:
         earliest_data_ready_time = 0  # earliest time all data can be copied from source tasks (moment)
         input_data_transfer_time = 0
         output_data_transfer_time = 0
+        input_data_transfer_size = 0
+        output_data_transfer_size = 0
 
         # if new vm
         if (vm.status == 'open'):
@@ -242,21 +245,28 @@ class NewVmForEachTask:
 
             if previous_task is not None and previous_task.output_size > 0:
                 output_data_transfer_time_max = -sys.maxsize
+                output_data_transfer_size_max = -sys.maxsize
                 for transfer in previous_task.output_transfers:
                     task_to = transfer.task_to
                     # transfer_time = transfer.transfer_time
-                    transfer_time = math.ceil(transfer.transfer_time / vm.perf)
+                    # transfer_time = math.ceil(transfer.transfer_time / vm.perf)
+                    # transfer_time = math.ceil(transfer.transfer_size / vm.perf)
+                    transfer_time = max(math.ceil(transfer.transfer_size / vm.perf), transfer.transfer_size)
+                    transfer_size = transfer.transfer_size
+
                     transfer_end = previous_task.allocation_end + transfer_time
 
                     # meaning time between the time vm can be stopped and it finishes the longest data transfer
                     if output_data_transfer_time_max < (transfer_end - possible_vm_start):
                         output_data_transfer_time_max = transfer_end - possible_vm_start
+                        output_data_transfer_size_max = transfer_size
 
                 if output_data_transfer_time_max < 0:
                     y = 0
                 output_data_transfer_time_max = max(output_data_transfer_time_max, 0)  # can't be negative
                 shutdown_time = shutdown_time + output_data_transfer_time_max
                 output_data_transfer_time = output_data_transfer_time_max
+                output_data_transfer_size = output_data_transfer_size_max
 
         # if perform calculations
         else:
@@ -266,16 +276,20 @@ class NewVmForEachTask:
             # calculate additional preparation time to copy required input data
             earliest_data_ready_time_max = -sys.maxsize
             data_transfer_time_max = -sys.maxsize
+            data_transfer_size_max = -sys.maxsize
 
             if task.input_transfers:
                 #TODO: ? create node_edges and data_center_edges and check their times
                 for transfer in task.input_transfers:
                     task_from = transfer.task_from
-                    transfer_time = math.ceil(transfer.transfer_time / vm.perf)
-                    transfer_time1 = round(transfer.transfer_size / vm.perf)
+                    # transfer_time = math.ceil(transfer.transfer_time / vm.perf)
+                    # transfer_time = math.ceil(transfer.transfer_size / vm.perf)
+                    transfer_time = max(math.ceil(transfer.transfer_size / vm.perf), transfer.transfer_size)
+                    transfer_size = transfer.transfer_size
 
                     if data_transfer_time_max < transfer_time:
                         data_transfer_time_max = transfer_time
+                        data_transfer_size_max = transfer_size
 
                     if task_from.name == "entry":
                         task_from_allocation_time_end = task_from.end
@@ -290,6 +304,7 @@ class NewVmForEachTask:
 
                 preparation_time = preparation_time + data_transfer_time_max
                 input_data_transfer_time = data_transfer_time_max
+                input_data_transfer_size = data_transfer_size_max
 
             # possibly check if can start earlier, i.e. remove row.start from max
             # possible_task_start = min(task.start, earliest_data_ready_time_max)
@@ -318,6 +333,8 @@ class NewVmForEachTask:
             possible_assignment.idle_time = idle_time
             possible_assignment.input_data_transfer_time = input_data_transfer_time
             possible_assignment.output_data_transfer_time = output_data_transfer_time
+            possible_assignment.input_data_transfer_size = input_data_transfer_size
+            possible_assignment.output_data_transfer_size = output_data_transfer_size
 
             allocation_cost = math.ceil((vm_runtime + idle_time) * vm.cost)
 
@@ -503,6 +520,7 @@ class NewVmForEachTask:
                                          'task_id': pair[0].id, 'task_name': pair[0].name, 'task_batch': pair[0].batch,
                                          'task_start': pair[0].start, 'task_end': pair[0].end, 'interval': pair[0].interval,
                                          'vm_start': pair[0].vm_allocation_start, 'vm_input_time': pair[0].vm_input_time,
+                                         'vm_input_size': pair[0].vm_input_size, 'vm_output_size': pair[0].vm_output_size,
                                          'task_allocation_start': pair[0].allocation_start, 'task_allocation_end': pair[0].allocation_end,
                                          'vm_output_time': pair[0].vm_output_time, 'vm_end': pair[0].vm_allocation_end,
                                          'allocation_cost': pair[0].allocation_cost - 1, 'idle_time': pair[0].idle_time, 'vm_status': vm_status},

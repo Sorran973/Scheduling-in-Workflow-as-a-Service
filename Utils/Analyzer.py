@@ -115,6 +115,7 @@ class Analyzer:
         only_vm_time_total = 0
         total_num_leased_vm = 0
         total_idle_time = 0
+        workflow_costs = []
 
         for i, workflow_log in enumerate(workflow_log_list):
             a = workflow_log.task_allocation_end.max()
@@ -124,7 +125,9 @@ class Analyzer:
                 num_workflow_deadline_met += 1
 
         #     vm_provisioning_delay
-            total_cost += workflow_log.allocation_cost.sum()
+            workflow_cost = workflow_log.allocation_cost.sum()
+            total_cost += workflow_cost
+            workflow_costs.append(workflow_cost)
             sum_of_workflows_time_total += workflow_log.vm_end.max() - workflow_log.vm_start.min()
             sum_of_workflows_time_without_first_and_last_vm += workflow_time_without_first_and_last_vm
             only_task_time_total += workflow_log.vm_processing_time.sum()
@@ -152,7 +155,14 @@ class Analyzer:
         allocation.total_idle_time = total_idle_time
         allocation.total_data_input_time = log.vm_input_time.sum()
         allocation.total_data_output_time = log.vm_output_time.sum()
+        allocation.total_data_input_size = log.vm_input_size.sum()
+        allocation.total_data_output_size = log.vm_output_size.sum()
         allocation.total_vm_setting_time = log.vm_setting_time.sum()
+        allocation.workflow_costs = workflow_costs
+
+        percentage_tasks_time = allocation.only_task_time_total * 100 / allocation.only_vm_time_total
+        percentage_transfer_time = (allocation.total_data_input_time + allocation.total_data_output_time) * 100 / allocation.only_vm_time_total
+        percentage_vm_setting_time = allocation.total_vm_setting_time * 100 / allocation.only_vm_time_total
 
         print("Total Workload Statistics:")
         print(f"\tAllocation algorithm: {allocation.__class__}")
@@ -168,9 +178,14 @@ class Analyzer:
         print(f"\tThe sum of only tasks time: {allocation.only_task_time_total}")
         print(f"\tTotal number of leased VM: {allocation.total_num_leased_vm}")
         print(f"\tTotal idle time: {allocation.total_idle_time}")
-        print(f"\tTotal data input time: {allocation.total_data_input_time}")
-        print(f"\tTotal data output time: {allocation.total_data_output_time}")
+        # print(f"\tTotal data input time: {allocation.total_data_input_time}")
+        # print(f"\tTotal data output time: {allocation.total_data_output_time}")
         print(f"\tTotal VM setting time: {allocation.total_vm_setting_time}")
+        print(f"\tTotal data input/output time: {allocation.total_data_input_time + allocation.total_data_output_time}")
+        print(f"\tTotal data input/output size: {allocation.total_data_input_size + allocation.total_data_output_size}")
+        print(f"\tTotal percentage_tasks_time: {percentage_tasks_time}")
+        print(f"\tTotal percentage_transfer_time: {percentage_transfer_time}")
+        print(f"\tTotal percentage_vm_setting_time: {percentage_vm_setting_time}")
         print(f"\tNum of usage / reuse vm_type x: {n_total_vm_type_x} / {n_reuse_vm_type_x}")
         print(f"\tNum of usage / reuse vm_type 1X: {n_total_vm_type_1X} / {n_reuse_vm_type_1X}")
         print(f"\tNum of usage / reuse vm_type 2X: {n_total_vm_type_2X} / {n_reuse_vm_type_2X}")
@@ -185,112 +200,133 @@ class Analyzer:
 
 
 
-
-    @staticmethod
-    def print_workload_statistics(allocations):
-        print("Total Workload Statistics:")
-        for allocation in allocations:
-            print(f"\tTotal number of workflows: {allocation.__class__}")
-            print(f"\tTotal number of workflows: {allocation.num_workflows}")
-            print(f"\tTotal number of deadlines met: {allocation.num_workflow_deadline_met}")
-            print(f"\tPercentage of deadlines met: {allocation.percentage_workflow_deadline_met}")
-            print(f"\tTotal cost: {allocation.total_cost}")
-            print(f"\tWorkload Time: {allocation.workload_time}")
-            # print(f"\tWorkload Time (without the first VM preparation time and the last VM shutdown time): {allocation.workload_time_without_first_and_last_vm}")
-            # print(f"\tThe sum of all workflows time total: {allocation.sum_of_workflows_time_total}")
-            # print(f"\tThe sum of all workflows time (without the first VM preparation time and the last VM shutdown time): {allocation.sum_of_workflows_time_without_first_and_last_vm}")
-            print(f"\tThe sum of only vms time: {allocation.only_vm_time_total}")
-            print(f"\tThe sum of only tasks time: {allocation.only_task_time_total}")
-            print(f"\tTotal number of leased VM: {allocation.total_num_leased_vm}")
-            print(f"\tTotal idle time: {allocation.total_idle_time}")
-            print()
-
     @staticmethod
     def print_comparison_table(allocations):
 
-        allocation_FTL = None
-        allocation_ASAP_O = None
-        allocation_NewVM = None
-        allocation_BEST_FIT_FTL = None
-        allocation_BEST_FIT_ASAP = None
-        allocation_BEST_FIT_FTL_EPSM = None
-        allocation_BEST_FIT_ASAP_EPSM = None
+        # allocation_FTL = None
+        # allocation_ASAP_O = None
+        # allocation_NewVM = None
+        # allocation_BEST_FIT_FTL = None
+        # allocation_BEST_FIT_ASAP = None
+        # allocation_BEST_FIT_FTL_EPSM = None
+        # allocation_BEST_FIT_ASAP_EPSM = None
+        #
+        #
+        # for allocation in allocations:
+        #     if isinstance(allocation, AllocationFTL):
+        #         allocation_FTL = allocation
+        #     elif isinstance(allocation, AllocationASAP_O):
+        #         allocation_ASAP_O = allocation
+        #     elif isinstance(allocation, AllocationBestFit):
+        #         allocation_BEST_FIT_FTL = allocation
+        #     elif isinstance(allocation, AllocationBestFitASAP):
+        #         allocation_BEST_FIT_ASAP = allocation
+        #     elif isinstance(allocation, AllocationBestFitFTLEPSM):
+        #         allocation_BEST_FIT_FTL_EPSM = allocation
+        #     elif isinstance(allocation, AllocationBestFitASAPEPSM):
+        #         allocation_BEST_FIT_ASAP_EPSM = allocation
+        #     else:
+        #         allocation_NewVM = allocation
 
+
+        # FTL_percent = round(100 - allocation_FTL.total_cost * 100 / allocation_NewVM.total_cost, 2)
+        # ASAP_O_percent = round(100 - allocation_ASAP_O.total_cost * 100 / allocation_NewVM.total_cost, 2)
+        # BEST_FIT_FTL_percent = round(100 - allocation_BEST_FIT_FTL.total_cost * 100 / allocation_NewVM.total_cost, 2)
+        # BEST_FIT_ASAP_percent = round(100 - allocation_BEST_FIT_ASAP.total_cost * 100 / allocation_NewVM.total_cost, 2)
+        # BEST_FIT_FTL_EPSM_percent = round(100 - allocation_BEST_FIT_FTL_EPSM.total_cost * 100 / allocation_NewVM.total_cost, 2)
+        # BEST_FIT_ASAP_EPSM_percent = round(100 - allocation_BEST_FIT_ASAP_EPSM.total_cost * 100 / allocation_NewVM.total_cost, 2)
 
         for allocation in allocations:
-            if isinstance(allocation, AllocationFTL):
-                allocation_FTL = allocation
-            elif isinstance(allocation, AllocationASAP_O):
-                allocation_ASAP_O = allocation
-            elif isinstance(allocation, AllocationBestFit):
-                allocation_BEST_FIT_FTL = allocation
-            elif isinstance(allocation, AllocationBestFitASAP):
-                allocation_BEST_FIT_ASAP = allocation
-            elif isinstance(allocation, AllocationBestFitFTLEPSM):
-                allocation_BEST_FIT_FTL_EPSM = allocation
-            elif isinstance(allocation, AllocationBestFitASAPEPSM):
-                allocation_BEST_FIT_ASAP_EPSM = allocation
-            else:
-                allocation_NewVM = allocation
+            print(f"\tTotal idle time: {allocation.total_idle_time}")
+
+        print()
+        for allocation in allocations:
+            print(f"\tWorkload Time: {allocation.workload_time_without_first_and_last_vm}")
+
+        print()
+        for allocation in allocations:
+            print(f"\tBatches num: {allocation.batches_size}")
+
+        print()
+        for allocation in allocations:
+            print(f"\tTotal VM setting time: {allocation.total_vm_setting_time}")
+
+        print()
+        for allocation in allocations:
+            print(f"\tTotal data input/output size: {allocation.total_data_input_size + allocation.total_data_output_size}")
+
+        print()
+        for allocation in allocations:
+            print(f"\tTotal number of leased VM: {allocation.total_num_leased_vm}")
+
+        print()
+        for allocation in allocations:
+            print(f"\tTotal cost: {allocation.total_cost}")
 
 
-        FTL_percent = round(100 - allocation_FTL.total_cost * 100 / allocation_NewVM.total_cost, 2)
-        ASAP_O_percent = round(100 - allocation_ASAP_O.total_cost * 100 / allocation_NewVM.total_cost, 2)
-        BEST_FIT_FTL_percent = round(100 - allocation_BEST_FIT_FTL.total_cost * 100 / allocation_NewVM.total_cost, 2)
-        BEST_FIT_ASAP_percent = round(100 - allocation_BEST_FIT_ASAP.total_cost * 100 / allocation_NewVM.total_cost, 2)
-        BEST_FIT_FTL_EPSM_percent = round(100 - allocation_BEST_FIT_FTL_EPSM.total_cost * 100 / allocation_NewVM.total_cost, 2)
-        BEST_FIT_ASAP_EPSM_percent = round(100 - allocation_BEST_FIT_ASAP_EPSM.total_cost * 100 / allocation_NewVM.total_cost, 2)
-
-
-        print(f"\tTotal idle time of FTL: {allocation_FTL.total_idle_time}")
-        print(f"\tTotal idle time of ASAP_0: {allocation_ASAP_O.total_idle_time}")
-        print(f"\tTotal idle time of BEST_FIT_FTL: {allocation_BEST_FIT_FTL.total_idle_time}")
-        print(f"\tTotal idle time of BEST_FIT_ASAP: {allocation_BEST_FIT_ASAP.total_idle_time}")
-        print(f"\tTotal idle time of BEST_FIT_FTL_EPSM: {allocation_BEST_FIT_FTL_EPSM.total_idle_time}")
-        print(f"\tTotal idle time of BEST_FIT_ASAP_EPSM: {allocation_BEST_FIT_ASAP_EPSM.total_idle_time}")
-        print(f"\tTotal idle time of New_VM: {allocation_NewVM.total_idle_time}")
-        print()
-        print(f"\tTotal cost of FTL: {allocation_FTL.total_cost}")
-        print(f"\tTotal cost of ASAP_0: {allocation_ASAP_O.total_cost}")
-        print(f"\tTotal cost of BEST_FIT_FTL: {allocation_BEST_FIT_FTL.total_cost}")
-        print(f"\tTotal cost of BEST_FIT_ASAP: {allocation_BEST_FIT_ASAP.total_cost}")
-        print(f"\tTotal cost of BEST_FIT_FTL_EPSM: {allocation_BEST_FIT_FTL_EPSM.total_cost}")
-        print(f"\tTotal cost of BEST_FIT_ASAP_EPSM: {allocation_BEST_FIT_ASAP_EPSM.total_cost}")
-        print(f"\tTotal cost of New_VM: {allocation_NewVM.total_cost}")
-        print()
-        print(f"\tFTL batches num: {allocation_FTL.batches_size}")
-        print(f"\tASAP_0 batches num: {allocation_ASAP_O.batches_size}")
-        print(f"\tBEST_FIT_FTL batches num: {allocation_BEST_FIT_FTL.batches_size}")
-        print(f"\tBEST_FIT_ASAP batches num: {allocation_BEST_FIT_ASAP.batches_size}")
-        print(f"\tBEST_FIT_FTL_EPSM batches num: {allocation_BEST_FIT_FTL_EPSM.batches_size}")
-        print(f"\tBEST_FIT_ASAP_EPSM batches num: {allocation_BEST_FIT_ASAP_EPSM.batches_size}")
-        print(f"\tNew_VM batches num: {allocation_NewVM.batches_size}")
-        print()
-        print(f"\tTotal number of leased VM of FTL: {allocation_FTL.total_num_leased_vm}")
-        print(f"\tTotal number of leased VM of ASAP_0: {allocation_ASAP_O.total_num_leased_vm}")
-        print(f"\tTotal number of leased VM of BEST_FIT_FTL: {allocation_BEST_FIT_FTL.total_num_leased_vm}")
-        print(f"\tTotal number of leased VM of BEST_FIT_ASAP: {allocation_BEST_FIT_ASAP.total_num_leased_vm}")
-        print(f"\tTotal number of leased VM of BEST_FIT_FTL_EPSM: {allocation_BEST_FIT_FTL_EPSM.total_num_leased_vm}")
-        print(f"\tTotal number of leased VM of BEST_FIT_ASAP_EPSM: {allocation_BEST_FIT_ASAP_EPSM.total_num_leased_vm}")
-        print(f"\tTotal number of leased VM of New_VM: {allocation_NewVM.total_num_leased_vm}")
-        print()
-        print(f"\tWorkload Time of FTL: {allocation_FTL.workload_time_without_first_and_last_vm}")
-        print(f"\tWorkload Time of ASAP_0: {allocation_ASAP_O.workload_time_without_first_and_last_vm}")
-        print(f"\tWorkload Time of New_VM: {allocation_NewVM.workload_time_without_first_and_last_vm}")
-        print(f"\tWorkload Time of BEST_FIT_FTL: {allocation_BEST_FIT_FTL.workload_time_without_first_and_last_vm}")
-        print(f"\tWorkload Time of BEST_FIT_ASAP: {allocation_BEST_FIT_ASAP.workload_time_without_first_and_last_vm}")
-        print(f"\tWorkload Time of BEST_FIT_FTL_EPSM: {allocation_BEST_FIT_FTL_EPSM.workload_time_without_first_and_last_vm}")
-        print(f"\tWorkload Time of BEST_FIT_ASAP_EPSM: {allocation_BEST_FIT_ASAP_EPSM.workload_time_without_first_and_last_vm}")
-        print()
-        print(f"\tFTL %: {FTL_percent}")
-        print(f"\tASAP_0 %: {ASAP_O_percent}")
-        print(f"\tBEST_FIT_FTL %: {BEST_FIT_FTL_percent}")
-        print(f"\tBEST_FIT_ASAP %: {BEST_FIT_ASAP_percent}")
-        print(f"\tBEST_FIT_FTL_EPSM %: {BEST_FIT_FTL_EPSM_percent}")
-        print(f"\tBEST_FIT_ASAP_EPSM %: {BEST_FIT_ASAP_EPSM_percent}")
-        print(f"\tNew_VM %: -")
-        print()
-
-        return [FTL_percent, ASAP_O_percent]
+        #
+        #
+        #     print(f"\tTotal idle time of FTL: {allocation_FTL.total_idle_time}")
+        #     print(f"\tTotal idle time of ASAP_0: {allocation_ASAP_O.total_idle_time}")
+        #     # print(f"\tTotal idle time of BEST_FIT_FTL: {allocation_BEST_FIT_FTL.total_idle_time}")
+        #     # print(f"\tTotal idle time of BEST_FIT_ASAP: {allocation_BEST_FIT_ASAP.total_idle_time}")
+        #     # print(f"\tTotal idle time of BEST_FIT_FTL_EPSM: {allocation_BEST_FIT_FTL_EPSM.total_idle_time}")
+        #     # print(f"\tTotal idle time of BEST_FIT_ASAP_EPSM: {allocation_BEST_FIT_ASAP_EPSM.total_idle_time}")
+        #     print(f"\tTotal idle time of New_VM: {allocation_NewVM.total_idle_time}")
+        #     print()
+        #     print(f"\tFTL batches num: {allocation_FTL.batches_size}")
+        #     print(f"\tASAP_0 batches num: {allocation_ASAP_O.batches_size}")
+        #     # print(f"\tBEST_FIT_FTL batches num: {allocation_BEST_FIT_FTL.batches_size}")
+        #     # print(f"\tBEST_FIT_ASAP batches num: {allocation_BEST_FIT_ASAP.batches_size}")
+        #     # print(f"\tBEST_FIT_FTL_EPSM batches num: {allocation_BEST_FIT_FTL_EPSM.batches_size}")
+        #     # print(f"\tBEST_FIT_ASAP_EPSM batches num: {allocation_BEST_FIT_ASAP_EPSM.batches_size}")
+        #     print(f"\tNew_VM batches num: {allocation_NewVM.batches_size}")
+        #     print()
+        #     print(f"\tTotal VM setting time of FTL: {allocation_FTL.total_vm_setting_time}")
+        #     print(f"\tTotal VM setting time of ASAP_0: {allocation_ASAP_O.total_vm_setting_time}")
+        #     print(f"\tTotal VM setting time of NewVM: {allocation_NewVM.total_vm_setting_time}")
+        #     print()
+        #     print(f"\tTotal data input/output size of FTL: {allocation_FTL.total_data_input_size + allocation_FTL.total_data_output_size}")
+        #     print(f"\tTotal data input/output size of ASAP_0: {allocation_ASAP_O.total_data_input_size + allocation_ASAP_O.total_data_output_size}")
+        #     # print(f"\tTotal cost of BEST_FIT_FTL: {allocation_BEST_FIT_FTL.total_cost}")
+        #     # print(f"\tTotal cost of BEST_FIT_ASAP: {allocation_BEST_FIT_ASAP.total_cost}")
+        #     # print(f"\tTotal cost of BEST_FIT_FTL_EPSM: {allocation_BEST_FIT_FTL_EPSM.total_cost}")
+        #     # print(f"\tTotal cost of BEST_FIT_ASAP_EPSM: {allocation_BEST_FIT_ASAP_EPSM.total_cost}")
+        #     print(f"\tTotal data input/output size of NewVM: {allocation_NewVM.total_data_input_size + allocation_NewVM.total_data_output_size}")
+        #     print()
+        #     print(f"\tTotal number of leased VM of FTL: {allocation_FTL.total_num_leased_vm}")
+        #     print(f"\tTotal number of leased VM of ASAP_0: {allocation_ASAP_O.total_num_leased_vm}")
+        #     # print(f"\tTotal number of leased VM of BEST_FIT_FTL: {allocation_BEST_FIT_FTL.total_num_leased_vm}")
+        #     # print(f"\tTotal number of leased VM of BEST_FIT_ASAP: {allocation_BEST_FIT_ASAP.total_num_leased_vm}")
+        #     # print(f"\tTotal number of leased VM of BEST_FIT_FTL_EPSM: {allocation_BEST_FIT_FTL_EPSM.total_num_leased_vm}")
+        #     # print(f"\tTotal number of leased VM of BEST_FIT_ASAP_EPSM: {allocation_BEST_FIT_ASAP_EPSM.total_num_leased_vm}")
+        #     print(f"\tTotal number of leased VM of New_VM: {allocation_NewVM.total_num_leased_vm}")
+        #     print()
+        #     print(f"\tWorkload Time of FTL: {allocation_FTL.workload_time_without_first_and_last_vm}")
+        #     print(f"\tWorkload Time of ASAP_0: {allocation_ASAP_O.workload_time_without_first_and_last_vm}")
+        #     print(f"\tWorkload Time of New_VM: {allocation_NewVM.workload_time_without_first_and_last_vm}")
+        #     # print(f"\tWorkload Time of BEST_FIT_FTL: {allocation_BEST_FIT_FTL.workload_time_without_first_and_last_vm}")
+        #     # print(f"\tWorkload Time of BEST_FIT_ASAP: {allocation_BEST_FIT_ASAP.workload_time_without_first_and_last_vm}")
+        #     # print(f"\tWorkload Time of BEST_FIT_FTL_EPSM: {allocation_BEST_FIT_FTL_EPSM.workload_time_without_first_and_last_vm}")
+        #     # print(f"\tWorkload Time of BEST_FIT_ASAP_EPSM: {allocation_BEST_FIT_ASAP_EPSM.workload_time_without_first_and_last_vm}")
+        #     print()
+        #     print(f"\tTotal cost of FTL: {allocation_FTL.total_cost}")
+        #     print(f"\tTotal cost of ASAP_0: {allocation_ASAP_O.total_cost}")
+        #     # print(f"\tTotal cost of BEST_FIT_FTL: {allocation_BEST_FIT_FTL.total_cost}")
+        #     # print(f"\tTotal cost of BEST_FIT_ASAP: {allocation_BEST_FIT_ASAP.total_cost}")
+        #     # print(f"\tTotal cost of BEST_FIT_FTL_EPSM: {allocation_BEST_FIT_FTL_EPSM.total_cost}")
+        #     # print(f"\tTotal cost of BEST_FIT_ASAP_EPSM: {allocation_BEST_FIT_ASAP_EPSM.total_cost}")
+        #     print(f"\tTotal cost of New_VM: {allocation_NewVM.total_cost}")
+        #     print()
+        #     # print(f"\tFTL %: {FTL_percent}")
+        #     # print(f"\tASAP_0 %: {ASAP_O_percent}")
+        #     # # print(f"\tBEST_FIT_FTL %: {BEST_FIT_FTL_percent}")
+        #     # # print(f"\tBEST_FIT_ASAP %: {BEST_FIT_ASAP_percent}")
+        #     # # print(f"\tBEST_FIT_FTL_EPSM %: {BEST_FIT_FTL_EPSM_percent}")
+        #     # # print(f"\tBEST_FIT_ASAP_EPSM %: {BEST_FIT_ASAP_EPSM_percent}")
+        #     # print(f"\tNew_VM %: -")
+        #     # print()
+        #
+        # # return [FTL_percent, ASAP_O_percent]
 
 

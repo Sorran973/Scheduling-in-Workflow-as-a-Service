@@ -13,6 +13,7 @@ from AllocationModule.Model.VM import VM
 from AllocationModule.Model.VMType import VMType
 from SchedulingModule.CJM.Model.Criteria import CostCriteria, TimeCriteria, AverageResourceLoadCriteria
 from SchedulingModule.CJM.Workflow import round_up
+from config import DATA_TRANSFER_CHANNEL_SPEED
 
 
 class AllocationASAP_O:
@@ -24,7 +25,8 @@ class AllocationASAP_O:
         self.vms = []
         self.criteria = criteria
         self.log = pd.DataFrame(columns=['workflow_id', 'vm_id', 'vm_type', 'task_id', 'task_name', 'task_batch', 'task_start',
-                                         'task_end', 'interval', 'vm_start', 'vm_input_time', 'task_allocation_start',
+                                         'task_end', 'interval', 'vm_start', 'vm_input_time', 'vm_input_size', 'vm_output_size',
+                                         'task_allocation_start',
                                          'task_allocation_end', 'vm_output_time', 'vm_end', 'allocation_cost', 'idle_time', 'vm_status'])
         self.num_workflow_deadline_met = None
         self.percentage_workflow_deadline_met = None
@@ -40,6 +42,7 @@ class AllocationASAP_O:
         self.sum_of_workflows_time_without_first_and_last_vm = None
         self.only_vm_time_total = None
         self.only_task_time_total = None
+        self.different_workflow_reuse_vm_counter = 0
 
         self.map_vm_perf_for_transfer = None
         self.create_vm_for_transfer()
@@ -67,7 +70,8 @@ class AllocationASAP_O:
         for task in tasks:
             if task.id == 53:
                 y = 0
-            if (list(filter(lambda transfer: transfer.task_from.status is None, task.input_transfers)) or task.possible_start >= EFT):
+            # if (list(filter(lambda transfer: transfer.task_from.status is None, task.input_transfers)) or task.possible_start >= EFT):
+            if list(filter(lambda transfer: transfer.task_from.status is None, task.input_transfers)):
                 continue
             else:
                 task.batch = len(batches)
@@ -88,6 +92,7 @@ class AllocationASAP_O:
 
         while tasks_with_none_status:
             time = self.assignToLeader(tasks_with_none_status, time, batches)
+            # TODO
             tasks_with_none_status = list(filter(lambda i: i.status is None, tasks_with_none_status))
 
         return batches
@@ -134,7 +139,7 @@ class AllocationASAP_O:
     ########## CALCULATING ALLOCATION COST ##########
     def calcVmAllocationCost(self, task, vm):
         # if task.id == 0 or task.id == 45 or task.id == 48:
-        if task.id == 2:
+        if task.id == 1:
             y = 0
         # init
         # current_time = -100
@@ -148,6 +153,8 @@ class AllocationASAP_O:
         earliest_data_ready_time = 0  # earliest time all data can be copied from source tasks (moment)
         input_data_transfer_time = 0
         output_data_transfer_time = 0
+        input_data_transfer_size = 0
+        output_data_transfer_size = 0
 
         # if new vm
         if (vm.status == 'open'):
@@ -165,20 +172,28 @@ class AllocationASAP_O:
 
             if previous_task is not None and previous_task.output_size > 0:
                 output_data_transfer_time_max = -sys.maxsize
+                output_data_transfer_size_max = -sys.maxsize
                 for transfer in previous_task.output_transfers:
                     # transfer_time = transfer.transfer_time
-                    transfer_time = math.ceil(transfer.transfer_time / vm.perf)
+                    # transfer_time = math.ceil(transfer.transfer_time / vm.perf)
+                    # transfer_time = math.ceil(transfer.transfer_size / vm.perf)
+                    # transfer_time = max(math.ceil(transfer.transfer_size / vm.perf), transfer.transfer_size)
+                    transfer_time = math.ceil(transfer.transfer_size / DATA_TRANSFER_CHANNEL_SPEED)
+                    transfer_size = transfer.transfer_size
+
                     transfer_end = previous_task.allocation_end + transfer_time
 
                     # meaning time between the time vm can be stopped and it finishes the longest data transfer
                     if output_data_transfer_time_max < (transfer_end - possible_vm_start):
                         output_data_transfer_time_max = transfer_end - possible_vm_start
+                        output_data_transfer_size_max = transfer_size
 
                 if output_data_transfer_time_max < 0:
                     y = 0
                 output_data_transfer_time_max = max(output_data_transfer_time_max, 0)  # can't be negative
                 shutdown_time = shutdown_time + output_data_transfer_time_max
                 output_data_transfer_time = output_data_transfer_time_max
+                output_data_transfer_size = output_data_transfer_size_max
 
         # if perform calculations
         else:
@@ -190,6 +205,7 @@ class AllocationASAP_O:
             # calculate additional preparation time to copy required input data
             earliest_data_ready_time_max = -sys.maxsize
             data_transfer_time_max = -sys.maxsize
+            data_transfer_size_max = -sys.maxsize
 
             if task.input_transfers:
                 #TODO: ? create node_edges and data_center_edges and check their times
@@ -198,12 +214,18 @@ class AllocationASAP_O:
 
                     if transfer.task_from.assigned_vm is vm:
                         transfer_time = 0
+                        transfer_size = 0
                     else:
                         # transfer_time = transfer.transfer_time
-                        transfer_time = math.ceil(transfer.transfer_time / vm.perf)
+                        # transfer_time = math.ceil(transfer.transfer_time / vm.perf)
+                        # transfer_time = math.ceil(transfer.transfer_size / vm.perf)
+                        # transfer_time = max(math.ceil(transfer.transfer_size / vm.perf), transfer.transfer_size)
+                        transfer_time = math.ceil(transfer.transfer_size / DATA_TRANSFER_CHANNEL_SPEED)
+                        transfer_size = transfer.transfer_size
 
                     if data_transfer_time_max < transfer_time:
                         data_transfer_time_max = transfer_time
+                        data_transfer_size_max = transfer_size
 
                     if task_from.name == "entry":
                         task_from_allocation_time_end = task_from.end
@@ -218,6 +240,7 @@ class AllocationASAP_O:
 
                 preparation_time = preparation_time + data_transfer_time_max
                 input_data_transfer_time = data_transfer_time_max
+                input_data_transfer_size = data_transfer_size_max
 
             # possibly check if can start earlier, i.e. remove row.start from max
             # possible_task_start = min(task.start, earliest_data_ready_time_max)
@@ -246,9 +269,11 @@ class AllocationASAP_O:
             possible_assignment.idle_time = idle_time
             possible_assignment.input_data_transfer_time = input_data_transfer_time
             possible_assignment.output_data_transfer_time = output_data_transfer_time
+            possible_assignment.input_data_transfer_size = input_data_transfer_size
+            possible_assignment.output_data_transfer_size = output_data_transfer_size
 
             allocation_cost = math.ceil((vm_runtime + idle_time) * vm.cost)
-            load = round((expected_task_end - expected_task_start) / (expected_vm_end - expected_vm_start), 2)
+            # load = round((expected_task_end - expected_task_start) / (expected_vm_end - expected_vm_start), 2)
 
         if self.criteria.optimization_criteria == "max":
             allocation_cost = -allocation_cost
@@ -257,7 +282,7 @@ class AllocationASAP_O:
         allocation_cost += 1
         if possible_assignment.task_allocation_start is not None:
             possible_assignment.allocation_cost = allocation_cost
-            possible_assignment.load = load
+            # possible_assignment.load = load
             task.new_possible_assignments.append(possible_assignment)
             return True, allocation_cost, possible_assignment
         else:
@@ -614,6 +639,9 @@ class AllocationASAP_O:
     def applyPairings(self, pairs):
         for pair in pairs:
             vm_status = 'active'
+            if pair[0].type == 'task' and pair[1].status == 'active':
+                if pair[1].previous_task.workflow_id != pair[0].workflow_id:
+                    self.different_workflow_reuse_vm_counter += 1
             if pair[0].type == 'off' and pair[1].status == 'open':
                 continue
             elif pair[0].type == 'task' and pair[1].status == 'open':
@@ -633,6 +661,7 @@ class AllocationASAP_O:
                                          'task_id': pair[0].id, 'task_name': pair[0].name, 'task_batch': pair[0].batch,
                                          'task_start': pair[0].start, 'task_end': pair[0].end, 'interval': pair[0].interval,
                                          'vm_start': pair[0].vm_allocation_start, 'vm_input_time': pair[0].vm_input_time,
+                                         'vm_input_size': pair[0].vm_input_size, 'vm_output_size': pair[0].vm_output_size,
                                          'task_allocation_start': pair[0].allocation_start, 'task_allocation_end': pair[0].allocation_end,
                                          'vm_output_time': pair[0].vm_output_time, 'vm_end': pair[0].vm_allocation_end,
                                          'allocation_cost': pair[0].allocation_cost - 1, 'idle_time': pair[0].idle_time, 'vm_status': vm_status},
@@ -642,34 +671,6 @@ class AllocationASAP_O:
 
     ########## ALLOCATION BATCHES (VMA ALGORITHM) ##########
     def allocateBatch(self, batch):
-        #TODO
-        # batches = []
-        # pairings_result = []
-        #
-        # critical_batch_size = 10
-        # if len(batch) > critical_batch_size:
-        #     arr_batch = [batch[pos:pos + critical_batch_size] for pos in range(0, len(batch), critical_batch_size)]
-        #     batches += arr_batch
-        # else:
-        #     batches.append(batch)
-        #
-        # for batch in batches:
-        #     # prepare tasks and vms for matching
-        #     batch = self.prepareVmMatchings(batch, additional_vms_num=len(batch))
-        #
-        #     # calc allocation costs for matches (munkres algorithm)
-        #     if isinstance(self.criteria, CostCriteria):
-        #         pairings = self.calcMinCostPairings(batch)
-        #         pairings_result += pairings
-        #         if pairings is None:
-        #             return 0
-        #     elif isinstance(self.criteria, TimeCriteria):
-        #         pairings = self.calcMinTimePairings(batch)
-        #         pairings_result += pairings
-        #
-        # # pairing and logging
-        # self.applyPairings(pairings_result)
-
         # prepare tasks and vms for matching
         batch = self.prepareVmMatchings(batch, additional_vms_num=len(batch))
         # calc allocation costs for matches (munkres algorithm)

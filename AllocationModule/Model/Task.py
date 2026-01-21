@@ -67,6 +67,8 @@ class Task:
         self.vm_allocation_end = assign_info.vm_allocation_end
         self.vm_input_time = assign_info.input_data_transfer_time
         self.vm_output_time = assign_info.output_data_transfer_time
+        self.vm_input_size = assign_info.input_data_transfer_size
+        self.vm_output_size = assign_info.output_data_transfer_size
         self.allocation_cost = assign_info.allocation_cost
         self.idle_time = assign_info.idle_time
 
@@ -82,6 +84,8 @@ class Task:
         self.vm_allocation_end = assign_info.vm_allocation_end
         self.vm_input_time = assign_info.input_data_transfer_time
         self.vm_output_time = assign_info.output_data_transfer_time
+        self.vm_input_size = assign_info.input_data_transfer_size
+        self.vm_output_size = assign_info.output_data_transfer_size
         self.allocation_cost = assign_info.allocation_cost
         self.idle_time = assign_info.idle_time
 

@@ -23,8 +23,6 @@ def rand_color(row):
 
 class PyvisDrawer(Drawer):
 
-    GRAPH_OUTPUT = '/Users/artembulkhak/PycharmProjects/Dissertation/Output/LIGO50/pyvis_graph.html'
-
     def draw_graph(self, nodes, edges):
         # G = Network(directed=True)
         G = nx.DiGraph()
@@ -54,7 +52,7 @@ class PyvisDrawer(Drawer):
                             '"direction" : "UD", "sortMethod" : "directed", "shakeTowards" : "roots"} } }')
 
         network.from_nx(G)
-        network.show(self.GRAPH_OUTPUT)
+        network.show(config.GRAPH_OUTPUT, notebook=False)
 
 
     def draw_gantt(self, nodes):
@@ -785,19 +783,59 @@ class PyvisDrawer(Drawer):
 
         rownum = 0
         for index, row in log.iterrows():
+            # if row.task_name[:3] != "off":
+            #     ax.barh(rownum, row.vm_end - row.vm_start, left=row.vm_start, color=row.color) # VM time
+            #     ax.barh(rownum, row.task_allocation_start - row.vm_start, left=row.vm_start, color=row.color, alpha=0.6, fill=False, # data input transfer time
+            #             hatch='///')  # fill=True, linewidth=10, edgecolor=log.color
+            #     ax.barh(rownum, row.idle_time, left=row.vm_start - row.idle_time, color='#000000') # idle time
+            #     ax.text(row.vm_end + 0.1, rownum, 'VM_' + str(row.vm_id) + '_' + row.vm_type, va='center') # VM description
+            #     ax.text(row.vm_start - 0.1, rownum, str(row.task_id) + '_' + str(row.workflow_id) + '_' + str(row.task_name), va='center', ha='right') # task description
+            #     rownum += 1
+            # else:
+            #     ax.barh(rownum, row.vm_end - row.vm_start, left=row.vm_start, alpha=0.6, fill=False, # data output transfer time
+            #             hatch='///')  # fill=True, linewidth=10, edgecolor=log.color
+            #     ax.text(row.vm_end + 0.1, rownum, 'VM_' + str(row.vm_id) + '_' + row.vm_type, va='center')  # VM description
+            #     ax.text(row.vm_start - 0.1, rownum, str(row.task_id) + '_' + str(row.workflow_id) + '_' + str(row.task_name),
+            #             va='center', ha='right')  # task description
+
             if row.task_name[:3] != "off":
-                ax.barh(rownum, row.vm_end - row.vm_start, left=row.vm_start, color=row.color) # VM time
-                ax.barh(rownum, row.task_allocation_start - row.vm_start, left=row.vm_start, color=row.color, alpha=0.6, fill=False, # data input transfer time
+                # # calc_time
+                # ax.barh(rownum, row.task_allocation_end - row.task_allocation_start, left=row.task_allocation_start,
+                #         color=row.color)
+                # # interval
+                # ax.barh(rownum, row.interval, left=row.task_start, color=row.color, alpha=0.3)
+                # # vm_time
+                # ax.barh(rownum, row.vm_end - row.vm_start, left=row.vm_start, color=row.color, alpha=0.6, fill=False,
+                #         hatch='///')  # fill=True, linewidth=10, edgecolor=log.color
+                # VM time
+                ax.barh(rownum, row.vm_end - row.vm_start, left=row.vm_start, color=row.color, alpha=0.3)
+                # task_time
+                ax.barh(rownum, row.task_allocation_end - row.task_allocation_start, left=row.task_allocation_start,
+                        color=row.color)
+                # data input transfer time
+                ax.barh(rownum, row.task_allocation_start - row.vm_start, left=row.vm_start, color=row.color, alpha=0.3, fill=False,
                         hatch='///')  # fill=True, linewidth=10, edgecolor=log.color
-                ax.barh(rownum, row.idle_time, left=row.vm_start - row.idle_time, color='#000000') # idle time
-                ax.text(row.vm_end + 0.1, rownum, 'VM_' + str(row.vm_id) + '_' + row.vm_type, va='center') # VM description
-                ax.text(row.vm_start - 0.1, rownum, str(row.task_id) + '_' + str(row.workflow_id) + '_' + str(row.task_name), va='center', ha='right') # task description
+                if row.vm_status == "new":
+                    # vm_prep_time
+                    ax.barh(rownum, config.VM_PREP_TIME, left=row.vm_start, color=row.color, alpha=0.3, fill=False,
+                            hatch='|||')
+                # idle time
+                ax.barh(rownum, row.idle_time, left=row.vm_start - row.idle_time, color='#000000')
+                # VM description
+                ax.text(row.vm_end + 0.1, rownum, 'VM_' + str(row.vm_id) + '_' + row.vm_type, va='center')
+                # task description
+                ax.text(row.vm_start - 0.1, rownum, str(row.task_id) + '_' + str(row.workflow_id) + '_' + str(row.task_name), va='center', ha='right')
                 rownum += 1
             else:
-                ax.barh(rownum, row.vm_end - row.vm_start, left=row.vm_start, alpha=0.6, fill=False, # data output transfer time
+                # data output transfer time
+                ax.barh(rownum, row.vm_end - row.vm_start, left=row.vm_start, alpha=0.6, fill=False,
                         hatch='///')  # fill=True, linewidth=10, edgecolor=log.color
-                ax.text(row.vm_end + 0.1, rownum, 'VM_' + str(row.vm_id) + '_' + row.vm_type, va='center')  # VM description
-                ax.text(row.vm_start - 0.1, rownum, str(row.task_id) + '_' + str(row.workflow_id) + '_' + str(row.task_name),
+                # vm_shutdown_time
+                ax.barh(rownum, config.VM_SHUTDOWN_TIME, left=row.vm_start, color=row.color, alpha=0.6, fill=False, hatch='|||')
+                ax.text(row.vm_end + 0.1, rownum, 'VM_' + str(row.vm_id) + '_' + row.vm_type,
+                        va='center')  # VM description
+                ax.text(row.vm_start - 0.1, rownum,
+                        str(row.task_id) + '_' + str(row.workflow_id) + '_' + str(row.task_name),
                         va='center', ha='right')  # task description
                 rownum += 1
 

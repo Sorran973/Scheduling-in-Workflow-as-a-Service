@@ -5,21 +5,17 @@ from AllocationModule.Model.Task import Task
 from AllocationModule.Model.VMType import VMType
 import config
 
-PROCESSOR_TABLE_FILE = '/Users/artembulkhak/PycharmProjects/Dissertation/Output/processor_table.csv'
-TASK_TIME_TABLE_FILE = '/Users/artembulkhak/PycharmProjects/Dissertation/Output/task_time_table.csv'
-TRANSFER_SIZE_TABLE_FILE = '/Users/artembulkhak/PycharmProjects/Dissertation/Output/transfer_size_table.csv'
-
 
 class CSVHandler:
 
     @staticmethod
     def write_headers():
-        with open(TASK_TIME_TABLE_FILE, 'w') as f:
+        with open(config.TASK_TIME_TABLE_FILE, 'w') as f:
             fieldnames = ['task_id', 'task_name', 'volume', 'workflow_id', 'start_time', 'finish_time']
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
 
-        with open(TRANSFER_SIZE_TABLE_FILE, 'w') as f:
+        with open(config.TRANSFER_SIZE_TABLE_FILE, 'w') as f:
             fieldnames = ['transfer_id', 'task_from', 'task_to', 'transfer_size', 'transfer_time']
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
@@ -43,7 +39,7 @@ class CSVHandler:
 
     @staticmethod
     def write_task_times_table(nodes, workflow_id):
-        with open(TASK_TIME_TABLE_FILE, 'a') as f:
+        with open(config.TASK_TIME_TABLE_FILE, 'a') as f:
             fieldnames = ['task_id', 'task_name', 'volume', 'workflow_id', 'start_time', 'finish_time']
 
             writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -59,7 +55,7 @@ class CSVHandler:
 
     @staticmethod
     def write_transfer_sizes_table(edges):
-        with open(TRANSFER_SIZE_TABLE_FILE, 'a') as f:
+        with open(config.TRANSFER_SIZE_TABLE_FILE, 'a') as f:
             fieldnames = ['transfer_id', 'task_from', 'task_to', 'transfer_size', 'transfer_time']
 
             writer = csv.DictWriter(f, fieldnames=fieldnames)

@@ -12,5 +12,7 @@ class PossibleAssignment:
         self.vm_allocation_end = None
         self.input_data_transfer_time = None
         self.output_data_transfer_time = None
+        self.input_data_transfer_size = None
+        self.output_data_transfer_size = None
         self.idle_time = None
         self.load = None
