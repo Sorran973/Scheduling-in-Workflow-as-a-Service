@@ -238,8 +238,8 @@ class AllocationEPSM_BestFit:
                         task_from_allocation_time_end = task_from.allocation_end
 
                     try:
-                        if earliest_data_ready_time_max < task_from_allocation_time_end + transfer_time:
-                            earliest_data_ready_time_max = task_from_allocation_time_end + transfer_time
+                        if earliest_data_ready_time_max < task_from_allocation_time_end + transfer_time + preparation_time:
+                            earliest_data_ready_time_max = task_from_allocation_time_end + transfer_time + preparation_time
                     except:
                         print("calcVmAllocationCost\ntask_id={}, task_name={}".format(task.id, task.name))
 
@@ -302,8 +302,8 @@ class AllocationEPSM_BestFit:
         for t, task in enumerate(batch):
             possible_assignment = None
             if task.type == 'task':
-                # if task.id >= 3:
-                #     y = 0
+                if task.id == 49:
+                    y = 0
                 possible_vms = [vm for vm in task.possible_vms if self.calcVmAllocationCost(task, vm)[0]]
 
                 for i, vm in enumerate(self.vms):

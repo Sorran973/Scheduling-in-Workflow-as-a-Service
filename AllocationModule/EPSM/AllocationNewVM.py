@@ -236,8 +236,8 @@ class AllocationNewVM:
                         task_from_allocation_time_end = task_from.allocation_end
 
                     try:
-                        if earliest_data_ready_time_max < task_from_allocation_time_end + transfer_time:
-                            earliest_data_ready_time_max = task_from_allocation_time_end + transfer_time
+                        if earliest_data_ready_time_max < task_from_allocation_time_end + transfer_time + preparation_time:
+                            earliest_data_ready_time_max = task_from_allocation_time_end + transfer_time + preparation_time
                     except:
                         print("calcVmAllocationCost\ntask_id={}, task_name={}".format(task.id, task.name))
 

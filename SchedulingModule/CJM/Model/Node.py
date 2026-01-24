@@ -75,8 +75,7 @@ class Node:
         self.edges_to.append(edge)
 
     def calculate_transfer_time(self, vm_perf, data_transfer_channel):
-        # self.input_time = round_up(self.input_size / data_transfer_channel)
-        # self.output_time = round_up(self.output_size / data_transfer_channel)
+
         self.input_time = round_up(self.input_size / data_transfer_channel)
         self.output_time = round_up(self.output_size / data_transfer_channel)
         # self.input_time = round_up(self.input_size / vm_perf / data_transfer_channel)

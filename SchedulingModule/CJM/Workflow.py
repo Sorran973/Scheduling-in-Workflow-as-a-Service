@@ -24,7 +24,7 @@ def round_up(n, decimals=0):
 
 
 def dfs(node):
-    if node.id == 40 or node.id == 41:
+    if node.id == 48:
         y = 0
     node.visited = True
     node_edges = node.edges_to
@@ -35,8 +35,12 @@ def dfs(node):
             dfs(node_child)
 
         for critical_path in node_child.critical_paths:
-            node.critical_paths.append((round(node.runtime + node_edge.transfer_time + critical_path[0], 2),
-                                        [node, node_edge] + critical_path[1]))
+            if (node.name == "entry") or (node.name == "finish"):
+                node.critical_paths.append((round(node.runtime + node_edge.transfer_time + critical_path[0], 2),
+                                            [node, node_edge] + critical_path[1]))
+            else:
+                node.critical_paths.append((round(config.VM_PREP_TIME + config.VM_SHUTDOWN_TIME + node.runtime + node_edge.transfer_time + critical_path[0], 2),
+                                            [node, node_edge] + critical_path[1]))
 
 
 def sort_for_critical_paths(critical_path):
@@ -119,9 +123,10 @@ class Workflow:
         elif self.t == 2:
             self.T = self.cp_paths_by_vm_type[-1]
         elif self.t == 3:
-            self.T = round_up((self.cp_paths_by_vm_type[2] + self.cp_paths_by_vm_type[3]) / 2)
+            # self.T = round_up((self.cp_paths_by_vm_type[2] + self.cp_paths_by_vm_type[3]) / 2)
             # self.T = round_up((self.cp_paths_by_vm_type[1] + self.cp_paths_by_vm_type[2]) / 2)
-            # self.T = self.cp_paths_by_vm_type[2]
+            self.T = self.cp_paths_by_vm_type[2]
+            # self.T = round_up((self.cp_paths_by_vm_type[0] + self.cp_paths_by_vm_type[1]) / 2)
         elif self.t == 4:
             self.T = random.randint(self.cp_paths_by_vm_type[0], self.cp_paths_by_vm_type[-1])
         else:
@@ -275,25 +280,16 @@ class Workflow:
 
 
     def find_the_longest_path(self):
-        # longest_path = 0
-        # c_p = self.critical_paths[0][1]
-        # for elem in c_p:
-        #     if isinstance(elem, Node):
-        #         longest_path += round_up(elem.volume / self.vm_types[-1].perf)
-        #     else:
-        #         longest_path += elem.transfer_size / self.vm_types[-1].perf
-        #
-        # self.longest_path = longest_path
-        c_p = self.critical_paths[0][1]
+        c_p = copy.deepcopy(self.critical_paths[0][1])
+        del c_p[-1]  # delete finish node and edge
+        del c_p[0]  # delete entry node and edge
 
         for vm_type in self.vm_types:
             path = 0
             for elem in c_p:
                 if isinstance(elem, Node):
-                    path += round_up(elem.volume / vm_type.perf)
+                    path += round_up(elem.volume / vm_type.perf + config.VM_PREP_TIME + config.VM_SHUTDOWN_TIME)
                 else:
-                    # path += round_up(elem.transfer_size / vm_type.perf)
-                    # path += round_up(elem.transfer_size)
                     path += round_up(elem.transfer_size / DATA_TRANSFER_CHANNEL_SPEED)
 
             self.cp_paths_by_vm_type.append(path)
@@ -331,44 +327,26 @@ class Workflow:
             del c_p[0]  # delete entry node and edge
 
             Z1 = self.T # Z1 = reserve time
-            for i in range(len(c_p) - 1, -1, -2):  # delete edges(transfer time)
-                # TODO
-                # if self.t == 1:
-                #     Z1 -= round_up(c_p[i].transfer_size / self.vm_types[0].perf)
-                # if self.t == 2:
-                #     Z1 -= round_up(c_p[i].transfer_size / self.vm_types[-1].perf)
-                # Z1 -= round_up(c_p[i].transfer_size / self.vm_types[self.major_vm_type_index].perf)
-                # Z1 -= round_up(c_p[i].transfer_size)
-                Z1 -= round_up(c_p[i].transfer_size / DATA_TRANSFER_CHANNEL_SPEED)
-                del c_p[i]
+            for i, elem in enumerate(c_p):
+                if isinstance(elem, Node):
+                    Z1 -= round_up(config.VM_PREP_TIME + config.VM_SHUTDOWN_TIME)
+                else:
+                    Z1 -= round_up(elem.transfer_size / DATA_TRANSFER_CHANNEL_SPEED)
+
+            for i, elem in enumerate(c_p):
+                if isinstance(elem, Edge):
+                    del c_p[i]
 
             if not self.strategies:
                 layer = self.next_layer_calc(Z1, c_p, 0)  # direct pass
                 if config.MULTIPLE_STRATEGIES:
                     self.strategies = self.create_strategies_recursion(layer, c_p)
-                    # for strategy in self.strategies:
-                    #     # self.set_strategy_times_recursion(c_p, c_p, layer, strategy)
-                    #     self.set_node_times_for_strategy(c_p, strategy)
                 else:
                     strategy = Strategy(len(self.nodes), self.T)
                     self.strategies.append(strategy)
                     self.set_strategy_times(c_p, c_p, layer)  # reverse pass
             else:
-                # for strategy in self.strategies:
-                #     a = strategy.time[1]
-                #     if strategy.time[1] == 16:
-                #         y = 0
-                #         print("SUCCESS #" + str(strategy.id))
-                #     else:
-                #         print("strategy #" + str(strategy.id))
-
                 for strategy in self.strategies:
-                    # if strategy.time[2] == 16:
-                    # if strategy.id == 78124 or multiple_strategies_flag == True:
-                    #     y = 0
-                    #     print("SUCCESS #" + str(strategy.id))
-                    # else:
-                    #     print("strategy #" + str(strategy.id))
                         local_c_p = copy.copy(c_p)
                         local_Z1 = Z1
                         common_nodes = common_member(strategy.time, c_p, self.first_id)
@@ -388,11 +366,6 @@ class Workflow:
                                     self.set_strategy_times_recursion(c_p, local_c_p, layer, strategy)  # reverse pass
                                 else:
                                     new_strategies = self.create_strategies_recursion(layer, c_p, strategy)
-                                    # for strategy in new_strategies:
-                                    #     # self.set_strategy_times_recursion(c_p, c_p, layer, strategy)
-                                    #     self.set_node_times_for_strategy(c_p, strategy)
-                                    # self.multiple_strategies.append(new_strategies[-1])
-                                    # print("multiple_strategies append strategy#" + str(strategy.id))
                                     self.multiple_strategies.extend(new_strategies)
                             else:
                                 self.set_strategy_times(c_p, local_c_p, layer)  # reverse pass
@@ -414,47 +387,11 @@ class Workflow:
             res.append(sum(strategy.criteria))
 
         print("Number of time distribution variations = " + str(len(res)))
-        m_ax = max(res)
-        m_in = min(res)
         best_res = self.criteria.cf_criteria(res)
-        index = res.index(best_res)
         best_strategy_arr = [i for i in self.strategies if sum(i.criteria) == best_res]
-        # for strategy in best_strategy_arr:
-        #     with open(config.LOG_FILE, 'w') as f:
-        #         fieldnames = ['workflow_T', 'cjm_status', 'vma_status']
-        #         writer = csv.DictWriter(f, fieldnames=fieldnames)
-        #         writer.writeheader()
-        #         fieldnames = ['workflow_T', 'cjm_status', 'vma_status']
-        #
-        #         writer = csv.DictWriter(f, fieldnames=fieldnames)
-        #
-        #         row = {fieldnames[0]: t,
-        #                fieldnames[1]: cjm_status,
-        #                fieldnames[2]: vma_status}
-        #         writer.writerow(row)
 
         best_strategy = best_strategy_arr[0]
-        # self.best_strategy = self.strategies[index]
         self.best_strategy = best_strategy
-
-        # for i, strategyI in enumerate(best_strategy_arr):
-        #     print(strategyI.criteria)
-        #
-        # for i, strategyI in enumerate(best_strategy_arr):
-        #     print(strategyI.time)
-        #
-        # for i, strategyI in enumerate(best_strategy_arr):
-        #     print(strategyI.dict)
-
-        # for i, strategyI in enumerate(best_strategy_arr):
-        #     for j, strategyJ in enumerate(best_strategy_arr, start=1):
-        #         for criterionI in strategyI.criteria:
-        #             for criterionJ in strategyJ.criteria:
-        #                 if criterionI != criterionJ:
-        #                     print(strategyI)
-        #                     print(strategyJ)
-
-
 
         if config.MULTIPLE_STRATEGIES:
             self.set_node_times(self.best_strategy.dict)
@@ -518,7 +455,7 @@ class Workflow:
         if index == 0:
             # node.start_time = float(self.global_timer + round_up(node.input_size / self.vm_types[self.major_vm_type_index].perf))
             # node.start_time = float(self.global_timer + round_up(node.input_size))
-            node.start_time = float(self.global_timer + round_up(node.input_size / DATA_TRANSFER_CHANNEL_SPEED))
+            node.start_time = float(self.global_timer + config.VM_PREP_TIME + round_up(node.input_size / DATA_TRANSFER_CHANNEL_SPEED))
             node.finish_time = round(node.start_time + round_up(layer.layer_options[0].t_current_node), 2)
 
             strategy.change(node.id - self.first_id,
@@ -528,7 +465,7 @@ class Workflow:
             previous_node = c_p[index - 1]
             # node.start_time = previous_node.finish_time + round_up(previous_node.output_size / self.vm_types[self.major_vm_type_index].perf)
             # node.start_time = previous_node.finish_time + round_up(previous_node.output_size)
-            node.start_time = previous_node.finish_time + round_up(previous_node.output_size / DATA_TRANSFER_CHANNEL_SPEED)
+            node.start_time = previous_node.finish_time + config.VM_SHUTDOWN_TIME + config.VM_PREP_TIME + round_up(previous_node.output_size / DATA_TRANSFER_CHANNEL_SPEED)
             node.finish_time = round(node.start_time + round_up(layer.layer_options[0].t_current_node), 2)
 
             strategy.change(node.id - self.first_id,
@@ -545,7 +482,7 @@ class Workflow:
         strategy = self.strategies[0]
         # current_node.start_time = previous_node.finish_time + round_up(previous_node.output_size / self.vm_types[self.major_vm_type_index].perf)
         # current_node.start_time = previous_node.finish_time + round_up(previous_node.output_size)
-        current_node.start_time = previous_node.finish_time + round_up(previous_node.output_size / DATA_TRANSFER_CHANNEL_SPEED)
+        current_node.start_time = previous_node.finish_time + config.VM_SHUTDOWN_TIME + config.VM_PREP_TIME + round_up(previous_node.output_size / DATA_TRANSFER_CHANNEL_SPEED)
         current_node.finish_time = round(current_node.start_time + round_up(layer.layer_options[0].t_current_node), 2)
 
         strategy.change(current_node.id - self.first_id,

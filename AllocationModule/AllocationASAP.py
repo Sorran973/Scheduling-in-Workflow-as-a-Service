@@ -235,8 +235,8 @@ class AllocationASAP:
                         task_from_allocation_time_end = task_from.allocation_end
 
                     try:
-                        if earliest_data_ready_time_max < task_from_allocation_time_end + transfer_time:
-                            earliest_data_ready_time_max = task_from_allocation_time_end + transfer_time
+                        if earliest_data_ready_time_max < task_from_allocation_time_end + transfer_time + preparation_time:
+                            earliest_data_ready_time_max = task_from_allocation_time_end + transfer_time + preparation_time
                     except:
                         print("calcVmAllocationCost\ntask_id={}, task_name={}".format(task.id, task.name))
 
@@ -284,7 +284,6 @@ class AllocationASAP:
         allocation_cost += 1
         if possible_assignment.task_allocation_start is not None:
             possible_assignment.allocation_cost = allocation_cost
-            # possible_assignment.load = load
             task.new_possible_assignments.append(possible_assignment)
             return True, allocation_cost, possible_assignment
         else:
@@ -295,13 +294,12 @@ class AllocationASAP:
     def calcMinCostPairings(self, batch):
         vms = self.vms.copy()
         cost_matrix = []
-        cost_matrix_np = np.array([])
         active_num = len(self.vms)
 
         for t, task in enumerate(batch):
             assignment_with_desired_cost = None
             if task.type == 'task':
-                if task.id == 2:
+                if task.id == 48:
                     y = 0
                 possible_vms = [vm for vm in task.possible_vms if self.calcVmAllocationCost(task, vm)[0]]
                 task.possible_vms = possible_vms

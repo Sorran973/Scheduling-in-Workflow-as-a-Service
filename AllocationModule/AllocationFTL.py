@@ -139,7 +139,7 @@ class AllocationFTL:
     ########## CALCULATING ALLOCATION COST ##########
     def calcVmAllocationCost(self, task, vm):
 
-        if task.id == 5:
+        if task.id == 1:
             y = 0
         # init
         # current_time = -100
@@ -197,7 +197,6 @@ class AllocationFTL:
         # if perform calculations
         else:
             task_runtime = math.ceil(task.volume / vm.perf)
-            # runtime = task.volume / vm.perf
             if (vm.status == 'open'):
                 preparation_time += vm.prep_time  # add vm startup time
 
@@ -233,8 +232,8 @@ class AllocationFTL:
                     try:
                         if task_from_allocation_time_end is None:
                             y = 0
-                        if earliest_data_ready_time_max < task_from_allocation_time_end + transfer_time:
-                            earliest_data_ready_time_max = task_from_allocation_time_end + transfer_time
+                        if earliest_data_ready_time_max < task_from_allocation_time_end + transfer_time + preparation_time:
+                            earliest_data_ready_time_max = task_from_allocation_time_end + transfer_time + preparation_time
                     except:
                         print("calcVmAllocationCost\ntask_id={}, task_name={}".format(task.id, task.name))
 
@@ -296,7 +295,7 @@ class AllocationFTL:
         for t, task in enumerate(batch):
             assignment_with_desired_cost = None
             if task.type == 'task':
-                if task.id == 0:
+                if task.id == 49:
                     y = 0
                 possible_vms = [vm for vm in task.possible_vms if self.calcVmAllocationCost(task, vm)[0]]
                 task.possible_vms = possible_vms

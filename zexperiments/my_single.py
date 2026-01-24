@@ -33,7 +33,7 @@ if __name__ == '__main__':
 
     vm_types = CSVHandler.read_vms_table(VMS_TABLE_FILE_PATH)
 
-    workflow_type = EnumWorkflow.MONTAGE50
+    workflow_type = EnumWorkflow.GENOME50
 
     workflow_type_str = workflow_type.value
     # workflow_type = None
@@ -42,60 +42,32 @@ if __name__ == '__main__':
     # data_volume_multiplier = 1
     xml_file = WORKFLOW_EXAMPLES_DIR + workflow_type_str
 
-    # 50, 100, 500 норм
+    # ------------------------------------------------------------------------------------------------------------------
     if workflow_type in (EnumWorkflow.MONTAGE50, EnumWorkflow.MONTAGE100, EnumWorkflow.MONTAGE200,
                          EnumWorkflow.MONTAGE300, EnumWorkflow.MONTAGE400, EnumWorkflow.MONTAGE500):
-        # task_volume_multiplier = 44
-        # data_volume_multiplier = 7
         task_volume_multiplier = 12
         data_volume_multiplier = 5
-
-    # 50, 100, 500 норм, в других выигрыш либо нулевой, либо вообще отрицательный
-    if workflow_type in (EnumWorkflow.CYBERSHAKE50, EnumWorkflow.CYBERSHAKE100, EnumWorkflow.CYBERSHAKE500):
-        # task_volume_multiplier = 20
-        # data_volume_multiplier = 0.05
-        task_volume_multiplier = 17
-        data_volume_multiplier = 0.04
-    if workflow_type in (EnumWorkflow.CYBERSHAKE200, EnumWorkflow.CYBERSHAKE300, EnumWorkflow.CYBERSHAKE400, EnumWorkflow.CYBERSHAKE500):
-        task_volume_multiplier = 80
-        data_volume_multiplier = 1.5
     # ------------------------------------------------------------------------------------------------------------------
-    # все норм
+    if workflow_type in (EnumWorkflow.CYBERSHAKE50, EnumWorkflow.CYBERSHAKE100, EnumWorkflow.CYBERSHAKE200,
+                         EnumWorkflow.CYBERSHAKE300, EnumWorkflow.CYBERSHAKE400, EnumWorkflow.CYBERSHAKE500):
+        task_volume_multiplier = 16
+        data_volume_multiplier = 0.04
+    # ------------------------------------------------------------------------------------------------------------------
     if workflow_type in (EnumWorkflow.LIGO50, EnumWorkflow.LIGO100, EnumWorkflow.LIGO200,
-                         EnumWorkflow.LIGO300, EnumWorkflow.LIGO500):
+                         EnumWorkflow.LIGO300, EnumWorkflow.LIGO400, EnumWorkflow.LIGO500):
         task_volume_multiplier = 3
         data_volume_multiplier = 7
-        # task_volume_multiplier = 3
-        # data_volume_multiplier = 7
-    if workflow_type is EnumWorkflow.LIGO400:
-        task_volume_multiplier = 8
-        data_volume_multiplier = 75
     # ------------------------------------------------------------------------------------------------------------------
-    # все хорошо
-    if workflow_type in (EnumWorkflow.SIPHT50, EnumWorkflow.SIPHT100):
-        # task_volume_multiplier = 1
-        # data_volume_multiplier = 5
+    if workflow_type in (EnumWorkflow.SIPHT50, EnumWorkflow.SIPHT100, EnumWorkflow.SIPHT200,
+                         EnumWorkflow.SIPHT300, EnumWorkflow.SIPHT400, EnumWorkflow.SIPHT500):
         task_volume_multiplier = 0.25
         data_volume_multiplier = 0.1
-    if workflow_type in (EnumWorkflow.SIPHT200, EnumWorkflow.SIPHT300, EnumWorkflow.SIPHT400, EnumWorkflow.SIPHT500):
-        task_volume_multiplier = 3
-        data_volume_multiplier = 50
     # ------------------------------------------------------------------------------------------------------------------
-    # все норм
-    if workflow_type in (EnumWorkflow.GENOME50, EnumWorkflow.GENOME100):
-        # task_volume_multiplier = 0.25
-        # data_volume_multiplier = 1
+    if workflow_type in (EnumWorkflow.GENOME50, EnumWorkflow.GENOME100, EnumWorkflow.GENOME200,
+                         EnumWorkflow.GENOME300, EnumWorkflow.GENOME400, EnumWorkflow.GENOME500):
         task_volume_multiplier = 0.013
         data_volume_multiplier = 0.15
-    if workflow_type in (EnumWorkflow.GENOME200,EnumWorkflow.GENOME300):
-        task_volume_multiplier = 0.4
-        data_volume_multiplier = 9
-    if workflow_type is EnumWorkflow.GENOME400:
-        task_volume_multiplier = 0.8
-        data_volume_multiplier = 8
-    if workflow_type is EnumWorkflow.GENOME500:
-        task_volume_multiplier = 0.2
-        data_volume_multiplier = 8
+    # ------------------------------------------------------------------------------------------------------------------
 
 
     workflow_set = WorkflowSet()
@@ -138,9 +110,10 @@ if __name__ == '__main__':
     # allocations.append(AllocationBestFitASAPEPSM(VMA_CRITERIA, vm_types, deepcopy(tasks)))
 
     allocations.append(AllocationFTL(VMA_CRITERIA, vm_types, deepcopy(tasks)))
-    # allocations.append(AllocationASAP_O(VMA_CRITERIA, vm_types, deepcopy(tasks)))
     allocations.append(AllocationASAP(VMA_CRITERIA, vm_types, deepcopy(tasks)))
-    # allocations.append(NewVmForEachTask(VMA_CRITERIA, vm_types, deepcopy(tasks)))
+    #
+    # allocations.append(AllocationASAP_O(VMA_CRITERIA, vm_types, deepcopy(tasks)))
+
 
 
     for allocation in allocations:
@@ -238,7 +211,8 @@ if __name__ == '__main__':
             color["color"] = color.apply(lambda x: rand_color(x), axis=1)
             log = pd.merge(log, color, on='workflow_id', how='left')
             log = log.sort_values(["vm_id", "vm_start"])
-            drawer.draw_result_gantt(log, GANTT_FIGURES_ASAP_O)
+            # drawer.draw_result_gantt(log, GANTT_FIGURES_ASAP_O)
+            drawer.draw_big_gantt(log, GANTT_FIGURES_ASAP_O)
         if isinstance(allocation, AllocationASAP):
             log = allocation.log
             color = log[["workflow_id"]]
@@ -247,3 +221,4 @@ if __name__ == '__main__':
             log = pd.merge(log, color, on='workflow_id', how='left')
             log = log.sort_values(["vm_id", "vm_start"])
             drawer.draw_result_gantt(log, GANTT_FIGURES_ASAP)
+            # drawer.draw_big_gantt(log, GANTT_FIGURES_ASAP)
