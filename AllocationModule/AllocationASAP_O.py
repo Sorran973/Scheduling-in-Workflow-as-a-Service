@@ -180,7 +180,7 @@ class AllocationASAP_O:
                     # transfer_time = math.ceil(transfer.transfer_time / vm.perf)
                     # transfer_time = math.ceil(transfer.transfer_size / vm.perf)
                     # transfer_time = max(math.ceil(transfer.transfer_size / vm.perf), transfer.transfer_size)
-                    transfer_time = math.ceil(transfer.transfer_size / DATA_TRANSFER_CHANNEL_SPEED)
+                    transfer_time = math.ceil(transfer.transfer_size / min(DATA_TRANSFER_CHANNEL_SPEED, vm.bandwidth))
                     transfer_size = transfer.transfer_size
 
                     transfer_end = previous_task.allocation_end + transfer_time
@@ -222,7 +222,7 @@ class AllocationASAP_O:
                         # transfer_time = math.ceil(transfer.transfer_time / vm.perf)
                         # transfer_time = math.ceil(transfer.transfer_size / vm.perf)
                         # transfer_time = max(math.ceil(transfer.transfer_size / vm.perf), transfer.transfer_size)
-                        transfer_time = math.ceil(transfer.transfer_size / DATA_TRANSFER_CHANNEL_SPEED)
+                        transfer_time = math.ceil(transfer.transfer_size / min(DATA_TRANSFER_CHANNEL_SPEED, vm.bandwidth))
                         transfer_size = transfer.transfer_size
 
                     if data_transfer_time_max < transfer_time:

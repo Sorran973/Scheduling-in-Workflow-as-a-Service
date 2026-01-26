@@ -1,6 +1,6 @@
-VM_type,performance,price
-XXX,3.0,0.6
-3X,2.5,0.38
-2X,2.0,0.24
-1X,1.5,0.16
-x,1.0,0.1
+VM_type,performance,price,bandwidth
+XXX,3.0,0.6,30
+3X,2.5,0.38,25
+2X,2.0,0.24,20
+1X,1.5,0.16,15
+x,1.0,0.1,10

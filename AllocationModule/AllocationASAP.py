@@ -116,7 +116,8 @@ class AllocationASAP:
 
     def addNewVms(self, task):
             for vm_type in self.vm_types:
-                task.possible_vms.append(VM(vm_type.type, vm_type.perf, vm_type.cost, vm_type.prep_time, vm_type.shutdown_time))
+                task.possible_vms.append(
+                    VM(vm_type.type, vm_type.perf, vm_type.cost, vm_type.bandwidth, vm_type.prep_time, vm_type.shutdown_time))
 
     def prepareVmMatchings(self, batch, additional_vms_num):
         # first remove old temp tasks and not started vms
@@ -176,11 +177,7 @@ class AllocationASAP:
                 output_data_transfer_time_max = -sys.maxsize
                 output_data_transfer_size_max = -sys.maxsize
                 for transfer in previous_task.output_transfers:
-                    # transfer_time = transfer.transfer_time
-                    # transfer_time = math.ceil(transfer.transfer_time / vm.perf)
-                    # transfer_time = math.ceil(transfer.transfer_size / vm.perf)
-                    # transfer_time = max(math.ceil(transfer.transfer_size / vm.perf), transfer.transfer_size)
-                    transfer_time = math.ceil(transfer.transfer_size / DATA_TRANSFER_CHANNEL_SPEED)
+                    transfer_time = math.ceil(transfer.transfer_size / min(DATA_TRANSFER_CHANNEL_SPEED, vm.bandwidth))
                     transfer_size = transfer.transfer_size
 
                     transfer_end = previous_task.allocation_end + transfer_time
@@ -218,11 +215,7 @@ class AllocationASAP:
                         transfer_time = 0
                         transfer_size = 0
                     else:
-                        # transfer_time = transfer.transfer_time
-                        # transfer_time = math.ceil(transfer.transfer_time / vm.perf)
-                        # transfer_time = math.ceil(transfer.transfer_size / vm.perf)
-                        # transfer_time = max(math.ceil(transfer.transfer_size / vm.perf), transfer.transfer_size)
-                        transfer_time = math.ceil(transfer.transfer_size / DATA_TRANSFER_CHANNEL_SPEED)
+                        transfer_time = math.ceil(transfer.transfer_size / min(DATA_TRANSFER_CHANNEL_SPEED, vm.bandwidth))
                         transfer_size = transfer.transfer_size
 
                     if data_transfer_time_max < transfer_time:
@@ -299,7 +292,7 @@ class AllocationASAP:
         for t, task in enumerate(batch):
             assignment_with_desired_cost = None
             if task.type == 'task':
-                if task.id == 48:
+                if task.id == 2:
                     y = 0
                 possible_vms = [vm for vm in task.possible_vms if self.calcVmAllocationCost(task, vm)[0]]
                 task.possible_vms = possible_vms

@@ -33,42 +33,41 @@ if __name__ == '__main__':
 
     vm_types = CSVHandler.read_vms_table(VMS_TABLE_FILE_PATH)
 
-    workflow_type = EnumWorkflow.GENOME50
+    workflow_type = EnumWorkflow.MONTAGE50
 
     workflow_type_str = workflow_type.value
     # workflow_type = None
     # workflow_type_str = "MyTestDAXes/test.xml"
     # task_volume_multiplier = 1
-    # data_volume_multiplier = 1
+    # data_volume_multiplier = 10
     xml_file = WORKFLOW_EXAMPLES_DIR + workflow_type_str
 
     # ------------------------------------------------------------------------------------------------------------------
     if workflow_type in (EnumWorkflow.MONTAGE50, EnumWorkflow.MONTAGE100, EnumWorkflow.MONTAGE200,
                          EnumWorkflow.MONTAGE300, EnumWorkflow.MONTAGE400, EnumWorkflow.MONTAGE500):
         task_volume_multiplier = 12
-        data_volume_multiplier = 5
+        data_volume_multiplier = 150
     # ------------------------------------------------------------------------------------------------------------------
     if workflow_type in (EnumWorkflow.CYBERSHAKE50, EnumWorkflow.CYBERSHAKE100, EnumWorkflow.CYBERSHAKE200,
                          EnumWorkflow.CYBERSHAKE300, EnumWorkflow.CYBERSHAKE400, EnumWorkflow.CYBERSHAKE500):
         task_volume_multiplier = 16
-        data_volume_multiplier = 0.04
+        data_volume_multiplier = 0.4
     # ------------------------------------------------------------------------------------------------------------------
     if workflow_type in (EnumWorkflow.LIGO50, EnumWorkflow.LIGO100, EnumWorkflow.LIGO200,
                          EnumWorkflow.LIGO300, EnumWorkflow.LIGO400, EnumWorkflow.LIGO500):
         task_volume_multiplier = 3
-        data_volume_multiplier = 7
+        data_volume_multiplier = 70
     # ------------------------------------------------------------------------------------------------------------------
     if workflow_type in (EnumWorkflow.SIPHT50, EnumWorkflow.SIPHT100, EnumWorkflow.SIPHT200,
                          EnumWorkflow.SIPHT300, EnumWorkflow.SIPHT400, EnumWorkflow.SIPHT500):
-        task_volume_multiplier = 0.25
-        data_volume_multiplier = 0.1
+        task_volume_multiplier = 0.16
+        data_volume_multiplier = 10
     # ------------------------------------------------------------------------------------------------------------------
     if workflow_type in (EnumWorkflow.GENOME50, EnumWorkflow.GENOME100, EnumWorkflow.GENOME200,
                          EnumWorkflow.GENOME300, EnumWorkflow.GENOME400, EnumWorkflow.GENOME500):
-        task_volume_multiplier = 0.013
-        data_volume_multiplier = 0.15
+        task_volume_multiplier = 0.014
+        data_volume_multiplier = 1.5
     # ------------------------------------------------------------------------------------------------------------------
-
 
     workflow_set = WorkflowSet()
     workflow = Workflow(XML_FILE=xml_file,

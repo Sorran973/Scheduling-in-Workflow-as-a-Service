@@ -39,7 +39,7 @@ def dfs(node):
                 node.critical_paths.append((round(node.runtime + node_edge.transfer_time + critical_path[0], 2),
                                             [node, node_edge] + critical_path[1]))
             else:
-                node.critical_paths.append((round(config.VM_PREP_TIME + config.VM_SHUTDOWN_TIME + node.runtime + node_edge.transfer_time + critical_path[0], 2),
+                node.critical_paths.append((round(config.VM_PREP_TIME + node.runtime + node_edge.transfer_time + critical_path[0], 2),
                                             [node, node_edge] + critical_path[1]))
 
 
@@ -123,9 +123,9 @@ class Workflow:
         elif self.t == 2:
             self.T = self.cp_paths_by_vm_type[-1]
         elif self.t == 3:
-            # self.T = round_up((self.cp_paths_by_vm_type[2] + self.cp_paths_by_vm_type[3]) / 2)
+            self.T = round_up((self.cp_paths_by_vm_type[2] + self.cp_paths_by_vm_type[3]) / 2)
             # self.T = round_up((self.cp_paths_by_vm_type[1] + self.cp_paths_by_vm_type[2]) / 2)
-            self.T = self.cp_paths_by_vm_type[2]
+            # self.T = self.cp_paths_by_vm_type[2]
             # self.T = round_up((self.cp_paths_by_vm_type[0] + self.cp_paths_by_vm_type[1]) / 2)
         elif self.t == 4:
             self.T = random.randint(self.cp_paths_by_vm_type[0], self.cp_paths_by_vm_type[-1])
@@ -175,11 +175,10 @@ class Workflow:
                 if use.get('register') != 'true':
                     xml_size = float(use.get('size'))
                     size = round_up(float(use.get('size')) * self.data_volume_multiplier / 1000000)
-                    if size < self.vm_types[0].perf:
-                        size = self.vm_types[0].perf
-                    else:
-                        size = round_up(float(use.get('size')) * self.data_volume_multiplier / 1000000)
-                        # size = math.ceil(float(use.get('size')) * self.data_volume_multiplier / 1000000)
+                    # if size < self.vm_types[0].perf:
+                    #     size = self.vm_types[0].perf
+                    # else:
+                    #     size = round_up(float(use.get('size')) * self.data_volume_multiplier / 1000000)
                     current_node.add_file(File(use.get('file'),
                                                use.get('link'),
                                                size,
@@ -191,7 +190,7 @@ class Workflow:
                                                use.get('link'),
                                                size,
                                                use.get('register')))
-            current_node.calculate_transfer_time(self.vm_types[0].perf, DATA_TRANSFER_CHANNEL_SPEED)
+            current_node.calculate_transfer_time(self.vm_types[0], DATA_TRANSFER_CHANNEL_SPEED)
 
         # Add finish_node into graph
         self.add_node(Node('finish', 0.0, 0.0))
@@ -204,7 +203,7 @@ class Workflow:
             for parent in parents:
                 node_from = self.node_dict.get(parent.get('ref'))
                 node_to = self.node_dict.get(edge.get('ref'))
-                e = Edge(node_from, node_to, node_from.output, self.vm_types[0].perf, DATA_TRANSFER_CHANNEL_SPEED)
+                e = Edge(node_from, node_to, node_from.output, self.vm_types[0], DATA_TRANSFER_CHANNEL_SPEED)
                 self.add_edge(e)
                 node_from.add_edge_to(e)
                 node_to.add_edge_from(e)
@@ -253,9 +252,9 @@ class Workflow:
             next_node = self.nodes[i]
             if self.entry_edges[i] == 0:
                 if next_node.input:
-                    edge = Edge(entry_node, next_node, next_node.input, self.vm_types[0].perf, DATA_TRANSFER_CHANNEL_SPEED)
+                    edge = Edge(entry_node, next_node, next_node.input, self.vm_types[0], DATA_TRANSFER_CHANNEL_SPEED)
                 else:
-                    edge = Edge(entry_node, next_node, [File('empty_file', 'input', 0, 'false')], self.vm_types[0].perf, DATA_TRANSFER_CHANNEL_SPEED)
+                    edge = Edge(entry_node, next_node, [File('empty_file', 'input', 0, 'false')], self.vm_types[0], DATA_TRANSFER_CHANNEL_SPEED)
                 self.add_edge(edge)
                 entry_node.add_edge_to(edge)
                 next_node.add_edge_from(edge)
@@ -264,7 +263,7 @@ class Workflow:
         for i in range(1, n - 1):
             previous_node = self.nodes[i]
             if self.finish_edges[i] == 0:
-                edge = Edge(previous_node, finish_node, previous_node.output, self.vm_types[0].perf, DATA_TRANSFER_CHANNEL_SPEED)
+                edge = Edge(previous_node, finish_node, previous_node.output, self.vm_types[0], DATA_TRANSFER_CHANNEL_SPEED)
                 self.add_edge(edge)
                 previous_node.add_edge_to(edge)
                 finish_node.add_edge_from(edge)
@@ -288,9 +287,9 @@ class Workflow:
             path = 0
             for elem in c_p:
                 if isinstance(elem, Node):
-                    path += round_up(elem.volume / vm_type.perf + config.VM_PREP_TIME + config.VM_SHUTDOWN_TIME)
+                    path += round_up(elem.volume / vm_type.perf + config.VM_PREP_TIME)
                 else:
-                    path += round_up(elem.transfer_size / DATA_TRANSFER_CHANNEL_SPEED)
+                    path += round_up(elem.transfer_size / min(vm_type.bandwidth, DATA_TRANSFER_CHANNEL_SPEED))
 
             self.cp_paths_by_vm_type.append(path)
 
@@ -329,9 +328,10 @@ class Workflow:
             Z1 = self.T # Z1 = reserve time
             for i, elem in enumerate(c_p):
                 if isinstance(elem, Node):
-                    Z1 -= round_up(config.VM_PREP_TIME + config.VM_SHUTDOWN_TIME)
+                    Z1 -= round_up(config.VM_PREP_TIME)
                 else:
-                    Z1 -= round_up(elem.transfer_size / DATA_TRANSFER_CHANNEL_SPEED)
+                    Z1 -= round_up(elem.transfer_size / min(self.vm_types[self.major_vm_type_index].bandwidth, DATA_TRANSFER_CHANNEL_SPEED))
+                    # Z1 -= round_up(elem.transfer_size / DATA_TRANSFER_CHANNEL_SPEED)
 
             for i, elem in enumerate(c_p):
                 if isinstance(elem, Edge):
@@ -453,9 +453,7 @@ class Workflow:
         index = c_p.index(node)
         strategy = self.strategies[0]
         if index == 0:
-            # node.start_time = float(self.global_timer + round_up(node.input_size / self.vm_types[self.major_vm_type_index].perf))
-            # node.start_time = float(self.global_timer + round_up(node.input_size))
-            node.start_time = float(self.global_timer + config.VM_PREP_TIME + round_up(node.input_size / DATA_TRANSFER_CHANNEL_SPEED))
+            node.start_time = float(self.global_timer + config.VM_PREP_TIME + round_up(node.input_size / min(self.vm_types[self.major_vm_type_index].bandwidth, DATA_TRANSFER_CHANNEL_SPEED)))
             node.finish_time = round(node.start_time + round_up(layer.layer_options[0].t_current_node), 2)
 
             strategy.change(node.id - self.first_id,
@@ -463,9 +461,7 @@ class Workflow:
                                 layer.layer_options[0].C_current_node)
         else:
             previous_node = c_p[index - 1]
-            # node.start_time = previous_node.finish_time + round_up(previous_node.output_size / self.vm_types[self.major_vm_type_index].perf)
-            # node.start_time = previous_node.finish_time + round_up(previous_node.output_size)
-            node.start_time = previous_node.finish_time + config.VM_SHUTDOWN_TIME + config.VM_PREP_TIME + round_up(previous_node.output_size / DATA_TRANSFER_CHANNEL_SPEED)
+            node.start_time = previous_node.finish_time + config.VM_PREP_TIME + round_up(previous_node.output_size / min(self.vm_types[self.major_vm_type_index].bandwidth, DATA_TRANSFER_CHANNEL_SPEED))
             node.finish_time = round(node.start_time + round_up(layer.layer_options[0].t_current_node), 2)
 
             strategy.change(node.id - self.first_id,
@@ -482,7 +478,7 @@ class Workflow:
         strategy = self.strategies[0]
         # current_node.start_time = previous_node.finish_time + round_up(previous_node.output_size / self.vm_types[self.major_vm_type_index].perf)
         # current_node.start_time = previous_node.finish_time + round_up(previous_node.output_size)
-        current_node.start_time = previous_node.finish_time + config.VM_SHUTDOWN_TIME + config.VM_PREP_TIME + round_up(previous_node.output_size / DATA_TRANSFER_CHANNEL_SPEED)
+        current_node.start_time = previous_node.finish_time + config.VM_PREP_TIME + round_up(previous_node.output_size / min(self.vm_types[self.major_vm_type_index].bandwidth, DATA_TRANSFER_CHANNEL_SPEED))
         current_node.finish_time = round(current_node.start_time + round_up(layer.layer_options[0].t_current_node), 2)
 
         strategy.change(current_node.id - self.first_id,

@@ -241,7 +241,11 @@ class Analyzer:
 
         print()
         for allocation in allocations:
-            print(f"\tWorkload Time: {allocation.workload_time_without_first_and_last_vm}")
+            print(f"\tWorkload Time without first and last vm: {allocation.workload_time_without_first_and_last_vm}")
+
+        print()
+        for allocation in allocations:
+            print(f"\tWorkload Time: {allocation.workload_time}")
 
         print()
         for allocation in allocations:

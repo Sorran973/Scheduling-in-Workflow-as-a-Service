@@ -75,7 +75,7 @@ class CSVHandler:
             reader = csv.reader(csvfile, delimiter=',', quotechar='|')
             headers = next(reader)
             for row in reader:
-                vm_types.append(VMType(row[0], float(row[1]), float(row[2])))
+                vm_types.append(VMType(row[0], float(row[1]), float(row[2]), float(row[3])))
 
         return vm_types
 

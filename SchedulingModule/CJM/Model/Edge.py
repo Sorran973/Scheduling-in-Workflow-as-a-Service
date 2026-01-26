@@ -8,14 +8,14 @@ class Edge:  # Data transfer
 
     id = 0
 
-    def __init__(self, node_from, node_to, files, vm_perf, data_transfer_channel_speed):
+    def __init__(self, node_from, node_to, files, vm_type, data_transfer_channel_speed):
         self.id = Edge.id
         self.node_from = node_from
         self.node_to = node_to
         self.files = files
         self.transfer_size = sum(map(lambda file: file.size, files))
         # self.transfer_time = math.ceil(self.transfer_size / data_transfer_channel_speed)
-        self.transfer_time = round_up(self.transfer_size / data_transfer_channel_speed)
+        self.transfer_time = round_up(self.transfer_size / min(vm_type.bandwidth, data_transfer_channel_speed))
 
         # self.transfer_time = round_up(self.transfer_size / vm_perf / data_transfer_channel_speed)
         self.in_critical_path = False
