@@ -41,9 +41,9 @@ if __name__ == '__main__':
     #####################################################
     ################# SCHEDULING MODULE #################
     #####################################################
-    n_worfklow = 500
-    period = 900
-    n_workflow_per_period = 50
+    n_worfklow = 100
+    period = 60
+    n_workflow_per_period = 5
     current_time = 0
     task_volume_multiplier = 1
     data_volume_multiplier = 1
@@ -64,8 +64,8 @@ if __name__ == '__main__':
             headers = next(reader)
             for row in reader:
                 indexes.append(int(row[1]))
-                # T_arr.append(float(row[2]))
-                T_arr.append(config.T)
+                T_arr.append(float(row[2]))
+                # T_arr.append(config.T)
                 starts.append(int(row[3]))
                 task_volume_multiplier_arr.append(float(row[4]))
                 data_volume_multiplier_arr.append(float(row[5]))
@@ -92,7 +92,7 @@ if __name__ == '__main__':
 
             else:
                 index_workflow_from_samples = random.randint(0, len(workflow_samples) - 1)
-                # index_workflow_from_samples = i
+                # index_workflow_from_samples = i % len(workflow_samples)
                 # workflow_start_time = random.randint(current_time, current_time + period)
                 workflow_start_time = current_time
                 indexes.append(index_workflow_from_samples)
@@ -102,62 +102,32 @@ if __name__ == '__main__':
                 workflow_type_str = workflow_type.value
                 xml_file = config.WORKFLOW_EXAMPLES_DIR + workflow_type_str
 
-            # 50, 100, 500 норм
+            # ------------------------------------------------------------------------------------------------------------------
             if workflow_type in (EnumWorkflow.MONTAGE50, EnumWorkflow.MONTAGE100, EnumWorkflow.MONTAGE200,
                                  EnumWorkflow.MONTAGE300, EnumWorkflow.MONTAGE400, EnumWorkflow.MONTAGE500):
-                # task_volume_multiplier = 44
-                # data_volume_multiplier = 7
-                task_volume_multiplier = 12
-                data_volume_multiplier = 5
-
-            # 50, 100, 500 норм, в других выигрыш либо нулевой, либо вообще отрицательный
-            if workflow_type in (EnumWorkflow.CYBERSHAKE50, EnumWorkflow.CYBERSHAKE100, EnumWorkflow.CYBERSHAKE500):
-                # task_volume_multiplier = 20
-                # data_volume_multiplier = 0.05
-                task_volume_multiplier = 17
-                data_volume_multiplier = 0.04
-            if workflow_type in (EnumWorkflow.CYBERSHAKE200, EnumWorkflow.CYBERSHAKE300, EnumWorkflow.CYBERSHAKE400,
-                                 EnumWorkflow.CYBERSHAKE500):
-                task_volume_multiplier = 80
-                data_volume_multiplier = 1.5
+                task_volume_multiplier = 6.5
+                data_volume_multiplier = 65
             # ------------------------------------------------------------------------------------------------------------------
-            # все норм
+            if workflow_type in (EnumWorkflow.CYBERSHAKE50, EnumWorkflow.CYBERSHAKE100, EnumWorkflow.CYBERSHAKE200,
+                                 EnumWorkflow.CYBERSHAKE300, EnumWorkflow.CYBERSHAKE400, EnumWorkflow.CYBERSHAKE500):
+                task_volume_multiplier = 6
+                data_volume_multiplier = 0.8
+            # ------------------------------------------------------------------------------------------------------------------
             if workflow_type in (EnumWorkflow.LIGO50, EnumWorkflow.LIGO100, EnumWorkflow.LIGO200,
-                                 EnumWorkflow.LIGO300, EnumWorkflow.LIGO500):
-                task_volume_multiplier = 3
+                                 EnumWorkflow.LIGO300, EnumWorkflow.LIGO400, EnumWorkflow.LIGO500):
+                task_volume_multiplier = 1.2
+                data_volume_multiplier = 180
+            # ------------------------------------------------------------------------------------------------------------------
+            if workflow_type in (EnumWorkflow.SIPHT50, EnumWorkflow.SIPHT100, EnumWorkflow.SIPHT200,
+                                 EnumWorkflow.SIPHT300, EnumWorkflow.SIPHT400, EnumWorkflow.SIPHT500):
+                task_volume_multiplier = 0.16
+                data_volume_multiplier = 19
+            # ------------------------------------------------------------------------------------------------------------------
+            if workflow_type in (EnumWorkflow.GENOME50, EnumWorkflow.GENOME100, EnumWorkflow.GENOME200,
+                                 EnumWorkflow.GENOME300, EnumWorkflow.GENOME400, EnumWorkflow.GENOME500):
+                task_volume_multiplier = 0.18
                 data_volume_multiplier = 7
-                # task_volume_multiplier = 3
-                # data_volume_multiplier = 7
-            if workflow_type is EnumWorkflow.LIGO400:
-                task_volume_multiplier = 8
-                data_volume_multiplier = 75
             # ------------------------------------------------------------------------------------------------------------------
-            # все хорошо
-            if workflow_type in (EnumWorkflow.SIPHT50, EnumWorkflow.SIPHT100):
-                # task_volume_multiplier = 1
-                # data_volume_multiplier = 5
-                task_volume_multiplier = 0.25
-                data_volume_multiplier = 0.1
-            if workflow_type in (EnumWorkflow.SIPHT200, EnumWorkflow.SIPHT300, EnumWorkflow.SIPHT400,
-                                 EnumWorkflow.SIPHT500):
-                task_volume_multiplier = 3
-                data_volume_multiplier = 50
-            # ------------------------------------------------------------------------------------------------------------------
-            # все норм
-            if workflow_type in (EnumWorkflow.GENOME50, EnumWorkflow.GENOME100):
-                # task_volume_multiplier = 0.25
-                # data_volume_multiplier = 1
-                task_volume_multiplier = 0.013
-                data_volume_multiplier = 0.15
-            if workflow_type in (EnumWorkflow.GENOME200, EnumWorkflow.GENOME300):
-                task_volume_multiplier = 0.4
-                data_volume_multiplier = 9
-            if workflow_type is EnumWorkflow.GENOME400:
-                task_volume_multiplier = 0.8
-                data_volume_multiplier = 8
-            if workflow_type is EnumWorkflow.GENOME500:
-                task_volume_multiplier = 0.2
-                data_volume_multiplier = 8
 
 
             workflow = Workflow(XML_FILE=xml_file,
@@ -168,7 +138,7 @@ if __name__ == '__main__':
                                 data_volume_multiplier=data_volume_multiplier,
                                 # start_time=random.randint(current_time, current_time + period))
                                 # start_time= period * k)
-                                start_time= current_time)
+                                start_time= workflow_start_time)
             # k += 1
             workflow_set.addWorkflow(workflow)
             T_arr_new.append(workflow.T)
@@ -216,9 +186,9 @@ if __name__ == '__main__':
     data_transfer = CSVHandler.read_data_transfer_table(config.TRANSFER_SIZE_TABLE_FILE, tasks)
 
     allocations = []
-    allocations.append(AllocationFTL(config.VMA_CRITERIA, vm_types, deepcopy(tasks)))
-    allocations.append(AllocationASAP(config.VMA_CRITERIA, vm_types, deepcopy(tasks)))
-    # allocations.append(AllocationASAP_O(config.VMA_CRITERIA, vm_types, deepcopy(tasks)))
+    # allocations.append(AllocationFTL(config.VMA_CRITERIA, vm_types, deepcopy(tasks)))
+    # allocations.append(AllocationASAP(config.VMA_CRITERIA, vm_types, deepcopy(tasks)))
+    allocations.append(AllocationASAP_O(config.VMA_CRITERIA, vm_types, deepcopy(tasks)))
 
     batch_time_ftl = 0
     batch_time_asap = 0
@@ -237,13 +207,13 @@ if __name__ == '__main__':
         batch_time = end_time - start_time
 
         if isinstance(allocation, AllocationFTL):
-            drawer.draw_big_batches_gantt(allocation.tasks, config.GANTT_FIGURES_BATCHES_FTL)
+            # drawer.draw_big_batches_gantt(allocation.tasks, config.GANTT_FIGURES_BATCHES_FTL)
             batch_time_ftl = batch_time
         if isinstance(allocation, AllocationASAP):
-            drawer.draw_big_batches_gantt(allocation.tasks, config.GANTT_FIGURES_BATCHES_ASAP)
+            # drawer.draw_big_batches_gantt(allocation.tasks, config.GANTT_FIGURES_BATCHES_ASAP)
             batch_time_asap = batch_time
         if isinstance(allocation, AllocationASAP_O):
-            drawer.draw_big_batches_gantt(allocation.tasks, config.GANTT_FIGURES_BATCHES_ASAP_O)
+            # drawer.draw_big_batches_gantt(allocation.tasks, config.GANTT_FIGURES_BATCHES_ASAP_O)
             batch_time_asap_o = batch_time
 
 
@@ -263,26 +233,26 @@ if __name__ == '__main__':
         if isinstance(allocation, AllocationFTL):
             vma_time_ftl = vma_time
 
-            workflow_costs = allocation.workflow_costs
-            with open(
-                    "/Users/artembulkhak/PycharmProjects/Scheduling-in-Workflow-as-a-Service/Output/ftl_workflow_costs.csv",
-                    'w') as f:
-                fieldnames = ['workflow_id', 'allocation_cost']
-                writer = csv.DictWriter(f, fieldnames=fieldnames)
-                writer.writeheader()
+            # workflow_costs = allocation.workflow_costs
+            # with open(
+            #         "/Users/artembulkhak/PycharmProjects/Scheduling-in-Workflow-as-a-Service/Output/ftl_workflow_costs.csv",
+            #         'w') as f:
+            #     fieldnames = ['workflow_id', 'allocation_cost']
+            #     writer = csv.DictWriter(f, fieldnames=fieldnames)
+            #     writer.writeheader()
+            #
+            #     for i, cost in enumerate(workflow_costs):
+            #         row = {fieldnames[0]: i,
+            #                fieldnames[1]: cost}
+            #         writer.writerow(row)
 
-                for i, cost in enumerate(workflow_costs):
-                    row = {fieldnames[0]: i,
-                           fieldnames[1]: cost}
-                    writer.writerow(row)
-
-            drawer.draw_big_gantt(log, config.GANTT_FIGURES_FTL)
+            # drawer.draw_big_gantt(log, config.GANTT_FIGURES_FTL)
         if isinstance(allocation, AllocationASAP):
             vma_time_asap = vma_time
-            drawer.draw_big_gantt(log, config.GANTT_FIGURES_ASAP)
+            # drawer.draw_big_gantt(log, config.GANTT_FIGURES_ASAP)
         if isinstance(allocation, AllocationASAP_O):
             vma_time_asap_o = vma_time
-            drawer.draw_big_gantt(log, config.GANTT_FIGURES_ASAP_O)
+            # drawer.draw_big_gantt(log, config.GANTT_FIGURES_ASAP_O)
 
 
         Analyzer.analyze_allocation(allocation, T_arr_new)

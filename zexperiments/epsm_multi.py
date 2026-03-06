@@ -7,7 +7,6 @@ import pandas as pd
 from fontTools.misc.bezierTools import epsilon
 
 import config
-from AllocationModule.AllocationASAP_O import AllocationASAP_O
 from AllocationModule.AllocationBestFitFTLEPSM import AllocationBestFitFTLEPSM
 from AllocationModule.AllocationBestFit import AllocationBestFit
 from AllocationModule.AllocationFTL import AllocationFTL
@@ -16,6 +15,7 @@ from AllocationModule.AllocationBestFitASAP import AllocationBestFitASAP
 from AllocationModule.AllocationMixed import AllocationMixed
 from AllocationModule.EPSM.AllocationEPSM import AllocationEPSM
 from AllocationModule.EPSM.AllocationEPSM_BestFit import AllocationEPSM_BestFit
+from AllocationModule.EPSM.AllocationEPSMnew import AllocationEPSMnew
 from AllocationModule.EPSM.AllocationNewVM import AllocationNewVM
 from AllocationModule.EPSM.AllocationEPSM_VMA import AllocationEPSM_VMA, AllocationEPSM_VMA
 from AllocationModule.EPSM.EPSMWorkflow import EPSMWorkflow
@@ -49,9 +49,9 @@ if __name__ == '__main__':
     #####################################################
     ################# SCHEDULING MODULE #################
     #####################################################
-    n_worfklow = 500
-    period = 900
-    n_workflow_per_period = 50
+    n_worfklow = 100
+    period = 60
+    n_workflow_per_period = 5
     current_time = 0
     # repeat_workflow_set_flag = "new_test"
     repeat_workflow_set_flag = "old_test"
@@ -70,8 +70,8 @@ if __name__ == '__main__':
             headers = next(reader)
             for row in reader:
                 indexes.append(int(row[1]))
-                # T_arr.append(float(row[2]))
-                T_arr.append(T)
+                T_arr.append(float(row[2]))
+                # T_arr.append(T)
                 starts.append(int(row[3]))
                 task_volume_multiplier_arr.append(float(row[4]))
                 data_volume_multiplier_arr.append(float(row[5]))
@@ -90,14 +90,14 @@ if __name__ == '__main__':
                 xml_file = config.WORKFLOW_EXAMPLES_DIR + workflow_samples[index_workflow_from_samples].value
                 # T = T_arr[j]
                 T = config.T
-                # workflow_start_time = starts[j]
+                workflow_start_time = starts[j]
                 # task_volume_multiplier = task_volume_multiplier_arr[j]
                 # data_volume_multiplier = data_volume_multiplier_arr[j]
                 j += 1
 
             else:
                 # index_workflow_from_samples = random.randint(0, len(workflow_samples) - 1)
-                index_workflow_from_samples = i
+                index_workflow_from_samples = i % len(workflow_samples)
                 # workflow_start_time = random.randint(current_time, current_time + period)
                 workflow_start_time = current_time
                 indexes.append(index_workflow_from_samples)
@@ -107,62 +107,32 @@ if __name__ == '__main__':
                 workflow_type_str = workflow_type.value
                 xml_file = config.WORKFLOW_EXAMPLES_DIR + workflow_type_str
 
-            # 50, 100, 500 норм
+            # ------------------------------------------------------------------------------------------------------------------
             if workflow_type in (EnumWorkflow.MONTAGE50, EnumWorkflow.MONTAGE100, EnumWorkflow.MONTAGE200,
                                  EnumWorkflow.MONTAGE300, EnumWorkflow.MONTAGE400, EnumWorkflow.MONTAGE500):
-                # task_volume_multiplier = 44
-                # data_volume_multiplier = 7
-                task_volume_multiplier = 12
-                data_volume_multiplier = 5
-
-            # 50, 100, 500 норм, в других выигрыш либо нулевой, либо вообще отрицательный
-            if workflow_type in (EnumWorkflow.CYBERSHAKE50, EnumWorkflow.CYBERSHAKE100, EnumWorkflow.CYBERSHAKE500):
-                # task_volume_multiplier = 20
-                # data_volume_multiplier = 0.05
-                task_volume_multiplier = 17
-                data_volume_multiplier = 0.04
-            if workflow_type in (EnumWorkflow.CYBERSHAKE200, EnumWorkflow.CYBERSHAKE300, EnumWorkflow.CYBERSHAKE400,
-                                 EnumWorkflow.CYBERSHAKE500):
-                task_volume_multiplier = 80
-                data_volume_multiplier = 1.5
+                task_volume_multiplier = 6.5
+                data_volume_multiplier = 65
             # ------------------------------------------------------------------------------------------------------------------
-            # все норм
+            if workflow_type in (EnumWorkflow.CYBERSHAKE50, EnumWorkflow.CYBERSHAKE100, EnumWorkflow.CYBERSHAKE200,
+                                 EnumWorkflow.CYBERSHAKE300, EnumWorkflow.CYBERSHAKE400, EnumWorkflow.CYBERSHAKE500):
+                task_volume_multiplier = 6
+                data_volume_multiplier = 0.8
+            # ------------------------------------------------------------------------------------------------------------------
             if workflow_type in (EnumWorkflow.LIGO50, EnumWorkflow.LIGO100, EnumWorkflow.LIGO200,
-                                 EnumWorkflow.LIGO300, EnumWorkflow.LIGO500):
-                task_volume_multiplier = 3
+                                 EnumWorkflow.LIGO300, EnumWorkflow.LIGO400, EnumWorkflow.LIGO500):
+                task_volume_multiplier = 1.2
+                data_volume_multiplier = 180
+            # ------------------------------------------------------------------------------------------------------------------
+            if workflow_type in (EnumWorkflow.SIPHT50, EnumWorkflow.SIPHT100, EnumWorkflow.SIPHT200,
+                                 EnumWorkflow.SIPHT300, EnumWorkflow.SIPHT400, EnumWorkflow.SIPHT500):
+                task_volume_multiplier = 0.16
+                data_volume_multiplier = 19
+            # ------------------------------------------------------------------------------------------------------------------
+            if workflow_type in (EnumWorkflow.GENOME50, EnumWorkflow.GENOME100, EnumWorkflow.GENOME200,
+                                 EnumWorkflow.GENOME300, EnumWorkflow.GENOME400, EnumWorkflow.GENOME500):
+                task_volume_multiplier = 0.18
                 data_volume_multiplier = 7
-                # task_volume_multiplier = 3
-                # data_volume_multiplier = 7
-            if workflow_type is EnumWorkflow.LIGO400:
-                task_volume_multiplier = 8
-                data_volume_multiplier = 75
             # ------------------------------------------------------------------------------------------------------------------
-            # все хорошо
-            if workflow_type in (EnumWorkflow.SIPHT50, EnumWorkflow.SIPHT100):
-                # task_volume_multiplier = 1
-                # data_volume_multiplier = 5
-                task_volume_multiplier = 0.25
-                data_volume_multiplier = 0.1
-            if workflow_type in (EnumWorkflow.SIPHT200, EnumWorkflow.SIPHT300, EnumWorkflow.SIPHT400,
-                                 EnumWorkflow.SIPHT500):
-                task_volume_multiplier = 3
-                data_volume_multiplier = 50
-            # ------------------------------------------------------------------------------------------------------------------
-            # все норм
-            if workflow_type in (EnumWorkflow.GENOME50, EnumWorkflow.GENOME100):
-                # task_volume_multiplier = 0.25
-                # data_volume_multiplier = 1
-                task_volume_multiplier = 0.013
-                data_volume_multiplier = 0.15
-            if workflow_type in (EnumWorkflow.GENOME200, EnumWorkflow.GENOME300):
-                task_volume_multiplier = 0.4
-                data_volume_multiplier = 9
-            if workflow_type is EnumWorkflow.GENOME400:
-                task_volume_multiplier = 0.8
-                data_volume_multiplier = 8
-            if workflow_type is EnumWorkflow.GENOME500:
-                task_volume_multiplier = 0.2
-                data_volume_multiplier = 8
 
 
             workflow = EPSMWorkflow(XML_FILE=xml_file,
@@ -173,7 +143,7 @@ if __name__ == '__main__':
                                     data_volume_multiplier=data_volume_multiplier,
                                     # start_time=random.randint(current_time, current_time + period))
                                     # start_time= period * k)
-                                    start_time=current_time)
+                                    start_time=workflow_start_time)
 
             # k += 1
             workflow_set.addEPSMWorkflow(workflow)
@@ -188,19 +158,19 @@ if __name__ == '__main__':
     preprocessing_time_cpc = end_time - start_time
 
     # if repeat_workflow_set_flag == "new_test":
-    with open("/Users/artembulkhak/PycharmProjects/Scheduling-in-Workflow-as-a-Service/Output/indexes_arr.csv", 'w') as f:
-        fieldnames = ['workflow_id', 'index_in_sample', 'T', 'start_time', 'task_volume_multiplier', 'data_volume_multiplier']
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
-
-        for i, index in enumerate(indexes):
-            row = {fieldnames[0]: i,
-                   fieldnames[1]: index,
-                   fieldnames[2]: T_arr_new[i],
-                   fieldnames[3]: starts[i],
-                   fieldnames[4]: task_volume_multiplier_arr[i],
-                   fieldnames[5]: data_volume_multiplier_arr[i]}
-            writer.writerow(row)
+    # with open("/Users/artembulkhak/PycharmProjects/Scheduling-in-Workflow-as-a-Service/Output/indexes_arr.csv", 'w') as f:
+    #     fieldnames = ['workflow_id', 'index_in_sample', 'T', 'start_time', 'task_volume_multiplier', 'data_volume_multiplier']
+    #     writer = csv.DictWriter(f, fieldnames=fieldnames)
+    #     writer.writeheader()
+    #
+    #     for i, index in enumerate(indexes):
+    #         row = {fieldnames[0]: i,
+    #                fieldnames[1]: index,
+    #                fieldnames[2]: T_arr_new[i],
+    #                fieldnames[3]: starts[i],
+    #                fieldnames[4]: task_volume_multiplier_arr[i],
+    #                fieldnames[5]: data_volume_multiplier_arr[i]}
+    #         writer.writerow(row)
 
 
     drawer: Drawer = PyvisDrawer()
@@ -223,6 +193,7 @@ if __name__ == '__main__':
 
 
     allocations = []
+    # allocations.append(AllocationEPSMnew(VMA_CRITERIA, vm_types, deepcopy(tasks)))
     allocations.append(AllocationEPSM_BestFit(VMA_CRITERIA, vm_types, deepcopy(tasks)))
     allocations.append(AllocationNewVM(VMA_CRITERIA, vm_types, deepcopy(tasks)))
     # allocations.append(AllocationEPSM_VMA(VMA_CRITERIA, vm_types, deepcopy(tasks)))
@@ -244,10 +215,10 @@ if __name__ == '__main__':
         batch_time = end_time - start_time
 
         if isinstance(allocation, AllocationEPSM):
-            drawer.draw_big_batches_gantt(allocation.tasks, config.GANTT_FIGURES_BATCHES_EPSM)
+            # drawer.draw_big_batches_gantt(allocation.tasks, config.GANTT_FIGURES_BATCHES_EPSM)
             batch_time_epsm = batch_time
         if isinstance(allocation, AllocationNewVM):
-            drawer.draw_big_batches_gantt(allocation.tasks, config.GANTT_FIGURES_BATCHES_NEW_VM_FOR_EACH)
+            # drawer.draw_big_batches_gantt(allocation.tasks, config.GANTT_FIGURES_BATCHES_NEW_VM_FOR_EACH)
             batch_time_new_vm = batch_time
 
         start_time = datetime.now()
@@ -256,7 +227,7 @@ if __name__ == '__main__':
         vma_time = end_time - start_time
 
 
-        if isinstance(allocation, AllocationEPSM):
+        if isinstance(allocation, AllocationEPSM_BestFit):
             vma_time_epsm = vma_time
         if isinstance(allocation, AllocationNewVM):
             vma_time_new_vm = vma_time
@@ -283,7 +254,7 @@ if __name__ == '__main__':
             color["color"] = color.apply(lambda x: rand_color(x), axis=1)
             log = pd.merge(log, color, on='workflow_id', how='left')
             log = log.sort_values(["vm_id", "vm_start"])
-            drawer.draw_big_gantt(log, GANTT_FIGURES_EPSM)
+            # drawer.draw_big_gantt(log, GANTT_FIGURES_EPSM)
             print("EPSM dif = " + str(allocation.different_workflow_reuse_vm_counter))
         if isinstance(allocation, AllocationNewVM):
             log = allocation.log
@@ -292,7 +263,7 @@ if __name__ == '__main__':
             color["color"] = color.apply(lambda x: rand_color(x), axis=1)
             log = pd.merge(log, color, on='workflow_id', how='left')
             log = log.sort_values(["vm_id", "vm_start"])
-            drawer.draw_big_gantt(log, GANTT_FIGURES_NEW_VM_FOR_EACH)
+            # drawer.draw_big_gantt(log, GANTT_FIGURES_NEW_VM_FOR_EACH)
         # if isinstance(allocation, AllocationNewVM):
         #     log = allocation.log
         #     color = log[["workflow_id"]]

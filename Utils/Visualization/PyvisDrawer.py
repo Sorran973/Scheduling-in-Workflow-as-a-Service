@@ -452,7 +452,7 @@ class PyvisDrawer(Drawer):
                     # ax.barh(rownum, row.vm_input_time, left=row.vm_start, color=row.color, alpha=0.6, fill=False, hatch='|||')
                     ax.barh(rownum, config.VM_PREP_TIME, left=row.vm_start, color=row.color, alpha=0.6, fill=False, hatch='|||')
             else:
-                ax.barh(rownum, config.VM_SHUTDOWN_TIME, left=row.vm_start, color=row.color, alpha=0.6, fill=False, hatch='|||')
+                ax.barh(rownum, config.VM_SHUTDOWN_TIME, left=row.vm_start + (row.vm_end - row.vm_start) - config.VM_SHUTDOWN_TIME, color=row.color, alpha=0.6, fill=False, hatch='|||')
             # idle_time
             ax.barh(rownum, row.idle_time, left=row.vm_start - row.idle_time, color='#000000')
 
@@ -831,7 +831,7 @@ class PyvisDrawer(Drawer):
                 ax.barh(rownum, row.vm_end - row.vm_start, left=row.vm_start, alpha=0.6, fill=False,
                         hatch='///')  # fill=True, linewidth=10, edgecolor=log.color
                 # vm_shutdown_time
-                ax.barh(rownum, config.VM_SHUTDOWN_TIME, left=row.vm_start, color=row.color, alpha=0.6, fill=False, hatch='|||')
+                ax.barh(rownum, config.VM_SHUTDOWN_TIME, left=row.vm_start + (row.vm_end - row.vm_start) - config.VM_SHUTDOWN_TIME, color=row.color, alpha=0.6, fill=False, hatch='|||')
                 ax.text(row.vm_end + 0.1, rownum, 'VM_' + str(row.vm_id) + '_' + row.vm_type,
                         va='center')  # VM description
                 ax.text(row.vm_start - 0.1, rownum,

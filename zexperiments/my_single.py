@@ -33,40 +33,40 @@ if __name__ == '__main__':
 
     vm_types = CSVHandler.read_vms_table(VMS_TABLE_FILE_PATH)
 
-    workflow_type = EnumWorkflow.MONTAGE50
+    workflow_type = WORKFLOW_TYPE
 
     workflow_type_str = workflow_type.value
     # workflow_type = None
     # workflow_type_str = "MyTestDAXes/test.xml"
     # task_volume_multiplier = 1
-    # data_volume_multiplier = 10
+    # data_volume_multiplier = 10000
     xml_file = WORKFLOW_EXAMPLES_DIR + workflow_type_str
 
     # ------------------------------------------------------------------------------------------------------------------
     if workflow_type in (EnumWorkflow.MONTAGE50, EnumWorkflow.MONTAGE100, EnumWorkflow.MONTAGE200,
                          EnumWorkflow.MONTAGE300, EnumWorkflow.MONTAGE400, EnumWorkflow.MONTAGE500):
-        task_volume_multiplier = 12
-        data_volume_multiplier = 150
+        task_volume_multiplier = 6.5
+        data_volume_multiplier = 65
     # ------------------------------------------------------------------------------------------------------------------
     if workflow_type in (EnumWorkflow.CYBERSHAKE50, EnumWorkflow.CYBERSHAKE100, EnumWorkflow.CYBERSHAKE200,
                          EnumWorkflow.CYBERSHAKE300, EnumWorkflow.CYBERSHAKE400, EnumWorkflow.CYBERSHAKE500):
-        task_volume_multiplier = 16
-        data_volume_multiplier = 0.4
+        task_volume_multiplier = 6
+        data_volume_multiplier = 0.8
     # ------------------------------------------------------------------------------------------------------------------
     if workflow_type in (EnumWorkflow.LIGO50, EnumWorkflow.LIGO100, EnumWorkflow.LIGO200,
                          EnumWorkflow.LIGO300, EnumWorkflow.LIGO400, EnumWorkflow.LIGO500):
-        task_volume_multiplier = 3
-        data_volume_multiplier = 70
+        task_volume_multiplier = 1.2
+        data_volume_multiplier = 180
     # ------------------------------------------------------------------------------------------------------------------
     if workflow_type in (EnumWorkflow.SIPHT50, EnumWorkflow.SIPHT100, EnumWorkflow.SIPHT200,
                          EnumWorkflow.SIPHT300, EnumWorkflow.SIPHT400, EnumWorkflow.SIPHT500):
         task_volume_multiplier = 0.16
-        data_volume_multiplier = 10
+        data_volume_multiplier = 19
     # ------------------------------------------------------------------------------------------------------------------
     if workflow_type in (EnumWorkflow.GENOME50, EnumWorkflow.GENOME100, EnumWorkflow.GENOME200,
                          EnumWorkflow.GENOME300, EnumWorkflow.GENOME400, EnumWorkflow.GENOME500):
-        task_volume_multiplier = 0.014
-        data_volume_multiplier = 1.5
+        task_volume_multiplier = 0.18
+        data_volume_multiplier = 7
     # ------------------------------------------------------------------------------------------------------------------
 
     workflow_set = WorkflowSet()
@@ -84,7 +84,7 @@ if __name__ == '__main__':
     #                      criteria=CJM_CRITERIA,
     #                      task_volume_multiplier=task_volume_multiplier,
     #                      data_volume_multiplier=data_volume_multiplier,
-    #                      start_time=700)
+    #                      start_time=886)
 
     start_time = datetime.now()
     workflow_set.addWorkflow(workflow)
@@ -108,7 +108,7 @@ if __name__ == '__main__':
     # allocations.append(AllocationBestFitFTLEPSM(VMA_CRITERIA, vm_types, deepcopy(tasks)))
     # allocations.append(AllocationBestFitASAPEPSM(VMA_CRITERIA, vm_types, deepcopy(tasks)))
 
-    allocations.append(AllocationFTL(VMA_CRITERIA, vm_types, deepcopy(tasks)))
+    # allocations.append(AllocationFTL(VMA_CRITERIA, vm_types, deepcopy(tasks)))
     allocations.append(AllocationASAP(VMA_CRITERIA, vm_types, deepcopy(tasks)))
     #
     # allocations.append(AllocationASAP_O(VMA_CRITERIA, vm_types, deepcopy(tasks)))
@@ -131,7 +131,7 @@ if __name__ == '__main__':
             drawer.draw_batches_gantt(allocation.tasks, GANTT_FIGURES_BATCHES_NEW_VM_FOR_EACH)
 
         allocation.vma(batches)
-
+        print()
 
     #####################################################
     ###################### ANALYZING ####################

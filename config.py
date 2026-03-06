@@ -9,17 +9,17 @@ TEST_1_13 = 'MyTestDAXes/test1_13.xml'
 TEST_HEFT = 'MyTestDAXes/testHEFT.xml'
 
 ########################################################################################################################
-WORKFLOW_SAMPLES = [EnumWorkflow.MONTAGE50,EnumWorkflow.CYBERSHAKE50, EnumWorkflow.LIGO50, EnumWorkflow.SIPHT50, EnumWorkflow.GENOME50]
+# WORKFLOW_SAMPLES = [EnumWorkflow.MONTAGE50,EnumWorkflow.CYBERSHAKE50, EnumWorkflow.LIGO50, EnumWorkflow.SIPHT50, EnumWorkflow.GENOME50]
                     # EnumWorkflow.MONTAGE50,EnumWorkflow.CYBERSHAKE50, EnumWorkflow.LIGO50, EnumWorkflow.SIPHT50, EnumWorkflow.GENOME50]
                     # EnumWorkflow.LIGO400, EnumWorkflow.MONTAGE400, EnumWorkflow.CYBERSHAKE400, EnumWorkflow.GENOME400, EnumWorkflow.SIPHT400,
                     # EnumWorkflow.LIGO500, EnumWorkflow.MONTAGE500, EnumWorkflow.CYBERSHAKE500, EnumWorkflow.GENOME500, EnumWorkflow.SIPHT500]
 
-# WORKFLOW_SAMPLES = [EnumWorkflow.LIGO50, EnumWorkflow.MONTAGE50, EnumWorkflow.CYBERSHAKE50, EnumWorkflow.GENOME50, EnumWorkflow.SIPHT50,
-#                     EnumWorkflow.LIGO100, EnumWorkflow.MONTAGE100, EnumWorkflow.CYBERSHAKE100, EnumWorkflow.GENOME100, EnumWorkflow.SIPHT100,
-#                     EnumWorkflow.LIGO200, EnumWorkflow.MONTAGE200, EnumWorkflow.CYBERSHAKE200, EnumWorkflow.GENOME200, EnumWorkflow.SIPHT200,
-#                     EnumWorkflow.LIGO300, EnumWorkflow.MONTAGE300, EnumWorkflow.CYBERSHAKE300, EnumWorkflow.GENOME300, EnumWorkflow.SIPHT300]
-#                     # EnumWorkflow.LIGO400, EnumWorkflow.MONTAGE400, EnumWorkflow.CYBERSHAKE400, EnumWorkflow.GENOME400, EnumWorkflow.SIPHT400,
-#                     # EnumWorkflow.LIGO500, EnumWorkflow.MONTAGE500, EnumWorkflow.CYBERSHAKE500, EnumWorkflow.GENOME500, EnumWorkflow.SIPHT500]
+WORKFLOW_SAMPLES = [EnumWorkflow.LIGO50, EnumWorkflow.MONTAGE50, EnumWorkflow.CYBERSHAKE50, EnumWorkflow.GENOME50, EnumWorkflow.SIPHT50,
+                    EnumWorkflow.LIGO100, EnumWorkflow.MONTAGE100, EnumWorkflow.CYBERSHAKE100, EnumWorkflow.GENOME100, EnumWorkflow.SIPHT100,
+                    EnumWorkflow.LIGO200, EnumWorkflow.MONTAGE200, EnumWorkflow.CYBERSHAKE200, EnumWorkflow.GENOME200, EnumWorkflow.SIPHT200,
+                    EnumWorkflow.LIGO300, EnumWorkflow.MONTAGE300, EnumWorkflow.CYBERSHAKE300, EnumWorkflow.GENOME300, EnumWorkflow.SIPHT300,
+                    EnumWorkflow.LIGO400, EnumWorkflow.MONTAGE400, EnumWorkflow.CYBERSHAKE400, EnumWorkflow.GENOME400, EnumWorkflow.SIPHT400,
+                    EnumWorkflow.LIGO500, EnumWorkflow.MONTAGE500, EnumWorkflow.CYBERSHAKE500, EnumWorkflow.GENOME500, EnumWorkflow.SIPHT500]
 
 # VMS_TABLE_FILE = "/vms_table_for_x2_new_prices.csv"
 # VMS_TABLE_FILE = "/vms_table_for_x2.csv"
@@ -27,11 +27,14 @@ WORKFLOW_SAMPLES = [EnumWorkflow.MONTAGE50,EnumWorkflow.CYBERSHAKE50, EnumWorkfl
 VMS_TABLE_FILE = "/vms_table_test.csv"
 
 T = 1
+DATA_TRANSFER_CHANNEL_SPEED = 60.0
+DATA_TRANSFER_CHANNEL_SPEED_FOR_CJM = 60.0
+
+WORKFLOW_TYPE = EnumWorkflow.LIGO50
 
 VM_PREP_TIME = 30
 VM_SHUTDOWN_TIME = 10
 MULTIPLE_STRATEGIES = False
-DATA_TRANSFER_CHANNEL_SPEED = 30.0
 
 SCHEDULING_OPTIMIZATION_CRITERIA = 'min'
 CJM_CRITERIA: Criteria = CostCriteria(SCHEDULING_OPTIMIZATION_CRITERIA)

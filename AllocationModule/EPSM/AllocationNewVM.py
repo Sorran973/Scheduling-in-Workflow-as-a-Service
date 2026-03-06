@@ -5,6 +5,7 @@ from datetime import datetime
 from logging import critical
 import pandas as pd
 
+import config
 from AllocationModule.Model.PossibleAssignment import PossibleAssignment
 from AllocationModule.Model.Task import Task
 from AllocationModule.Model.VM import VM
@@ -41,7 +42,7 @@ class AllocationNewVM:
         self.only_vm_time_total = None
         self.only_task_time_total = None
         self.different_workflow_reuse_vm_counter = 0
-
+        self.batch_statistics = []
         self.map_vm_perf_for_transfer = None
         self.create_vm_for_transfer()
 
@@ -142,7 +143,7 @@ class AllocationNewVM:
     ########## CALCULATING ALLOCATION COST ##########
     def calcVmAllocationCost(self, task, vm):
         # if task.id == 0 or task.id == 45 or task.id == 48:
-        if task.id == 1:
+        if task.id == 49:
             y = 0
         # init
         # current_time = -100
@@ -158,6 +159,9 @@ class AllocationNewVM:
         output_data_transfer_time = 0
         input_data_transfer_size = 0
         output_data_transfer_size = 0
+
+        transfer_time_into_storage = 0
+        transfer_time_from_storage = 0
 
         # if new vm
         if (vm.status == 'open'):
@@ -219,12 +223,20 @@ class AllocationNewVM:
                         transfer_time = 0
                         transfer_size = 0
                     else:
-                        # transfer_time = transfer.transfer_time
-                        # transfer_time = math.ceil(transfer.transfer_time / vm.perf)
-                        # transfer_time = math.ceil(transfer.transfer_size / vm.perf)
-                        # transfer_time = max(math.ceil(transfer.transfer_size / vm.perf), transfer.transfer_size)
-                        transfer_time = math.ceil(transfer.transfer_size / min(DATA_TRANSFER_CHANNEL_SPEED, vm.bandwidth))
-                        transfer_size = transfer.transfer_size
+                        if task_from.name == "entry":
+                            transfer_time_into_storage = 0
+                            transfer_time_from_storage = math.ceil(
+                                transfer.transfer_size / min(DATA_TRANSFER_CHANNEL_SPEED, vm.bandwidth))
+                            transfer_size = transfer.transfer_size
+                        else:
+                            transfer_time_into_storage = math.ceil(
+                                transfer.transfer_size / min(DATA_TRANSFER_CHANNEL_SPEED,
+                                                             task_from.assigned_vm.bandwidth))
+                            transfer_time_from_storage = math.ceil(
+                                transfer.transfer_size / min(DATA_TRANSFER_CHANNEL_SPEED, vm.bandwidth))
+                            transfer_size = transfer.transfer_size * 2
+
+                        transfer_time = transfer_time_into_storage + transfer_time_from_storage
 
                     if data_transfer_time_max < transfer_time:
                         data_transfer_time_max = transfer_time
@@ -262,20 +274,30 @@ class AllocationNewVM:
 
         possible_assignment = PossibleAssignment(vm)
 
-        if expected_task_end > task.end and task.type == 'task':
+        possible_transfer_time = 0
+        actual_transfer_time = 0
+        if task.type == 'task':
+            max_transfer = max(task.output_transfers, key=lambda transfer: transfer.transfer_time)
+            possible_transfer_time = task.end + max_transfer.transfer_time
+            actual_transfer_time = expected_task_end + round_up(max_transfer.transfer_size / vm.bandwidth)
+            # if expected_task_end > task.end and task.type == 'task' or actual_transfer_time > possible_transfer_time:
+            #     y = 0
+
+        if expected_task_end > task.end and task.type == 'task' or actual_transfer_time > possible_transfer_time:
             allocation_cost = 10000000000  # can't execute task
         else:
             possible_assignment.task_allocation_start = expected_task_start
             possible_assignment.task_allocation_end = expected_task_end
-            possible_assignment.vm_allocation_start = expected_vm_start
+            possible_assignment.vm_allocation_start = expected_vm_start + transfer_time_into_storage
             possible_assignment.vm_allocation_end = expected_vm_end
             possible_assignment.idle_time = idle_time
-            possible_assignment.input_data_transfer_time = input_data_transfer_time
+            possible_assignment.input_data_transfer_time = input_data_transfer_time - transfer_time_into_storage
             possible_assignment.output_data_transfer_time = output_data_transfer_time
-            possible_assignment.input_data_transfer_size = input_data_transfer_size
+            possible_assignment.input_data_transfer_size = input_data_transfer_size/2
             possible_assignment.output_data_transfer_size = output_data_transfer_size
 
-            allocation_cost = math.ceil((vm_runtime + idle_time) * vm.cost)
+            # allocation_cost = math.ceil((vm_runtime + idle_time) * vm.cost)
+            allocation_cost = math.ceil((vm_runtime + idle_time - transfer_time_into_storage) * vm.cost)
 
         if self.criteria.optimization_criteria == "max":
             allocation_cost = -allocation_cost
@@ -301,7 +323,7 @@ class AllocationNewVM:
 
         for i, task in enumerate(batch):
             if task.type == 'task':
-                if task.id == 9:
+                if task.id == 673:
                     y = 0
                 possible_vms = [vm for vm in task.possible_vms if self.calcVmAllocationCost(task, vm)[0]]
                 task.possible_vms = possible_vms
@@ -395,6 +417,11 @@ class AllocationNewVM:
 
     ########## PAIRING and LOGGING ##########
     def applyPairings(self, pairs):
+        batch_task_time = 0
+        batch_transfer_time = 0
+        batch_setting_time = 0
+        num_of_tasks = 0
+
         for pair in pairs:
             vm_previous_status = pair[1].status
             vm_status = 'active'
@@ -426,6 +453,15 @@ class AllocationNewVM:
                                          'vm_output_time': pair[0].vm_output_time, 'vm_end': pair[0].vm_allocation_end,
                                          'allocation_cost': pair[0].allocation_cost - 1, 'idle_time': pair[0].idle_time, 'vm_status': vm_status},
                                         ignore_index=True)
+            batch_task_time += pair[0].allocation_end - pair[0].allocation_start
+            batch_transfer_time += pair[0].vm_input_time + pair[0].vm_output_time
+            if pair[0].batch is None:
+                self.batch_statistics[-1][2] += (pair[0].vm_allocation_end - pair[0].vm_allocation_start) - (pair[0].allocation_end - pair[0].allocation_start) - pair[0].vm_input_time - pair[0].vm_output_time
+            else:
+                batch_setting_time += (pair[0].vm_allocation_end - pair[0].vm_allocation_start) - (pair[0].allocation_end - pair[0].allocation_start) - pair[0].vm_input_time - pair[0].vm_output_time
+                num_of_tasks += 1
+
+        self.batch_statistics.append([batch_task_time, batch_transfer_time, batch_setting_time, num_of_tasks])
 
 
 

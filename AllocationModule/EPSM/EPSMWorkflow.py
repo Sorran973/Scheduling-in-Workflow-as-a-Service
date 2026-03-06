@@ -12,7 +12,7 @@ from SchedulingModule.CJM.Model.File import File
 from SchedulingModule.CJM.Model.LayerOption import LayerOption
 from SchedulingModule.CJM.Model.Node import Node
 from SchedulingModule.CJM.Model.Layer import Layer
-from config import DATA_TRANSFER_CHANNEL_SPEED
+from config import DATA_TRANSFER_CHANNEL_SPEED_FOR_CJM
 from Utils.XMLParser import XMLParser
 from SchedulingModule.CJM.Model.Strategy import Strategy
 import config
@@ -30,19 +30,22 @@ def dfs(node):
     if node.id == 40 or node.id == 41:
         y = 0
     node.visited = True
-    node_edges = node.edges_to
 
-    for node_edge in node_edges:
+    for node_edge in node.edges_to:
         node_child = node_edge.node_to
         if not node_child.visited:
             dfs(node_child)
 
         for critical_path in node_child.critical_paths:
-            if (node.name == "entry") or (node.name == "finish"):
-                node.critical_paths.append((round(node.runtime + node_edge.transfer_time + critical_path[0], 2),
+            if (node.name == "entry"):
+                node.critical_paths.append((round(config.VM_PREP_TIME + node_edge.transfer_time + critical_path[0], 2),
                                             [node, node_edge] + critical_path[1]))
             else:
-                node.critical_paths.append((round(config.VM_PREP_TIME + node.runtime + node_edge.transfer_time + critical_path[0], 2),
+                if node_child.name != 'finish':
+                    node.critical_paths.append((round(config.VM_PREP_TIME + node.runtime + node_edge.transfer_time * 2 + critical_path[0], 2),
+                                            [node, node_edge] + critical_path[1]))
+                else:
+                    node.critical_paths.append((round(node.runtime + node_edge.transfer_time + config.VM_SHUTDOWN_TIME + critical_path[0], 2),
                                             [node, node_edge] + critical_path[1]))
 
 
@@ -107,10 +110,10 @@ class EPSMWorkflow:
         elif self.t == 2:
             self.T = self.cp_paths_by_vm_type[-1]
         elif self.t == 3:
-            self.T = round_up((self.cp_paths_by_vm_type[2] + self.cp_paths_by_vm_type[3]) / 2)
+            # self.T = round_up((self.cp_paths_by_vm_type[2] + self.cp_paths_by_vm_type[3]) / 2)
             # self.T = round_up((self.cp_paths_by_vm_type[1] + self.cp_paths_by_vm_type[2]) / 2)
+            self.T = round_up((self.cp_paths_by_vm_type[0] + self.cp_paths_by_vm_type[2]) / 2)
             # self.T = self.cp_paths_by_vm_type[2]
-            # self.T = round_up((self.cp_paths_by_vm_type[0] + self.cp_paths_by_vm_type[1]) / 2)
         elif self.t == 4:
             self.T = random.randint(self.cp_paths_by_vm_type[0], self.cp_paths_by_vm_type[-1])
         else:
@@ -125,6 +128,7 @@ class EPSMWorkflow:
     def create_graph(self, soup_nodes, soup_edges):
         # Add entry_node into graph
         # ?TODO: try to eliminate entry node ?
+        workflow_type = self.xml_file.split("/")[-1].split(".")[0]
         self.add_node(Node('entry', 0.0, 0.0))
 
         for node in soup_nodes:
@@ -133,34 +137,38 @@ class EPSMWorkflow:
                 volume = self.vm_types[0].perf
             else:
                 volume = round_up(float(node.get('runtime')) * self.task_volume_multiplier)
-            # volume = round_up(float(node.get('runtime')) * self.task_volume_multiplier)
             current_node = Node(name, volume, round_up(volume / self.vm_types[0].perf))
             self.add_node(current_node)
 
-            if current_node.id == 42:
+            if current_node.id == 48:
                 y = 0
             uses = node.find_all('uses')
             for use in uses:
-                # TODO:
+                xml_size = float(use.get('size'))
+                size = round_up(float(use.get('size')) * self.data_volume_multiplier / 1000000)
                 if use.get('register') != 'true':
-                    xml_size = float(use.get('size'))
-                    size = round_up(float(use.get('size')) * self.data_volume_multiplier / 1000000)
                     if size < self.vm_types[0].bandwidth:
                         size = self.vm_types[0].bandwidth
-                    else:
-                        size = round_up(float(use.get('size')) * self.data_volume_multiplier / 1000000)
+                    # else:
+                    #     size = round_up(float(use.get('size')) * self.data_volume_multiplier / 1000000)
                     current_node.add_file(File(use.get('file'),
                                                use.get('link'),
                                                size,
                                                use.get('register')))
                 else:
-                    xml_size = float(use.get('size'))
-                    size = round_up(float(use.get('size')) * self.data_volume_multiplier / 1000000)
-                    current_node.add_file(File(use.get('file'),
-                                               use.get('link'),
-                                               size,
-                                               use.get('register')))
-            current_node.calculate_transfer_time(self.vm_types[0], DATA_TRANSFER_CHANNEL_SPEED)
+                    if workflow_type == 'SIPHT':
+                        current_node.add_file(File(use.get('file'),
+                                                   use.get('link'),
+                                                   size,
+                                                   use.get('register')))
+                    else:
+                        if size < self.vm_types[0].bandwidth:
+                            size = self.vm_types[0].bandwidth
+                        current_node.add_file(File(use.get('file'),
+                                                   use.get('link'),
+                                                   size,
+                                                   use.get('register')))
+            current_node.calculate_transfer_time(self.vm_types[0], DATA_TRANSFER_CHANNEL_SPEED_FOR_CJM)
 
         # Add finish_node into graph
         self.add_node(Node('finish', 0.0, 0.0))
@@ -173,7 +181,7 @@ class EPSMWorkflow:
             for parent in parents:
                 node_from = self.node_dict.get(parent.get('ref'))
                 node_to = self.node_dict.get(edge.get('ref'))
-                e = Edge(node_from, node_to, node_from.output, self.vm_types[0], DATA_TRANSFER_CHANNEL_SPEED)
+                e = Edge(node_from, node_to, node_from.output, self.vm_types[0], DATA_TRANSFER_CHANNEL_SPEED_FOR_CJM)
                 self.add_edge(e)
                 node_from.add_edge_to(e)
                 node_to.add_edge_from(e)
@@ -222,9 +230,9 @@ class EPSMWorkflow:
             next_node = self.nodes[i]
             if self.entry_edges[i] == 0:
                 if next_node.input:
-                    edge = Edge(entry_node, next_node, next_node.input, self.vm_types[0], DATA_TRANSFER_CHANNEL_SPEED)
+                    edge = Edge(entry_node, next_node, next_node.input, self.vm_types[0], DATA_TRANSFER_CHANNEL_SPEED_FOR_CJM)
                 else:
-                    edge = Edge(entry_node, next_node, [File('empty_file', 'input', 0, 'false')], self.vm_types[0], DATA_TRANSFER_CHANNEL_SPEED)
+                    edge = Edge(entry_node, next_node, [File('empty_file', 'input', 0, 'false')], self.vm_types[0], DATA_TRANSFER_CHANNEL_SPEED_FOR_CJM)
                 self.add_edge(edge)
                 entry_node.add_edge_to(edge)
                 next_node.add_edge_from(edge)
@@ -233,7 +241,7 @@ class EPSMWorkflow:
         for i in range(1, n - 1):
             previous_node = self.nodes[i]
             if self.finish_edges[i] == 0:
-                edge = Edge(previous_node, finish_node, previous_node.output, self.vm_types[0], DATA_TRANSFER_CHANNEL_SPEED)
+                edge = Edge(previous_node, finish_node, previous_node.output, self.vm_types[0], DATA_TRANSFER_CHANNEL_SPEED_FOR_CJM)
                 self.add_edge(edge)
                 previous_node.add_edge_to(edge)
                 finish_node.add_edge_from(edge)
@@ -260,8 +268,11 @@ class EPSMWorkflow:
                     # path += round_up(elem.volume / vm_type.perf)
                     path += round_up(elem.volume / vm_type.perf + config.VM_PREP_TIME)
                 else:
-                    path += round_up(elem.transfer_size / min(vm_type.bandwidth, DATA_TRANSFER_CHANNEL_SPEED))
-
+                    if (elem.node_from.name == 'entry') or (elem.node_to.name == 'finish'):
+                        path += round_up(elem.transfer_size / min(vm_type.bandwidth, DATA_TRANSFER_CHANNEL_SPEED_FOR_CJM))
+                    else:
+                        path += 2*round_up(elem.transfer_size / min(vm_type.bandwidth, DATA_TRANSFER_CHANNEL_SPEED_FOR_CJM))
+            path += config.VM_SHUTDOWN_TIME
             self.cp_paths_by_vm_type.append(path)
             print("path on " + str(vm_type.type) + " = " + str(path))
 
@@ -281,19 +292,23 @@ class EPSMWorkflow:
 
     def calc_node_weights(self):
         critical_paths = self.critical_paths
-        total_duration = critical_paths[0][0]
+        # total_duration = critical_paths[0][0]
+        total_duration = self.T
         for cp_pair in critical_paths:
             c_p = cp_pair[1]
             del c_p[-1]  # delete finish node
             del c_p[0]  # delete entry node
 
             reserve = total_duration
-            # reserve = cp_pair[0]
             for i, elem in enumerate(c_p):
                 if isinstance(elem, Node):
-                    reserve -= round_up(config.VM_PREP_TIME)
+                    reserve -= config.VM_PREP_TIME
                 else:
-                    reserve -= round_up(elem.transfer_size / min(self.vm_types[self.major_vm_type_index].bandwidth, DATA_TRANSFER_CHANNEL_SPEED))
+                    if (elem.node_from.name == 'entry') or (elem.node_to.name == 'finish'):
+                        reserve -= round_up(elem.transfer_size / min(self.vm_types[self.major_vm_type_index].bandwidth, DATA_TRANSFER_CHANNEL_SPEED_FOR_CJM))
+                    else:
+                        reserve -= 2*round_up(elem.transfer_size / min(self.vm_types[self.major_vm_type_index].bandwidth, DATA_TRANSFER_CHANNEL_SPEED_FOR_CJM))
+            reserve -= config.VM_SHUTDOWN_TIME
 
             for i, elem in enumerate(c_p):
                 if isinstance(elem, Edge):
@@ -416,13 +431,13 @@ class EPSMWorkflow:
 
             if parent_flag:
                 if parent_node.name ==  "entry":
-                    max_edge = max(current_node.edges_from, key=lambda edge: edge.node_from.finish_time + config.VM_PREP_TIME + round_up(edge.transfer_size / min(DATA_TRANSFER_CHANNEL_SPEED, self.vm_types[self.major_vm_type_index].bandwidth)))
-                    current_node.start_time = max_edge.node_from.finish_time + config.VM_PREP_TIME + round_up(max_edge.transfer_size / min(DATA_TRANSFER_CHANNEL_SPEED, self.vm_types[self.major_vm_type_index].bandwidth))
+                    max_edge = max(current_node.edges_from, key=lambda edge: edge.node_from.finish_time + config.VM_PREP_TIME + round_up(edge.transfer_size / min(DATA_TRANSFER_CHANNEL_SPEED_FOR_CJM, self.vm_types[self.major_vm_type_index].bandwidth)))
+                    current_node.start_time = max_edge.node_from.finish_time + config.VM_PREP_TIME + round_up(max_edge.transfer_size / min(DATA_TRANSFER_CHANNEL_SPEED_FOR_CJM, self.vm_types[self.major_vm_type_index].bandwidth))
                 else:
-                    max_edge = max(current_node.edges_from, key=lambda edge: edge.node_from.finish_time + config.VM_PREP_TIME + round_up(edge.transfer_size / min(DATA_TRANSFER_CHANNEL_SPEED, self.vm_types[self.major_vm_type_index].bandwidth)))
-                    current_node.start_time = max_edge.node_from.finish_time + config.VM_PREP_TIME + round_up(edge.transfer_size / min(DATA_TRANSFER_CHANNEL_SPEED, self.vm_types[self.major_vm_type_index].bandwidth))
+                    max_edge = max(current_node.edges_from, key=lambda edge: edge.node_from.finish_time + config.VM_PREP_TIME + 2*round_up(edge.transfer_size / min(DATA_TRANSFER_CHANNEL_SPEED_FOR_CJM, self.vm_types[self.major_vm_type_index].bandwidth)))
+                    current_node.start_time = max_edge.node_from.finish_time + config.VM_PREP_TIME + 2*round_up(max_edge.transfer_size / min(DATA_TRANSFER_CHANNEL_SPEED_FOR_CJM, self.vm_types[self.major_vm_type_index].bandwidth))
 
-                current_node.finish_time = current_node.start_time + round_up(edge.transfer_size / min(DATA_TRANSFER_CHANNEL_SPEED, self.vm_types[self.major_vm_type_index].bandwidth))
+                current_node.finish_time = current_node.start_time + round_up(current_node.volume / self.vm_types[vm_type_index].perf)
                 current_node.visited = True
 
                 for edge in current_node.edges_to:
@@ -430,8 +445,8 @@ class EPSMWorkflow:
                     if not child_node.visited:
                         queue.append(child_node)
 
-        print(self.nodes[-1].finish_time <= self.T)
-        print("real_path = " + str(self.nodes[-1].finish_time))
+        print(self.nodes[-1].finish_time - self.nodes[0].start_time <= self.T)
+        print("real_path = " + str(self.nodes[-1].finish_time - self.global_timer))
 
     def check_global_deadline_with_extra_time(self):
         vm_type_index = self.find_vm_type(self.T)
@@ -473,11 +488,11 @@ class EPSMWorkflow:
 
             if parent_flag:
                 if parent_node.name ==  "entry":
-                    max_edge = max(current_node.edges_from, key=lambda edge: edge.node_from.finish_time + config.VM_PREP_TIME + round_up(edge.transfer_size / min(DATA_TRANSFER_CHANNEL_SPEED, self.vm_types[self.major_vm_type_index].bandwidth)))
-                    current_node.start_time = max_edge.node_from.finish_time + config.VM_PREP_TIME + round_up(max_edge.transfer_size / min(DATA_TRANSFER_CHANNEL_SPEED, self.vm_types[self.major_vm_type_index].bandwidth))
+                    max_edge = max(current_node.edges_from, key=lambda edge: edge.node_from.finish_time + config.VM_PREP_TIME + round_up(edge.transfer_size / min(DATA_TRANSFER_CHANNEL_SPEED_FOR_CJM, self.vm_types[self.major_vm_type_index].bandwidth)))
+                    current_node.start_time = max_edge.node_from.finish_time + config.VM_PREP_TIME + round_up(max_edge.transfer_size / min(DATA_TRANSFER_CHANNEL_SPEED_FOR_CJM, self.vm_types[self.major_vm_type_index].bandwidth))
                 else:
-                    max_edge = max(current_node.edges_from, key=lambda edge: edge.node_from.finish_time + config.VM_PREP_TIME + round_up(edge.transfer_size / min(DATA_TRANSFER_CHANNEL_SPEED, self.vm_types[self.major_vm_type_index].bandwidth)))
-                    current_node.start_time = max_edge.node_from.finish_time  + config.VM_PREP_TIME + round_up(max_edge.transfer_size / min(DATA_TRANSFER_CHANNEL_SPEED, self.vm_types[self.major_vm_type_index].bandwidth))
+                    max_edge = max(current_node.edges_from, key=lambda edge: edge.node_from.finish_time + config.VM_PREP_TIME + 2*round_up(edge.transfer_size / min(DATA_TRANSFER_CHANNEL_SPEED_FOR_CJM, self.vm_types[self.major_vm_type_index].bandwidth)))
+                    current_node.start_time = max_edge.node_from.finish_time + config.VM_PREP_TIME + 2*round_up(max_edge.transfer_size / min(DATA_TRANSFER_CHANNEL_SPEED_FOR_CJM, self.vm_types[self.major_vm_type_index].bandwidth))
 
                 try:
                     current_node.finish_time = current_node.start_time + current_node.extra_time + round_up(
@@ -493,5 +508,5 @@ class EPSMWorkflow:
                     if not child_node.visited:
                         queue.append(child_node)
 
-        print(self.nodes[-1].finish_time <= self.T)
-        print("real_path = " + str(self.nodes[-1].finish_time))
+        print(self.nodes[-1].finish_time - self.nodes[0].start_time <= self.T)
+        print("real_path = " + str(self.nodes[-1].finish_time - self.global_timer))

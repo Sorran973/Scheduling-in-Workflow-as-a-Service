@@ -42,20 +42,23 @@ class Task:
         # self.earliest_finish = None
         self.possible_start = None
         # self.finish_time = None
+        self.latest_output_data_time = None
 
         if self.name == 'entry' or self.name == 'finish':
             self.status = 'IO'
 
 
     def addInputTransfer(self, data_transfer):
-            self.input_transfers.append(data_transfer)
-            self.input_size += data_transfer.transfer_size
-            self.input_time += data_transfer.transfer_time
+        self.input_transfers.append(data_transfer)
+        self.input_size += data_transfer.transfer_size
+        self.input_time += data_transfer.transfer_time
 
     def addOutputTransfer(self, data_transfer):
-            self.output_transfers.append(data_transfer)
-            self.output_size += data_transfer.transfer_size
-            self.output_time += data_transfer.transfer_time
+        self.output_transfers.append(data_transfer)
+        self.output_size += data_transfer.transfer_size
+        self.output_time += data_transfer.transfer_time
+
+        # self.latest_output_data_time = self.end + self.output_size
 
 
     def setAssignedVm(self, assigned_vm):
