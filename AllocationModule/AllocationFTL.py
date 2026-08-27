@@ -231,12 +231,22 @@ class AllocationFTL:
                                 transfer.transfer_size / min(DATA_TRANSFER_CHANNEL_SPEED, vm.bandwidth))
                             transfer_size = transfer.transfer_size
                         else:
+                            # try:
                             transfer_time_into_storage = math.ceil(
                                 transfer.transfer_size / min(DATA_TRANSFER_CHANNEL_SPEED,
                                                              task_from.assigned_vm.bandwidth))
                             transfer_time_from_storage = math.ceil(
                                 transfer.transfer_size / min(DATA_TRANSFER_CHANNEL_SPEED, vm.bandwidth))
                             transfer_size = transfer.transfer_size * 2
+                            # except:
+                                # transfer_time_into_storage = math.ceil(
+                                #     transfer.transfer_size / DATA_TRANSFER_CHANNEL_SPEED)
+                                # transfer_time_from_storage = math.ceil(
+                                #     transfer.transfer_size / DATA_TRANSFER_CHANNEL_SPEED)
+                                # transfer_size = transfer.transfer_size * 2
+                                # print("calcVmAllocationCost\ntask_id={}, task_name={}".format(task.id, task.name))
+                                # print("calcVmAllocationCost\ntask_id={}, task_from_name={}".format(task_from.id, task.name))
+                                # print("calcVmAllocationCost\ntask_id={}, task_from_assigned_vm={}".format(task_from.assigned_vm.id, task_from.assigned_vm.bandwidth))
 
                             # if transfer_time_into_storage < transfer_time_from_storage and config.T == 1:
                             #     return False, 1000000000, None

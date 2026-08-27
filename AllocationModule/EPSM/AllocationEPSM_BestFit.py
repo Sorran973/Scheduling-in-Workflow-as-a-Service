@@ -414,10 +414,10 @@ class AllocationEPSM_BestFit:
                 best_assignment = None
                 try:
                     if (self.criteria.optimization_criteria == "min"):
-                        new_assignment_with_min_time = min(task.new_possible_assignments, key=lambda possible_assignment: possible_assignment.task_allocation_end)
-                        active_assignment_with_min_time = min(task.active_possible_assignments, key=lambda possible_assignment: possible_assignment.task_allocation_end)
+                        new_assignment_with_min_time = min(task.new_possible_assignments, key=lambda possible_assignment: possible_assignment.allocation_cost)
+                        active_assignment_with_min_time = min(task.active_possible_assignments, key=lambda possible_assignment: possible_assignment.allocation_cost)
 
-                        if new_assignment_with_min_time.task_allocation_end < active_assignment_with_min_time.task_allocation_end:
+                        if new_assignment_with_min_time.allocation_cost < active_assignment_with_min_time.allocation_cost:
                             best_assignment = new_assignment_with_min_time
                         else:
                             best_assignment = active_assignment_with_min_time

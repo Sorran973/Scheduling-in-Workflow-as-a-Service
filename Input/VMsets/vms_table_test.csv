@@ -1,6 +1,6 @@
 VM_type,performance,price,bandwidth
-XXX,3.0,0.6,60
-3X,2.5,0.38,40
-2X,2.0,0.24,25
-1X,1.5,0.16,15
-x,1.0,0.1,10
+xlarge,3.0,0.6,60
+large,2.5,0.38,40
+medium,2.0,0.24,25
+small,1.5,0.16,15
+micro,1.0,0.1,10

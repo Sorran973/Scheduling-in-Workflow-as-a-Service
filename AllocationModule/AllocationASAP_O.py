@@ -332,7 +332,7 @@ class AllocationASAP_O:
     def calcMinCostPairings(self, batch):
         pairs = []
 
-        chunk_size = 1000
+        chunk_size = 500
         task_chunks = []
         task_in_chunk_count = 0
         chunk = []

@@ -9,8 +9,12 @@ TEST_1_13 = 'MyTestDAXes/test1_13.xml'
 TEST_HEFT = 'MyTestDAXes/testHEFT.xml'
 
 ########################################################################################################################
+# WORKFLOW_SAMPLES = [EnumWorkflow.MONTAGE50]
 # WORKFLOW_SAMPLES = [EnumWorkflow.MONTAGE50,EnumWorkflow.CYBERSHAKE50, EnumWorkflow.LIGO50, EnumWorkflow.SIPHT50, EnumWorkflow.GENOME50]
-                    # EnumWorkflow.MONTAGE50,EnumWorkflow.CYBERSHAKE50, EnumWorkflow.LIGO50, EnumWorkflow.SIPHT50, EnumWorkflow.GENOME50]
+# WORKFLOW_SAMPLES = [EnumWorkflow.MONTAGE100,EnumWorkflow.CYBERSHAKE100, EnumWorkflow.LIGO100, EnumWorkflow.SIPHT100, EnumWorkflow.GENOME100]
+# WORKFLOW_SAMPLES = [EnumWorkflow.MONTAGE300,EnumWorkflow.CYBERSHAKE300, EnumWorkflow.LIGO300, EnumWorkflow.SIPHT300, EnumWorkflow.GENOME300]
+# WORKFLOW_SAMPLES = [EnumWorkflow.MONTAGE500,EnumWorkflow.CYBERSHAKE500, EnumWorkflow.LIGO500, EnumWorkflow.SIPHT500, EnumWorkflow.GENOME500]
+# WORKFLOW_SAMPLES = [EnumWorkflow.MONTAGE1000,EnumWorkflow.CYBERSHAKE1000, EnumWorkflow.LIGO1000, EnumWorkflow.SIPHT1000, EnumWorkflow.GENOME1000]
                     # EnumWorkflow.LIGO400, EnumWorkflow.MONTAGE400, EnumWorkflow.CYBERSHAKE400, EnumWorkflow.GENOME400, EnumWorkflow.SIPHT400,
                     # EnumWorkflow.LIGO500, EnumWorkflow.MONTAGE500, EnumWorkflow.CYBERSHAKE500, EnumWorkflow.GENOME500, EnumWorkflow.SIPHT500]
 
@@ -30,7 +34,7 @@ T = 1
 DATA_TRANSFER_CHANNEL_SPEED = 60.0
 DATA_TRANSFER_CHANNEL_SPEED_FOR_CJM = 60.0
 
-WORKFLOW_TYPE = EnumWorkflow.LIGO50
+WORKFLOW_TYPE = EnumWorkflow.CYBERSHAKE50
 
 VM_PREP_TIME = 30
 VM_SHUTDOWN_TIME = 10

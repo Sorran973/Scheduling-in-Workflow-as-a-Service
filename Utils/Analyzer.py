@@ -50,35 +50,35 @@ class Analyzer:
         distinct_vm_num = len(distinct_vm)
         distinct_usage_vm_type = distinct_vm.groupby('vm_type').size()
 
-        log_x = log[(log['vm_type'] == 'x')]
+        log_x = log[(log['vm_type'] == 'micro')]
         total_time_x = log_x["vm_all_time"].sum()
         usage_vm_type_x = log_x.groupby(['vm_id'], as_index=False).size()
         n_total_vm_type_x = len(usage_vm_type_x)
         usage_vm_type_x["without_off"] = usage_vm_type_x["size"] - 1
         n_reuse_vm_type_x = len(usage_vm_type_x[(usage_vm_type_x["without_off"] > 1)])
 
-        log_1X = log[(log['vm_type'] == '1X')]
+        log_1X = log[(log['vm_type'] == 'small')]
         total_time_1X = log_1X["vm_all_time"].sum()
         usage_vm_type_1X = log_1X.groupby(['vm_id'], as_index=False).size()
         usage_vm_type_1X["without_off"] = usage_vm_type_1X["size"] - 1
         n_total_vm_type_1X = len(usage_vm_type_1X)
         n_reuse_vm_type_1X = len(usage_vm_type_1X[(usage_vm_type_1X["without_off"] > 1)])
 
-        log_2X = log[(log['vm_type'] == '2X')]
+        log_2X = log[(log['vm_type'] == 'medium')]
         total_time_2X = log_2X["vm_all_time"].sum()
         usage_vm_type_2X = log_2X.groupby(['vm_id'], as_index=False).size()
         usage_vm_type_2X["without_off"] = usage_vm_type_2X["size"] - 1
         n_total_vm_type_2X = len(usage_vm_type_2X)
         n_reuse_vm_type_2X = len(usage_vm_type_2X[(usage_vm_type_2X["without_off"] > 1)])
 
-        log_3X = log[(log['vm_type'] == '3X')]
+        log_3X = log[(log['vm_type'] == 'large')]
         total_time_3X = log_3X["vm_all_time"].sum()
         usage_vm_type_3X = log_3X.groupby(['vm_id'], as_index=False).size()
         usage_vm_type_3X["without_off"] = usage_vm_type_3X["size"] - 1
         n_total_vm_type_3X = len(usage_vm_type_3X)
         n_reuse_vm_type_3X = len(usage_vm_type_3X[(usage_vm_type_3X["without_off"] > 1)])
 
-        log_XXX = log[(log['vm_type'] == 'XXX')]
+        log_XXX = log[(log['vm_type'] == 'xlarge')]
         total_time_XXX = log_XXX["vm_all_time"].sum()
         usage_vm_type_XXX = log_XXX.groupby(['vm_id'], as_index=False).size()
         usage_vm_type_XXX["without_off"] = usage_vm_type_XXX["size"] - 1
@@ -161,24 +161,25 @@ class Analyzer:
         allocation.total_vm_setting_time = log.vm_setting_time.sum()
         allocation.workflow_costs = workflow_costs
 
-        percentage_tasks_time = allocation.only_task_time_total * 100 / allocation.only_vm_time_total
-        percentage_transfer_time = (allocation.total_data_input_time + allocation.total_data_output_time) * 100 / allocation.only_vm_time_total
-        percentage_vm_setting_time = allocation.total_vm_setting_time * 100 / allocation.only_vm_time_total
+        percentage_tasks_time = round(allocation.only_task_time_total * 100 / allocation.only_vm_time_total, 1)
+        percentage_transfer_time = round((allocation.total_data_input_time + allocation.total_data_output_time) * 100 / allocation.only_vm_time_total, 1)
+        percentage_vm_setting_time = round(allocation.total_vm_setting_time * 100 / allocation.only_vm_time_total, 1)
 
         CCR = (allocation.total_data_input_time + allocation.total_data_output_time) / allocation.only_task_time_total
         overhead_ratio = allocation.total_vm_setting_time / allocation.only_vm_time_total
         utilization = allocation.only_task_time_total / allocation.only_vm_time_total
 
         print("Total Workload Statistics:")
-        print(f"\tAllocation algorithm: {allocation.__class__}")
-        print(f"\tTotal number of workflows: {allocation.num_workflows}")
-        print(f"\tTotal number of deadlines met: {allocation.num_workflow_deadline_met}")
-        print(f"\tPercentage of deadlines met: {allocation.percentage_workflow_deadline_met}")
+        # print(f"\tAllocation algorithm: {allocation.__class__}")
+        # print(f"\tTotal number of workflows: {allocation.num_workflows}")
+        # print(f"\tTotal number of deadlines met: {allocation.num_workflow_deadline_met}")
+        # print(f"\tPercentage of deadlines met: {allocation.percentage_workflow_deadline_met}")
         print(f"\tTotal cost: {allocation.total_cost}")
         # print(f"\tWorkload Time: {allocation.workload_time}")
         print(f"\tWorkload Time: {allocation.workload_time_without_first_and_last_vm}") # (without the first VM preparation time and the last VM shutdown time)
-        # print(f"\tThe sum of all workflows time total: {allocation.sum_of_workflows_time_total}")
-        # print(f"\tThe sum of all workflows time (without the first VM preparation time and the last VM shutdown time): {allocation.sum_of_workflows_time_without_first_and_last_vm}")
+        print(f"\tThe sum of all workflows time total: {allocation.sum_of_workflows_time_total}")
+        print(f"\tThe average time of all workflows: {allocation.sum_of_workflows_time_total / len(cjm_workflow_list)}")
+        # print(f"\tThe sum of all workflows time (without the first VM preparation time and the last VM len(shutdown) time): {allocation.sum_of_workflows_time_without_first_and_last_vm}")
         print(f"\tThe sum of only vms time: {allocation.only_vm_time_total}")
         print(f"\tThe sum of only tasks time: {allocation.only_task_time_total}")
         print(f"\tTotal number of leased VM: {allocation.total_num_leased_vm}")
@@ -197,11 +198,11 @@ class Analyzer:
         print(f"\tUtilization (task_time/vm_total_time): {round(utilization, 2)}")
         print()
 
-        print(f"\tNum of usage / reuse vm_type x: {n_total_vm_type_x} / {n_reuse_vm_type_x}")
-        print(f"\tNum of usage / reuse vm_type 1X: {n_total_vm_type_1X} / {n_reuse_vm_type_1X}")
-        print(f"\tNum of usage / reuse vm_type 2X: {n_total_vm_type_2X} / {n_reuse_vm_type_2X}")
-        print(f"\tNum of usage / reuse vm_type 3X: {n_total_vm_type_3X} / {n_reuse_vm_type_3X}")
-        print(f"\tNum of usage / reuse vm_type XXX: {n_total_vm_type_XXX} / {n_reuse_vm_type_XXX}")
+        print(f"\tNum of usage / reuse vm_type micro: {n_total_vm_type_x} / {n_reuse_vm_type_x}")
+        print(f"\tNum of usage / reuse vm_type small: {n_total_vm_type_1X} / {n_reuse_vm_type_1X}")
+        print(f"\tNum of usage / reuse vm_type medium: {n_total_vm_type_2X} / {n_reuse_vm_type_2X}")
+        print(f"\tNum of usage / reuse vm_type large: {n_total_vm_type_3X} / {n_reuse_vm_type_3X}")
+        print(f"\tNum of usage / reuse vm_type xlarge: {n_total_vm_type_XXX} / {n_reuse_vm_type_XXX}")
         # print(f"\tTime percentage vm_type x: {time_percentage_x}")
         # print(f"\tTime percentage vm_type 1X: {time_percentage_1X}")
         # print(f"\tTime percentage vm_type 2X: {time_percentage_2X}")
@@ -209,16 +210,16 @@ class Analyzer:
         # print(f"\tTime percentage vm_type XXX: {time_percentage_XXX}")
         print()
 
-        if isinstance(allocation, AllocationNewVM) or isinstance(allocation, AllocationEPSM_BestFit):
-            for i, batch in enumerate(allocation.batch_statistics):
-                try:
-                    print(f"\tBatch #: {i}")
-                    print(f"\tAverage task time: {round(batch[0]/batch[3], 2)}")
-                    print(f"\tAverage transfer time: {round(batch[1]/batch[3], 2)}")
-                    print(f"\tAverage VM setting time: {round(batch[2]/batch[3], 2)}")
-                    print()
-                except:
-                    print()
+        # if isinstance(allocation, AllocationNewVM) or isinstance(allocation, AllocationEPSM_BestFit):
+        #     for i, batch in enumerate(allocation.batch_statistics):
+        #         try:
+        #             print(f"\tBatch #: {i}")
+        #             print(f"\tAverage task time: {round(batch[0]/batch[3], 2)}")
+        #             print(f"\tAverage transfer time: {round(batch[1]/batch[3], 2)}")
+        #             print(f"\tAverage VM setting time: {round(batch[2]/batch[3], 2)}")
+        #             print()
+        #         except:
+        #             print()
 
 
 
