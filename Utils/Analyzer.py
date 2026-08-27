@@ -1,9 +1,41 @@
+import math
+
+from AllocationModule.AllocationASAP_O import AllocationASAP_O
+from AllocationModule.AllocationBestFit import AllocationBestFit
+from AllocationModule.AllocationBestFitASAP import AllocationBestFitASAP
+from AllocationModule.AllocationBestFitASAPEPSM import AllocationBestFitASAPEPSM
+from AllocationModule.AllocationBestFitFTLEPSM import AllocationBestFitFTLEPSM
+from AllocationModule.AllocationFTL import AllocationFTL
+from AllocationModule.EPSM.AllocationNewVM import AllocationNewVM
+from AllocationModule.EPSM.AllocationEPSM_BestFit import AllocationEPSM_BestFit
+import warnings
+warnings.filterwarnings('ignore')
+
 class Analyzer:
     @staticmethod
     def analyze_allocation(allocation, cjm_workflow_list):
         log = allocation.log
         log["vm_all_time"] = (log["vm_end"] - log["vm_start"])
         log["vm_processing_time"] = (log["task_allocation_end"] - log["task_allocation_start"])
+        # log2 = log[(log['vm_processing_time'] != 0)]
+        log2 = log[~log['task_name'].str.contains('off')]
+        median = log2['vm_processing_time'].median()
+        mean = log2['vm_processing_time'].mean()
+        print(allocation.__class__)
+        print("Median = " + str(median))
+        print("Mean = " + str(mean))
+        # x2
+        # Montage mean = 7 (7), median = 8 (8)
+        # CyberShake mean = 19 (20), median = 16 (16)
+        # LIGO mean = 22 (48), median = 17 (19)
+        # SIPHT mean = 14 (32), median = 1 (1)
+        # GENOME mean = 9 (19), median = 1 (1)
+        # 1-2
+        # Montage mean = 7 (11), median = 8 (11)
+        # CyberShake mean = 20 (23), median = 9 (12)
+        # LIGO mean = 148 (228), median = 19 (19)
+        # SIPHT mean = 102 (173), median = 2 (2)
+        # GENOME mean = 90 (117), median = 2 (2)
         log["vm_setting_time"] = (log["vm_all_time"] - log["vm_processing_time"] - log["vm_input_time"] - log["vm_output_time"])
         log["vm_all_time"] = (log["vm_all_time"] + log["idle_time"])
 
@@ -18,35 +50,35 @@ class Analyzer:
         distinct_vm_num = len(distinct_vm)
         distinct_usage_vm_type = distinct_vm.groupby('vm_type').size()
 
-        log_x = log[(log['vm_type'] == 'x')]
+        log_x = log[(log['vm_type'] == 'micro')]
         total_time_x = log_x["vm_all_time"].sum()
         usage_vm_type_x = log_x.groupby(['vm_id'], as_index=False).size()
         n_total_vm_type_x = len(usage_vm_type_x)
         usage_vm_type_x["without_off"] = usage_vm_type_x["size"] - 1
         n_reuse_vm_type_x = len(usage_vm_type_x[(usage_vm_type_x["without_off"] > 1)])
 
-        log_1X = log[(log['vm_type'] == '1X')]
+        log_1X = log[(log['vm_type'] == 'small')]
         total_time_1X = log_1X["vm_all_time"].sum()
         usage_vm_type_1X = log_1X.groupby(['vm_id'], as_index=False).size()
         usage_vm_type_1X["without_off"] = usage_vm_type_1X["size"] - 1
         n_total_vm_type_1X = len(usage_vm_type_1X)
         n_reuse_vm_type_1X = len(usage_vm_type_1X[(usage_vm_type_1X["without_off"] > 1)])
 
-        log_2X = log[(log['vm_type'] == '2X')]
+        log_2X = log[(log['vm_type'] == 'medium')]
         total_time_2X = log_2X["vm_all_time"].sum()
         usage_vm_type_2X = log_2X.groupby(['vm_id'], as_index=False).size()
         usage_vm_type_2X["without_off"] = usage_vm_type_2X["size"] - 1
         n_total_vm_type_2X = len(usage_vm_type_2X)
         n_reuse_vm_type_2X = len(usage_vm_type_2X[(usage_vm_type_2X["without_off"] > 1)])
 
-        log_3X = log[(log['vm_type'] == '3X')]
+        log_3X = log[(log['vm_type'] == 'large')]
         total_time_3X = log_3X["vm_all_time"].sum()
         usage_vm_type_3X = log_3X.groupby(['vm_id'], as_index=False).size()
         usage_vm_type_3X["without_off"] = usage_vm_type_3X["size"] - 1
         n_total_vm_type_3X = len(usage_vm_type_3X)
         n_reuse_vm_type_3X = len(usage_vm_type_3X[(usage_vm_type_3X["without_off"] > 1)])
 
-        log_XXX = log[(log['vm_type'] == 'XXX')]
+        log_XXX = log[(log['vm_type'] == 'xlarge')]
         total_time_XXX = log_XXX["vm_all_time"].sum()
         usage_vm_type_XXX = log_XXX.groupby(['vm_id'], as_index=False).size()
         usage_vm_type_XXX["without_off"] = usage_vm_type_XXX["size"] - 1
@@ -85,14 +117,19 @@ class Analyzer:
         only_vm_time_total = 0
         total_num_leased_vm = 0
         total_idle_time = 0
+        workflow_costs = []
 
         for i, workflow_log in enumerate(workflow_log_list):
+            a = workflow_log.task_allocation_end.max()
+            b = workflow_log.task_allocation_start.min()
             workflow_time_without_first_and_last_vm = workflow_log.task_allocation_end.max() - workflow_log.task_allocation_start.min()
             if workflow_time_without_first_and_last_vm <= cjm_workflow_list[i]:
                 num_workflow_deadline_met += 1
 
         #     vm_provisioning_delay
-            total_cost += workflow_log.allocation_cost.sum()
+            workflow_cost = workflow_log.allocation_cost.sum()
+            total_cost += workflow_cost
+            workflow_costs.append(workflow_cost)
             sum_of_workflows_time_total += workflow_log.vm_end.max() - workflow_log.vm_start.min()
             sum_of_workflows_time_without_first_and_last_vm += workflow_time_without_first_and_last_vm
             only_task_time_total += workflow_log.vm_processing_time.sum()
@@ -115,35 +152,57 @@ class Analyzer:
         allocation.sum_of_workflows_time_without_first_and_last_vm = sum_of_workflows_time_without_first_and_last_vm
         allocation.only_vm_time_total = only_vm_time_total
         allocation.only_task_time_total = only_task_time_total
-        # allocation.total_num_leased_vm = total_num_leased_vm
         allocation.total_num_leased_vm = distinct_vm_num
         allocation.total_idle_time = total_idle_time
         allocation.total_data_input_time = log.vm_input_time.sum()
         allocation.total_data_output_time = log.vm_output_time.sum()
+        allocation.total_data_input_size = log.vm_input_size.sum()
+        allocation.total_data_output_size = log.vm_output_size.sum()
         allocation.total_vm_setting_time = log.vm_setting_time.sum()
+        allocation.workflow_costs = workflow_costs
+
+        percentage_tasks_time = round(allocation.only_task_time_total * 100 / allocation.only_vm_time_total, 1)
+        percentage_transfer_time = round((allocation.total_data_input_time + allocation.total_data_output_time) * 100 / allocation.only_vm_time_total, 1)
+        percentage_vm_setting_time = round(allocation.total_vm_setting_time * 100 / allocation.only_vm_time_total, 1)
+
+        CCR = (allocation.total_data_input_time + allocation.total_data_output_time) / allocation.only_task_time_total
+        overhead_ratio = allocation.total_vm_setting_time / allocation.only_vm_time_total
+        utilization = allocation.only_task_time_total / allocation.only_vm_time_total
 
         print("Total Workload Statistics:")
-        print(f"\tTotal number of workflows: {allocation.__class__}")
-        print(f"\tTotal number of workflows: {allocation.num_workflows}")
-        print(f"\tTotal number of deadlines met: {allocation.num_workflow_deadline_met}")
-        print(f"\tPercentage of deadlines met: {allocation.percentage_workflow_deadline_met}")
+        # print(f"\tAllocation algorithm: {allocation.__class__}")
+        # print(f"\tTotal number of workflows: {allocation.num_workflows}")
+        # print(f"\tTotal number of deadlines met: {allocation.num_workflow_deadline_met}")
+        # print(f"\tPercentage of deadlines met: {allocation.percentage_workflow_deadline_met}")
         print(f"\tTotal cost: {allocation.total_cost}")
-        print(f"\tWorkload Time: {allocation.workload_time}")
-        # print(f"\tWorkload Time (without the first VM preparation time and the last VM shutdown time): {allocation.workload_time_without_first_and_last_vm}")
-        # print(f"\tThe sum of all workflows time total: {allocation.sum_of_workflows_time_total}")
-        # print(f"\tThe sum of all workflows time (without the first VM preparation time and the last VM shutdown time): {allocation.sum_of_workflows_time_without_first_and_last_vm}")
+        # print(f"\tWorkload Time: {allocation.workload_time}")
+        print(f"\tWorkload Time: {allocation.workload_time_without_first_and_last_vm}") # (without the first VM preparation time and the last VM shutdown time)
+        print(f"\tThe sum of all workflows time total: {allocation.sum_of_workflows_time_total}")
+        print(f"\tThe average time of all workflows: {allocation.sum_of_workflows_time_total / len(cjm_workflow_list)}")
+        # print(f"\tThe sum of all workflows time (without the first VM preparation time and the last VM len(shutdown) time): {allocation.sum_of_workflows_time_without_first_and_last_vm}")
         print(f"\tThe sum of only vms time: {allocation.only_vm_time_total}")
         print(f"\tThe sum of only tasks time: {allocation.only_task_time_total}")
         print(f"\tTotal number of leased VM: {allocation.total_num_leased_vm}")
         print(f"\tTotal idle time: {allocation.total_idle_time}")
-        print(f"\tTotal data input time: {allocation.total_data_input_time}")
-        print(f"\tTotal data output time: {allocation.total_data_output_time}")
+        # print(f"\tTotal data input time: {allocation.total_data_input_time}")
+        # print(f"\tTotal data output time: {allocation.total_data_output_time}")
         print(f"\tTotal VM setting time: {allocation.total_vm_setting_time}")
-        print(f"\tNum of usage / reuse vm_type x: {n_total_vm_type_x} / {n_reuse_vm_type_x}")
-        print(f"\tNum of usage / reuse vm_type 1X: {n_total_vm_type_1X} / {n_reuse_vm_type_1X}")
-        print(f"\tNum of usage / reuse vm_type 2X: {n_total_vm_type_2X} / {n_reuse_vm_type_2X}")
-        print(f"\tNum of usage / reuse vm_type 3X: {n_total_vm_type_3X} / {n_reuse_vm_type_3X}")
-        print(f"\tNum of usage / reuse vm_type XXX: {n_total_vm_type_XXX} / {n_reuse_vm_type_XXX}")
+        print(f"\tTotal data input/output time: {allocation.total_data_input_time + allocation.total_data_output_time}")
+        print(f"\tTotal data input/output size: {allocation.total_data_input_size + allocation.total_data_output_size}")
+        print(f"\tTotal percentage_tasks_time: {percentage_tasks_time}")
+        print(f"\tTotal percentage_transfer_time: {percentage_transfer_time}")
+        print(f"\tTotal percentage_vm_setting_time: {percentage_vm_setting_time}")
+        print()
+        print(f"\tCCR (transfer_time/task_time): {round(CCR, 2)}")
+        print(f"\tOverhead Ration (vm_setting_time/vm_total_time): {round(overhead_ratio, 2)}")
+        print(f"\tUtilization (task_time/vm_total_time): {round(utilization, 2)}")
+        print()
+
+        print(f"\tNum of usage / reuse vm_type micro: {n_total_vm_type_x} / {n_reuse_vm_type_x}")
+        print(f"\tNum of usage / reuse vm_type small: {n_total_vm_type_1X} / {n_reuse_vm_type_1X}")
+        print(f"\tNum of usage / reuse vm_type medium: {n_total_vm_type_2X} / {n_reuse_vm_type_2X}")
+        print(f"\tNum of usage / reuse vm_type large: {n_total_vm_type_3X} / {n_reuse_vm_type_3X}")
+        print(f"\tNum of usage / reuse vm_type xlarge: {n_total_vm_type_XXX} / {n_reuse_vm_type_XXX}")
         # print(f"\tTime percentage vm_type x: {time_percentage_x}")
         # print(f"\tTime percentage vm_type 1X: {time_percentage_1X}")
         # print(f"\tTime percentage vm_type 2X: {time_percentage_2X}")
@@ -151,49 +210,48 @@ class Analyzer:
         # print(f"\tTime percentage vm_type XXX: {time_percentage_XXX}")
         print()
 
+        # if isinstance(allocation, AllocationNewVM) or isinstance(allocation, AllocationEPSM_BestFit):
+        #     for i, batch in enumerate(allocation.batch_statistics):
+        #         try:
+        #             print(f"\tBatch #: {i}")
+        #             print(f"\tAverage task time: {round(batch[0]/batch[3], 2)}")
+        #             print(f"\tAverage transfer time: {round(batch[1]/batch[3], 2)}")
+        #             print(f"\tAverage VM setting time: {round(batch[2]/batch[3], 2)}")
+        #             print()
+        #         except:
+        #             print()
 
 
-
-    @staticmethod
-    def print_workload_statistics(allocations):
-        print("Total Workload Statistics:")
-        for allocation in allocations:
-            print(f"\tTotal number of workflows: {allocation.__class__}")
-            print(f"\tTotal number of workflows: {allocation.num_workflows}")
-            print(f"\tTotal number of deadlines met: {allocation.num_workflow_deadline_met}")
-            print(f"\tPercentage of deadlines met: {allocation.percentage_workflow_deadline_met}")
-            print(f"\tTotal cost: {allocation.total_cost}")
-            print(f"\tWorkload Time: {allocation.workload_time}")
-            # print(f"\tWorkload Time (without the first VM preparation time and the last VM shutdown time): {allocation.workload_time_without_first_and_last_vm}")
-            # print(f"\tThe sum of all workflows time total: {allocation.sum_of_workflows_time_total}")
-            # print(f"\tThe sum of all workflows time (without the first VM preparation time and the last VM shutdown time): {allocation.sum_of_workflows_time_without_first_and_last_vm}")
-            print(f"\tThe sum of only vms time: {allocation.only_vm_time_total}")
-            print(f"\tThe sum of only tasks time: {allocation.only_task_time_total}")
-            print(f"\tTotal number of leased VM: {allocation.total_num_leased_vm}")
-            print(f"\tTotal idle time: {allocation.total_idle_time}")
-            print()
 
     @staticmethod
     def print_comparison_table(allocations):
+        for allocation in allocations:
+            print(f"\tTotal idle time: {allocation.total_idle_time}")
 
-        print(f"\tTotal cost of FTL: {allocations[0].total_cost}")
-        print(f"\tTotal cost of ASAP: {allocations[1].total_cost}")
-        print(f"\tTotal cost of ASAP_MIX: {allocations[2].total_cost}")
-        print(f"\tTotal cost of New_VM: {allocations[3].total_cost}")
         print()
-        print(f"\tWorkload Time of FTL: {allocations[0].workload_time}")
-        print(f"\tWorkload Time of ASAP: {allocations[1].workload_time}")
-        print(f"\tWorkload Time of ASAP_MIX: {allocations[2].workload_time}")
-        print(f"\tWorkload Time of New_VM: {allocations[3].workload_time}")
-        print()
-        print(f"\tTotal number of leased VM of FTL: {allocations[0].total_num_leased_vm}")
-        print(f"\tTotal number of leased VM of ASAP: {allocations[1].total_num_leased_vm}")
-        print(f"\tTotal number of leased VM of ASAP_MIX: {allocations[2].total_num_leased_vm}")
-        print(f"\tTotal number of leased VM of New_VM: {allocations[3].total_num_leased_vm}")
-        print()
-        print(f"\tTotal idle time of FTL: {allocations[0].total_idle_time}")
-        print(f"\tTotal idle time of ASAP: {allocations[1].total_idle_time}")
-        print(f"\tTotal idle time of ASAP_MIX: {allocations[2].total_idle_time}")
-        print(f"\tTotal idle time of New_VM: {allocations[3].total_idle_time}")
-        print()
+        for allocation in allocations:
+            print(f"\tWorkload Time without first and last vm: {allocation.workload_time_without_first_and_last_vm}")
 
+        print()
+        for allocation in allocations:
+            print(f"\tWorkload Time: {allocation.workload_time}")
+
+        print()
+        for allocation in allocations:
+            print(f"\tBatches num: {allocation.batches_size}")
+
+        print()
+        for allocation in allocations:
+            print(f"\tTotal VM setting time: {allocation.total_vm_setting_time}")
+
+        print()
+        for allocation in allocations:
+            print(f"\tTotal data input/output size: {allocation.total_data_input_size + allocation.total_data_output_size}")
+
+        print()
+        for allocation in allocations:
+            print(f"\tTotal number of leased VM: {allocation.total_num_leased_vm}")
+
+        print()
+        for allocation in allocations:
+            print(f"\tTotal cost: {allocation.total_cost}")

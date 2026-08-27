@@ -27,7 +27,8 @@ class Task:
         self.color = None
 
         self.possible_vms = []
-        self.possible_assignments = []
+        self.new_possible_assignments = []
+        self.active_possible_assignments = []
 
         self.assigned_vm = None
         self.allocation_start = None
@@ -41,31 +42,53 @@ class Task:
         # self.earliest_finish = None
         self.possible_start = None
         # self.finish_time = None
+        self.latest_output_data_time = None
 
         if self.name == 'entry' or self.name == 'finish':
             self.status = 'IO'
 
 
     def addInputTransfer(self, data_transfer):
-            self.input_transfers.append(data_transfer)
-            self.input_size += data_transfer.transfer_size
-            self.input_time += data_transfer.transfer_time
+        self.input_transfers.append(data_transfer)
+        self.input_size += data_transfer.transfer_size
+        self.input_time += data_transfer.transfer_time
 
     def addOutputTransfer(self, data_transfer):
-            self.output_transfers.append(data_transfer)
-            self.output_size += data_transfer.transfer_size
-            self.output_time += data_transfer.transfer_time
+        self.output_transfers.append(data_transfer)
+        self.output_size += data_transfer.transfer_size
+        self.output_time += data_transfer.transfer_time
+
+        # self.latest_output_data_time = self.end + self.output_size
 
 
     def setAssignedVm(self, assigned_vm):
         self.assigned_vm = assigned_vm
-        assign_info = next(filter(lambda x: x.assigned_vm == assigned_vm, self.possible_assignments))
+        assign_info = next(filter(lambda x: x.assigned_vm == assigned_vm, self.new_possible_assignments))
         self.allocation_start = assign_info.task_allocation_start
         self.allocation_end = assign_info.task_allocation_end
         self.vm_allocation_start = assign_info.vm_allocation_start
         self.vm_allocation_end = assign_info.vm_allocation_end
         self.vm_input_time = assign_info.input_data_transfer_time
         self.vm_output_time = assign_info.output_data_transfer_time
+        self.vm_input_size = assign_info.input_data_transfer_size
+        self.vm_output_size = assign_info.output_data_transfer_size
+        self.allocation_cost = assign_info.allocation_cost
+        self.idle_time = assign_info.idle_time
+
+    def setAssignedVmEPSM(self, assigned_vm, vm_previous_status):
+        self.assigned_vm = assigned_vm
+        if vm_previous_status == 'open':
+            assign_info = next(filter(lambda x: x.assigned_vm == assigned_vm, self.new_possible_assignments))
+        else:
+            assign_info = next(filter(lambda x: x.assigned_vm == assigned_vm, self.active_possible_assignments))
+        self.allocation_start = assign_info.task_allocation_start
+        self.allocation_end = assign_info.task_allocation_end
+        self.vm_allocation_start = assign_info.vm_allocation_start
+        self.vm_allocation_end = assign_info.vm_allocation_end
+        self.vm_input_time = assign_info.input_data_transfer_time
+        self.vm_output_time = assign_info.output_data_transfer_time
+        self.vm_input_size = assign_info.input_data_transfer_size
+        self.vm_output_size = assign_info.output_data_transfer_size
         self.allocation_cost = assign_info.allocation_cost
         self.idle_time = assign_info.idle_time
 

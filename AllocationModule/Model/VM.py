@@ -1,11 +1,12 @@
 class VM:
     vm_counter = 0
 
-    def __init__(self, type, perf, cost, prep_time, shutdown_time):
+    def __init__(self, type, perf, cost, bandwidth, prep_time, shutdown_time):
         self.id = VM.vm_counter
         self.type = type
         self.perf = perf
         self.cost = cost
+        self.bandwidth = bandwidth
         self.prep_time = prep_time
         self.shutdown_time = shutdown_time
         self.status = 'open'

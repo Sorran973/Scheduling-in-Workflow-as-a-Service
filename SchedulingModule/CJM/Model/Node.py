@@ -1,5 +1,9 @@
 import math
 
+def round_up(n, decimals=0):
+    multiplier = 10 ** decimals
+    return math.ceil(n * multiplier) / multiplier
+
 class Node:
 
     id = 0
@@ -11,6 +15,10 @@ class Node:
         self.runtime = runtime
         self.start_time = None
         self.finish_time = None
+        self.EST = None
+        self.LST = None
+        self.EFT = None
+        self.LFT = None
         self.visited = False
         self.in_critical_path = False
         self.edges_from = []          # edges from other nodes into this node
@@ -20,11 +28,36 @@ class Node:
         self.input = []
         self.input_size = 0
         self.input_time = 0
+        self.input_register = []
+        self.input_register_size = 0
+        self.input_register_time = 0
         self.output = []
         self.output_size = 0
         self.output_time = 0
+        self.output_register = []
+        self.output_register_size = 0
+        self.output_register_time = 0
+        self.weight = None
+        self.extra_time = None
+        self.budget = None
         Node.id += 1
 
+
+    def add_file_register(self, file):
+        if file.link == 'input':
+            if file.register == 'true':
+                self.input_register.append(file)
+                self.input_register_size += file.size
+            else:
+                self.input.append(file)
+                self.input_size += file.size
+        else:
+            if file.register == 'true':
+                self.output_register.append(file)
+                self.output_register_size += file.size
+            else:
+                self.output.append(file)
+                self.output_size += file.size
 
     def add_file(self, file):
         if file.link == 'input':
@@ -41,10 +74,21 @@ class Node:
     def add_edge_to(self, edge):
         self.edges_to.append(edge)
 
-    def calculate_transfer_time(self, data_transfer_channel):
+    def calculate_transfer_time(self, vm_type, data_transfer_channel):
+
+        self.input_time = round_up(self.input_size / min(data_transfer_channel, vm_type.bandwidth))
+        self.output_time = round_up(self.output_size / min(data_transfer_channel, vm_type.bandwidth))
+        # self.input_time = round_up(self.input_size / vm_perf / data_transfer_channel)
+        # self.output_time = round_up(self.output_size / vm_perf / data_transfer_channel)
+
+    def calculate_transfer_time_epsm(self, vm_perf, data_transfer_channel):
         self.input_time = math.ceil(self.input_size / data_transfer_channel)
         self.output_time = math.ceil(self.output_size / data_transfer_channel)
+        # self.input_time = round_up(self.input_size / vm_perf / data_transfer_channel)
+        # self.output_time = round_up(self.output_size / vm_perf / data_transfer_channel)
 
+        self.input_register_time = math.ceil(self.input_register_size / data_transfer_channel)
+        self.output_register_time = math.ceil(self.output_register_size / data_transfer_channel)
 
     def __str__(self):
         return 'id = ' + str(self.id) + \

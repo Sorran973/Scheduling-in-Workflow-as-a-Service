@@ -1,0 +1,771 @@
+import csv
+import random
+from collections import deque
+
+from networkx.algorithms.shortest_paths.generic import shortest_path
+
+from SchedulingModule.CJM.Model.Criteria import AverageResourceLoadCriteria, TimeCriteria, CostCriteria
+from SchedulingModule.CJM.Model.Edge import Edge
+from SchedulingModule.CJM.Model.File import File
+from SchedulingModule.CJM.Model.LayerOption import LayerOption
+from SchedulingModule.CJM.Model.Node import Node
+from SchedulingModule.CJM.Model.Layer import Layer
+from SchedulingModule.CJM.Model.StrategyBudget import StrategyBudget
+from config import DATA_TRANSFER_CHANNEL_SPEED
+from Utils.XMLParser import XMLParser
+from SchedulingModule.CJM.Model.Strategy import Strategy
+import config
+
+import math
+import copy
+
+
+def round_up(n, decimals=0):
+    multiplier = 10 ** decimals
+    return math.ceil(n * multiplier) / multiplier
+
+
+def dfs(node, best_vm_type):
+    if node.id == 40:
+        y = 0
+    node.visited = True
+    node_edges = node.edges_to
+
+    for node_edge in node_edges:
+        node_child = node_edge.node_to
+        if not node_child.visited:
+            dfs(node_child, best_vm_type)
+
+        for critical_path in node_child.critical_paths:
+            # node.critical_paths.append((round(node.runtime + node_edge.transfer_time + critical_path[0], 2),
+            #                             [node, node_edge] + critical_path[1]))
+
+            a = node.runtime
+            b = round_up(node_edge.transfer_size / best_vm_type.perf)
+            c = critical_path[0]
+            d = round(node.runtime +
+                      round_up(node_edge.transfer_size / best_vm_type.perf) +
+                      critical_path[0], 2)
+            node.critical_paths.append((round(node.runtime +
+                                              round_up(node_edge.transfer_size / best_vm_type.perf) +
+                                              critical_path[0], 2),
+                                        [node, node_edge] + critical_path[1]))
+
+
+def sort_for_critical_paths(critical_path):
+    return critical_path[0]
+
+
+def mark_whole_path(path):
+    for elem in path[1]:
+        elem.in_critical_path = True
+
+
+def common_member(list_a, list_b, first_id):
+    result = []
+    for node in list_b:
+        if list_a[node.id - first_id] != -math.inf:
+            result.append(node)
+
+    return result
+
+
+
+class WorkflowBudget:
+
+    def __init__(self, XML_FILE, B, vm_types, criteria,
+                 task_volume_multiplier, data_volume_multiplier, start_time=0):
+        self.nodes = []
+        self.first_id: int
+        self.node_dict = {}  # [str(node_name) : obj(node)]
+        self.edges = []
+        self.entry_edges: [int]  # for setting edges between entry_node and his children
+        self.finish_edges = None  # -//- finish_node and his children
+        self.drawn_nodes = []
+        self.drawn_edges = []
+        self.critical_paths = []
+        self.longest_path = []
+        self.strategies = []
+        self.best_strategy = None
+        self.vm_types = vm_types
+        self.vms_table = []
+        self.vms_cost = []
+        self.task_volume_multiplier = task_volume_multiplier
+        self.data_volume_multiplier = data_volume_multiplier
+        self.criteria = criteria
+        self.T = None
+        self.t = B
+        self.global_timer = start_time
+        self.xml_file = XML_FILE
+        self.preliminary_total_cost = 0
+        self.Z1 = None
+
+        # Steps
+        soup_nodes, soup_edges = XMLParser.parse(XML_FILE)
+        self.create_graph(soup_nodes, soup_edges)
+        self.create_vms_table(vm_types)
+        self.find_all_critical_paths()
+        self.check_duplicate_critical_paths()
+        self.find_the_longest_path()
+        self.calc_budget()
+
+
+        if self.t == 1:
+            # self.T = self.critical_paths[0][0]
+            self.T = B
+        elif self.t == 2:
+            self.T = self.longest_path
+        elif self.t == 3:
+            self.T = round((self.longest_path + self.critical_paths[0][0]) / 2)
+        elif self.t == 4:
+            self.T = random.randint(self.critical_paths[0][0], self.longest_path)
+        else:
+            self.T = self.t
+
+        self.criteria.set_parameters(len(self.vms_table), self.T)
+
+    def calc_budget(self):
+        budget = 0
+        for node in self.nodes:
+            budget += node.runtime * self.vm_types[0].cost
+
+        for edge in self.edges:
+            budget += round_up(edge.transfer_size / self.vm_types[0].perf) * self.vm_types[0].cost
+
+        print("shortest_path = " + str(self.critical_paths[0][0]))
+        print("shortest_path_budget = " + str(budget))
+        print()
+
+        budget = 0
+        for node in self.nodes:
+            budget += round_up(node.volume / self.vm_types[-1].perf) * self.vm_types[-1].cost
+
+        for edge in self.edges:
+            budget += round_up(edge.transfer_size / self.vm_types[-1].perf) * self.vm_types[-1].cost
+        print("longest_path = " + str(self.longest_path))
+        print("longest_path_budget = " + str(budget))
+
+
+
+    def create_graph(self, soup_nodes, soup_edges):
+        # Add entry_node into graph
+        self.add_node(Node('entry', 0.0, 0.0))
+
+        for node in soup_nodes:
+            name = node.get('id')
+            if round_up(float(node.get('runtime')) * self.task_volume_multiplier) < self.vm_types[0].perf:
+                volume = self.vm_types[0].perf
+            else:
+                volume = round_up(float(node.get('runtime')) * self.task_volume_multiplier)
+            # volume = round_up(float(node.get('runtime')) * self.task_volume_multiplier)
+            current_node = Node(name, volume, round_up(volume / self.vm_types[0].perf))
+            self.add_node(current_node)
+
+            if current_node.id == 94:
+                y = 0
+            uses = node.find_all('uses')
+            for use in uses:
+                # TODO:
+                if use.get('register') != 'true':
+                # if use.get('link') != 'input':
+                    xml_size = float(use.get('size'))
+                    size = round_up(float(use.get('size')) * self.data_volume_multiplier / 1000000)
+                    if size < self.vm_types[0].perf:
+                        size = self.vm_types[0].perf
+                    else:
+                        size = round_up(float(use.get('size')) * self.data_volume_multiplier / 1000000)
+                        # size = math.ceil(float(use.get('size')) * self.data_volume_multiplier / 1000000)
+                    current_node.add_file(File(use.get('file'),
+                                               use.get('link'),
+                                               size,
+                                               use.get('register')))
+            current_node.calculate_transfer_time(DATA_TRANSFER_CHANNEL_SPEED)
+
+        # Add finish_node into graph
+        self.add_node(Node('finish', 0.0, 0.0))
+        self.nodes[-1].critical_paths.append([0, [self.nodes[-1]]])
+
+        self.set_starting_values()
+
+        for edge in soup_edges:  # edge = child and all his parent
+            parents = edge.find_all('parent')
+            for parent in parents:
+                node_from = self.node_dict.get(parent.get('ref'))
+                node_to = self.node_dict.get(edge.get('ref'))
+                e = Edge(node_from, node_to, node_from.output, DATA_TRANSFER_CHANNEL_SPEED)
+                self.add_edge(e)
+                node_from.add_edge_to(e)
+                node_to.add_edge_from(e)
+
+
+        # Add entry and finish edges
+        self.complete_graph()
+
+    def add_node(self, node):
+        self.nodes.append(node)
+        self.drawn_nodes.append(node)
+        self.node_dict[node.name] = node
+
+    def set_starting_values(self):
+        self.num_of_nodes = len(self.nodes)
+        self.entry_edges = [0 for i in range(self.num_of_nodes)]
+        self.finish_edges = [0 for i in range(self.num_of_nodes)]
+        self.first_id = self.nodes[0].id
+
+
+    def add_edge(self, edge):
+        self.edges.append(edge)
+        self.drawn_edges.append(edge)
+
+        self.entry_edges[edge.node_to.id - self.first_id] = 1
+        self.finish_edges[edge.node_from.id - self.first_id] = 1
+
+    def find_all_critical_paths(self):
+        for node in self.nodes:
+            if not node.visited:
+                dfs(node, self.vm_types[0])
+
+        # sorting of all critical paths based on process time (length) in descending order
+        self.nodes[0].critical_paths.sort(key=sort_for_critical_paths, reverse=True)
+
+        # set T based on the critical path
+        # self.T = round_up(self.nodes[0].critical_paths[0][0])
+        c_p = self.nodes[0].critical_paths[0][1]
+        for i in range(0, len(c_p), 2):  # without edges
+            c_p[i].color = 'red'
+
+    def complete_graph(self):  # add entry and finish edges
+        n = len(self.nodes)
+        entry_node = self.nodes[0]
+        for i in range(1, n - 1):
+            next_node = self.nodes[i]
+            if self.entry_edges[i] == 0:
+                if next_node.input:
+                    edge = Edge(entry_node, next_node, next_node.input, DATA_TRANSFER_CHANNEL_SPEED)
+                else:
+                    edge = Edge(entry_node, next_node, [File('empty_file', 'input', 0, 'false')], DATA_TRANSFER_CHANNEL_SPEED)
+                self.add_edge(edge)
+                entry_node.add_edge_to(edge)
+                next_node.add_edge_from(edge)
+
+        finish_node = self.nodes[-1]
+        for i in range(1, n - 1):
+            previous_node = self.nodes[i]
+            if self.finish_edges[i] == 0:
+                edge = Edge(previous_node, finish_node, previous_node.output, DATA_TRANSFER_CHANNEL_SPEED)
+                self.add_edge(edge)
+                previous_node.add_edge_to(edge)
+                finish_node.add_edge_from(edge)
+
+
+    def check_duplicate_critical_paths(self):
+        critical_paths = self.nodes[0].critical_paths
+        for c_p in critical_paths:
+            for elem in c_p[1]:
+                if not elem.in_critical_path:
+                    self.critical_paths.append(c_p)
+                    mark_whole_path(c_p)
+
+
+    def find_the_longest_path(self):
+        longest_path = 0
+        c_p = self.critical_paths[0][1]
+        for elem in c_p:
+            if isinstance(elem, Node):
+                longest_path += round_up(elem.volume / self.vm_types[-1].perf)
+            else:
+                longest_path += elem.transfer_size / self.vm_types[-1].perf
+
+        self.longest_path = longest_path
+
+
+    def create_vms_table(self, vm_types):
+        for i in vm_types:
+            vms_value = []
+            for j in range(1, len(self.nodes) - 1):
+                vms_value.append(round_up(self.nodes[j].volume / i.perf))
+            self.vms_table.append(vms_value)
+            self.vms_cost.append(i.cost)
+
+
+
+
+    def calc_c_node(self, index, c_p, node_index):
+        if isinstance(self.criteria, AverageResourceLoadCriteria):
+            return self.criteria.main_criteria(self.vms_table[index][c_p[node_index].id - self.first_id - 1])
+        elif isinstance(self.criteria, TimeCriteria):
+            return self.criteria.main_criteria(self.vms_table[index][c_p[node_index].id - self.first_id - 1])
+        elif isinstance(self.criteria, CostCriteria):
+            return self.criteria.main_criteria([self.vms_table[index][c_p[node_index].id - self.first_id - 1],
+                                                  self.vms_cost[index]])
+
+
+    def schedule(self):
+        multiple_strategies_flag = False
+
+        self.Z1 = self.T  # Z1 = reserve budget
+        for edge in self.edges:
+            transfer_cost = round_up(edge.transfer_size / self.vm_types[0].perf * self.vm_types[0].cost)
+            self.Z1 -= transfer_cost
+
+        for critical_path in self.critical_paths:
+            self.multiple_strategies = []
+            layer = Layer()
+            c_p = critical_path[1]
+            del c_p[-1]  # delete finish node and edge
+            del c_p[0]  # delete entry node and edge
+
+            for i in range(len(c_p) - 1, -1, -2):  # delete edges(transfer time)
+                del c_p[i]
+            Z1 = self.Z1
+
+            if not self.strategies:
+                layer = self.next_layer_calc(Z1, c_p, 0)  # direct pass
+                if config.MULTIPLE_STRATEGIES:
+                    self.strategies = self.create_strategies_recursion(layer, c_p)
+                else:
+                    strategy = StrategyBudget(len(self.nodes), self.T)
+                    self.strategies.append(strategy)
+                    self.set_strategy_times(c_p, c_p, layer)  # reverse pass
+
+                self.Z1 = Z1
+            else:
+                # for strategy in self.strategies:
+                #     a = strategy.time[1]
+                #     if strategy.time[1] == 16:
+                #         y = 0
+                #         print("SUCCESS #" + str(strategy.id))
+                #     else:
+                #         print("strategy #" + str(strategy.id))
+
+                for strategy in self.strategies:
+                    # if strategy.time[2] == 16:
+                    # if strategy.id == 78124 or multiple_strategies_flag == True:
+                    #     y = 0
+                    #     print("SUCCESS #" + str(strategy.id))
+                    # else:
+                    #     print("strategy #" + str(strategy.id))
+                        local_c_p = copy.copy(c_p)
+                        local_Z1 = Z1
+                        common_nodes = common_member(strategy.time, c_p, self.first_id)
+
+                        if common_nodes:
+                            for node in common_nodes:
+                                local_Z1 -= strategy.time[node.id - self.first_id]
+                                local_c_p.remove(node)
+
+                        if local_Z1 < 0:
+                            break
+
+                        if local_c_p:  # if not all nodes are already calculated
+                            layer = self.next_layer_calc(local_Z1, local_c_p, 0)  # direct pass
+                            if config.MULTIPLE_STRATEGIES:
+                                if multiple_strategies_flag:
+                                    self.set_strategy_times_recursion(c_p, local_c_p, layer, strategy)  # reverse pass
+                                else:
+                                    new_strategies = self.create_strategies_recursion(layer, c_p, strategy)
+                                    # for strategy in new_strategies:
+                                    #     # self.set_strategy_times_recursion(c_p, c_p, layer, strategy)
+                                    #     self.set_node_times_for_strategy(c_p, strategy)
+                                    # self.multiple_strategies.append(new_strategies[-1])
+                                    # print("multiple_strategies append strategy#" + str(strategy.id))
+                                    self.multiple_strategies.extend(new_strategies)
+                            else:
+                                self.set_strategy_times(c_p, local_c_p, layer)  # reverse pass
+
+                if self.multiple_strategies:
+                    if len(self.multiple_strategies) >= 100:
+                        multiple_strategies_flag = True
+                    self.strategies = self.multiple_strategies
+                    print("multiple_strategies" + ": " + str(len(self.multiple_strategies)))
+                    self.multiple_strategies = []
+
+        res = []
+        for strategy in self.strategies:
+            del strategy.time[0]
+            del strategy.time[-1]
+            del strategy.criteria[0]
+            del strategy.criteria[-1]
+
+            res.append(sum(strategy.criteria))
+
+        print("Number of time distribution variations = " + str(len(res)))
+        m_ax = max(res)
+        m_in = min(res)
+        best_res = self.criteria.cf_criteria(res)
+        index = res.index(best_res)
+        best_strategy_arr = [i for i in self.strategies if sum(i.criteria) == best_res]
+        # for strategy in best_strategy_arr:
+        #     with open(config.LOG_FILE, 'w') as f:
+        #         fieldnames = ['workflow_T', 'cjm_status', 'vma_status']
+        #         writer = csv.DictWriter(f, fieldnames=fieldnames)
+        #         writer.writeheader()
+        #         fieldnames = ['workflow_T', 'cjm_status', 'vma_status']
+        #
+        #         writer = csv.DictWriter(f, fieldnames=fieldnames)
+        #
+        #         row = {fieldnames[0]: t,
+        #                fieldnames[1]: cjm_status,
+        #                fieldnames[2]: vma_status}
+        #         writer.writerow(row)
+
+        best_strategy = best_strategy_arr[0]
+        # self.best_strategy = self.strategies[index]
+        self.best_strategy = best_strategy
+
+        # for i, strategyI in enumerate(best_strategy_arr):
+        #     print(strategyI.criteria)
+        #
+        # for i, strategyI in enumerate(best_strategy_arr):
+        #     print(strategyI.time)
+        #
+        # for i, strategyI in enumerate(best_strategy_arr):
+        #     print(strategyI.dict)
+
+        # for i, strategyI in enumerate(best_strategy_arr):
+        #     for j, strategyJ in enumerate(best_strategy_arr, start=1):
+        #         for criterionI in strategyI.criteria:
+        #             for criterionJ in strategyJ.criteria:
+        #                 if criterionI != criterionJ:
+        #                     print(strategyI)
+        #                     print(strategyJ)
+
+
+
+        if config.MULTIPLE_STRATEGIES:
+            self.set_node_times(self.best_strategy.dict)
+        self.nodes[0].start_time = self.global_timer
+        self.nodes[0].finish_time = self.global_timer
+        self.nodes[-1].start_time = self.global_timer + self.T
+        self.nodes[-1].finish_time = self.global_timer + self.T
+        print()
+
+
+
+    def set_strategy_times_recursion(self, c_p, local_c_p, layer, strategy):
+        node = local_c_p[0]
+        index = c_p.index(node)
+        if index == 0:
+            start_time = float(self.global_timer + node.input_time)
+            finish_time = round(start_time + round_up(layer.layer_options[0].t_current_node), 2)
+
+            strategy.add_dict_element(node.id - self.first_id, start_time, finish_time)
+
+            strategy.change(node.id - self.first_id,
+                            layer.layer_options[0].t_current_node,
+                            layer.layer_options[0].C_current_node)
+        else:
+            previous_node = c_p[index - 1]
+            start_time = strategy.dict[previous_node.id - self.first_id][1] + previous_node.output_time
+            # start_time = strategy.dict[previous_node.id][1] + previous_node.output_time
+            finish_time = round(start_time + round_up(layer.layer_options[0].t_current_node), 2)
+
+            strategy.add_dict_element(node.id - self.first_id, start_time, finish_time)
+
+            strategy.change(node.id - self.first_id,
+                            layer.layer_options[0].t_current_node,
+                            layer.layer_options[0].C_current_node)
+
+        if layer.previous_layers:
+            self.set_next_node_strategy_times_recursion(node,
+                                              self.nodes[layer.previous_layers[0].node.id - self.first_id],
+                                              layer.previous_layers[0], strategy)
+
+    def set_next_node_strategy_times_recursion(self, previous_node, current_node, layer, strategy):
+        start_time = strategy.dict[previous_node.id - self.first_id][1] + previous_node.output_time
+        finish_time = round(start_time + round_up(layer.layer_options[0].t_current_node), 2)
+
+        strategy.add_dict_element(current_node.id - self.first_id, start_time, finish_time)
+
+        strategy.change(current_node.id - self.first_id,
+                        layer.layer_options[0].t_current_node,
+                        layer.layer_options[0].C_current_node)
+
+        if layer.previous_layers:
+            self.set_next_node_strategy_times_recursion(current_node,
+                                              self.nodes[layer.previous_layers[0].node.id - self.first_id],
+                                              layer.previous_layers[0], strategy)
+
+
+    def set_strategy_times(self, c_p, local_c_p, layer):
+        node = local_c_p[0]
+        index = c_p.index(node)
+        strategy = self.strategies[0]
+        if index == 0:
+            node.budget = layer.layer_options[0].t_current_node
+
+            strategy.change(node.id - self.first_id,
+                                layer.layer_options[0].t_current_node,
+                                layer.layer_options[0].C_current_node)
+        else:
+            previous_node = c_p[index - 1]
+            node.start_time = previous_node.finish_time + previous_node.output_time
+            node.finish_time = round(node.start_time + round_up(layer.layer_options[0].t_current_node), 2)
+
+            strategy.change(node.id - self.first_id,
+                                layer.layer_options[0].t_current_node,
+                                layer.layer_options[0].C_current_node)
+
+        if layer.previous_layers:
+            self.set_next_node_strategy_times(node,
+                                              self.nodes[layer.previous_layers[0].node.id - self.first_id],
+                                              layer.previous_layers[0])
+
+
+    def set_next_node_strategy_times(self, previous_node, current_node, layer):
+        strategy = self.strategies[0]
+        current_node.budget = layer.layer_options[0].t_current_node
+
+        strategy.change(current_node.id - self.first_id,
+                        layer.layer_options[0].t_current_node,
+                        layer.layer_options[0].C_current_node)
+
+        if layer.previous_layers:
+            self.set_next_node_strategy_times(current_node, self.nodes[layer.previous_layers[0].node.id - self.first_id],
+                                     layer.previous_layers[0])
+
+    def create_strategies_recursion(self, layer, c_p, strategy=None, previous_node=None):
+        if layer.previous_layers is None:
+            if strategy is None:
+                new_strategy = StrategyBudget(len(self.nodes), self.T)
+            else:
+                new_strategy = StrategyBudget(len(self.nodes), self.T, strategy)
+
+            current_node = layer.node
+            current_node_index = c_p.index(current_node)
+            if previous_node is None:
+                if current_node_index == 0:
+                    previous_node = self.nodes[0]
+                else:
+                    previous_node = c_p[current_node_index - 1]
+
+            try:
+                next_node = c_p[current_node_index + 1]
+            except:
+                next_node = self.nodes[-1]
+
+            if current_node.id == 2:
+                y = 0
+            possible_budget_for_perform = new_strategy.change(current_node.id - self.first_id,
+                            layer.layer_options[0].t_current_node,
+                            layer.layer_options[0].C_current_node) # (perform time) + (time left from reserve)
+
+            dest_times = []
+            transfer_cost = []
+            for edge in current_node.edges_from:
+                if edge.node_from.id == previous_node.id:
+                    transfer_cost.append(round_up(edge.transfer_size / self.vm_types[0].perf) * self.vm_types[0].cost)
+            input_sum_cost = sum(transfer_cost)
+
+            transfer_cost = []
+            for edge in current_node.edges_to:
+                if edge.node_from.id == next_node.id:
+                    transfer_cost.append(round_up(edge.transfer_size / self.vm_types[0].perf) * self.vm_types[0].cost)
+            input_sum_cost = sum(transfer_cost)
+
+            for edge in current_node.edges_to:
+                if edge.node_to.id == next_node.id:
+                    if next_node.id == self.nodes[-1].id:
+                        dest_start_time = new_strategy.dict[edge.node_to.id - self.first_id][0] - current_node.output_time
+                    else:
+                        dest_start_time = new_strategy.dict[edge.node_to.id - self.first_id][0]
+                    dest_times.append(dest_start_time)
+            dest_start_time = max(dest_times)
+
+            # start_time = round(dest_start_time - current_node.output_time - possible_budget_for_perform - input_time, 2)
+            start_time = round(dest_start_time - possible_budget_for_perform - input_sum_cost, 2)
+            # finish_time = dest_start_time - current_node.output_time
+            finish_time = dest_start_time
+            new_strategy.dict[layer.node.id - self.first_id] = [start_time, finish_time]
+
+            return [new_strategy]
+        else:
+            new_strategies = []
+            for i, l in enumerate(layer.previous_layers):
+                strategies = self.create_strategies_recursion(l, c_p, strategy, layer.node)
+                for new_strategy in strategies:
+                    perform_time = new_strategy.change(layer.node.id - self.first_id,
+                                    layer.layer_options[i].t_current_node,
+                                    layer.layer_options[i].C_current_node)
+
+                    current_node = layer.node
+                    if current_node.id == 2:
+                        y = 0
+                    current_node_index = c_p.index(current_node)
+                    if previous_node is None:
+                        if current_node_index == 0:
+                            previous_node = self.nodes[0]
+                        else:
+                            previous_node = c_p[current_node_index - 1]
+
+                    transfer_cost = []
+                    for edge in current_node.edges_from:
+                        if previous_node is None:
+                            if edge.node_from.id == self.nodes[0].id:
+                                transfer_cost.append(edge.transfer_time)
+                        else:
+                            if edge.node_from.id == previous_node.id:
+                                transfer_cost.append(edge.transfer_time)
+                    if transfer_cost is None:
+                        print()
+                    input_sum_cost = max(transfer_cost)
+
+                    dest_time = new_strategy.dict[l.node.id - self.first_id][0]
+                    start_time = round(dest_time - perform_time - input_sum_cost, 2)
+                    # start_time = round(dest_time - current_node.output_time - perform_time - input_time, 2)
+                    finish_time = new_strategy.dict[l.node.id - self.first_id][0]
+                    # finish_time = new_strategy.dict[l.node.id][0] - current_node.output_time
+                    new_strategy.dict[current_node.id - self.first_id] = [start_time, finish_time]
+
+                    new_strategies.append(new_strategy)
+
+            return new_strategies
+
+
+    def next_layer_calc(self, reserve, c_p, node_index, vm_type_index=0):
+
+        if node_index == len(c_p) - 1:  # if the layer is the last one
+            # t_node = reserve
+            t_node = self.vms_table[vm_type_index][c_p[node_index].id - self.first_id - 1] * self.vm_types[vm_type_index].cost
+            C_node = self.calc_c_node(vm_type_index, c_p, node_index)
+            CF_node = C_node
+
+            return Layer(c_p[node_index], CF_node, [LayerOption(t_node, None, None, C_node, CF_node)], None)
+
+        else:
+            Z_next_node = []
+            # [56.8, 57.6, 57.75, 58.0, 58.2]
+            Z_min = 0
+            for i in range(len(self.vms_table)):
+                vm_type_id = i
+                task_id = c_p[node_index].id - self.first_id - 1 # +1
+                task_time = self.vms_table[i][c_p[node_index].id - self.first_id - 1]
+                task_cost = task_time * self.vm_types[i].cost
+                z = round_up(reserve - task_cost)
+                Z_min = 0
+                # rest reserve on the fastest vms
+                for j in range(node_index + 1, len(c_p)):
+                    Z_min += self.vms_table[0][c_p[j].id - self.first_id - 1] * self.vm_types[i].cost
+                if z >= Z_min:
+                    Z_next_node.append(z)
+                else:
+                    break
+
+            if not Z_next_node:
+                return
+
+            t_node = [self.vms_table[i][c_p[node_index].id - self.first_id - 1] * self.vm_types[i].cost for i in range(0, len(Z_next_node))]
+
+            # add Z_next_node on the fastest vms
+            # if Z_next_node[-1] > Z_min:
+            #     Z_next_node.append(Z_min)
+            #     t_node += [reserve - Z_min]
+
+            C_node = []
+            for i in range(0, len(t_node)):
+                # index = self.find_index(t_node[i], c_p[node_index].id - self.first_id - 1)
+                c_node = self.calc_c_node(i, c_p, node_index)
+                C_node.append(c_node)
+
+            # seen = {}
+            # unique_indexes = []
+            #
+            # for i in range(len(Z_next_node)):
+            #     key = (layer.layer_options[0].CF_current_node,
+            #     layer.layer_options[0].CF_next_node,
+            #     layer.layer_options[0].C_current_node,
+            #     layer.layer_options[0].Z_next_node,
+            #     layer.layer_options[0].t_current_node)
+            #
+            #     if key not in seen:
+            #         unique_layers.append(layer)
+            #         unique_indexes.append(i)
+            #         seen[key] = True
+
+            # recursion
+            CF_next_node = []
+            previous_layers = []
+            for i, z in enumerate(Z_next_node):
+                previous_layer = self.next_layer_calc(z, c_p, node_index + 1, i)
+                if not previous_layer:
+                    continue
+                else:
+                    CF_next_node.append(previous_layer.CF_of_layer)
+                    previous_layers.append(previous_layer)
+
+            seen = {}
+            unique_layers = []
+            unique_indexes = []
+
+            for i, layer in enumerate(previous_layers):
+                key = (layer.layer_options[0].CF_current_node,
+                layer.layer_options[0].CF_next_node,
+                layer.layer_options[0].C_current_node,
+                layer.layer_options[0].Z_next_node,
+                layer.layer_options[0].t_current_node)
+
+                if key not in seen:
+                    unique_layers.append(layer)
+                    unique_indexes.append(i)
+                    seen[key] = True
+
+            CF_next_node_unique = []
+            C_node_unique = []
+            Z_next_node_unique = []
+            t_node_unique = []
+            for i in unique_indexes:
+                CF_next_node_unique.append(CF_next_node[i])
+                C_node_unique.append(C_node[i])
+                Z_next_node_unique.append(Z_next_node[i])
+                t_node_unique.append(t_node[i])
+
+            CF_node_unique = [round(CF_next_node_unique[i] + C_node_unique[i], 2) for i in range(len(CF_next_node_unique))]
+
+            if not CF_node_unique:
+                return
+            CF_of_layer = self.criteria.cf_criteria(CF_node_unique) # choosing the optimal option (by criterion) from the array
+
+            if config.MULTIPLE_STRATEGIES:
+                indices = [i for i, x in enumerate(CF_node_unique) if x == CF_of_layer] # check duplicates
+            else:
+                indices = [CF_node_unique.index(CF_of_layer)] # only one index
+
+            layerOptions = []
+            new_previous_layers = []
+            for i in indices:
+                layerOptions.append(LayerOption(t_node_unique[i],
+                                                Z_next_node_unique[i],
+                                                CF_next_node_unique[i],
+                                                C_node_unique[i],
+                                                CF_of_layer))
+                new_previous_layers.append(unique_layers[i])
+
+            return Layer(c_p[node_index], CF_of_layer, layerOptions, new_previous_layers)
+
+    def set_node_times_for_strategy(self, c_p, strategy):
+        dict_times = strategy.dict
+        for node in c_p:
+            node.start_time = dict_times[node.id - self.first_id][0] + self.global_timer
+            node.finish_time = dict_times[node.id - self.first_id][1] + self.global_timer
+
+    def set_node_times(self, dict_times):
+
+        for node in self.nodes:
+            node.start_time = dict_times[node.id - self.first_id][0] + self.global_timer
+            node.finish_time = dict_times[node.id - self.first_id][1] + self.global_timer
+            self.preliminary_total_cost += node.runtime * self.vm_types[0].cost
+
+        for edge in self.edges:
+            self.preliminary_total_cost += edge.transfer_time * self.vm_types[0].cost
+
+
+    def find_index(self, z, node_index):
+        lo = 0
+        hi = len(self.vms_table)
+        while lo < hi:
+            mid = (lo + hi) // 2
+            if z < self.vms_table[mid][node_index]:
+                hi = mid
+            else:
+                lo = mid + 1
+        return lo - 1

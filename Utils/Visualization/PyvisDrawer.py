@@ -1,12 +1,13 @@
 import pandas as pd
 from pyvis.network import Network
+# matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
+# plt.ion()
 import networkx as nx
 import numpy as np
 from matplotlib.patches import Patch
 
-import Utils.Configuration
-from Utils import Configuration
+import config
 from Utils.Visualization.Drawer import Drawer
 
 
@@ -21,8 +22,6 @@ def rand_color(row):
 
 
 class PyvisDrawer(Drawer):
-
-    GRAPH_OUTPUT = 'Output/pyvis_graph.html'
 
     def draw_graph(self, nodes, edges):
         # G = Network(directed=True)
@@ -53,7 +52,7 @@ class PyvisDrawer(Drawer):
                             '"direction" : "UD", "sortMethod" : "directed", "shakeTowards" : "roots"} } }')
 
         network.from_nx(G)
-        network.show(self.GRAPH_OUTPUT)
+        network.show(config.GRAPH_OUTPUT, notebook=False)
 
 
     def draw_gantt(self, nodes):
@@ -156,12 +155,13 @@ class PyvisDrawer(Drawer):
 
 
 
-    def draw_batches_gantt(self, tasks):
+    def draw_batches_gantt(self, tasks, figure_name):
         c_dict = {'Leader': '#E64646', 'Batch': '#34D05C', 'CPU 2': '#E69646', 'CPU 4': '#34D0C3', 'CPU 5': '#3475D0',
                   'None': '#000000', 'IO': '#44D05C'}
         for task in tasks:
             task.color = c_dict[task.status]
 
+        # plt.ion()
         ##### PLOT #####
         fig, (ax, ax1) = plt.subplots(2, figsize=(36, 16), gridspec_kw={'height_ratios': [15, 1]})
 
@@ -198,10 +198,10 @@ class PyvisDrawer(Drawer):
 
 
         ##### LEGENDS #####
-        legend_elements = [Patch(facecolor='#E64646', label='Leader'),
-                           Patch(facecolor='#34D05C', label='Batch')]
-
-        ax1.legend(handles=legend_elements, loc='upper center', ncol=5, frameon=False)
+        # legend_elements = [Patch(facecolor='#E64646', label='Leader'),
+        #                    Patch(facecolor='#34D05C', label='Batch')]
+        #
+        # ax1.legend(handles=legend_elements, loc='upper center', ncol=5, frameon=False)
 
         # clean second axis
         ax1.spines['right'].set_visible(False)
@@ -211,13 +211,76 @@ class PyvisDrawer(Drawer):
         ax1.set_xticks([])
         ax1.set_yticks([])
 
-        plt.suptitle(Utils.Configuration.CJM_CRITERIA.__class__.__name__ + " " +
-                     Utils.Configuration.SCHEDULING_OPTIMIZATION_CRITERIA + " " +
-                     Utils.Configuration.VMA_CRITERIA.__class__.__name__ + " " +
-                     Utils.Configuration.ALLOCATION_OPTIMIZATION_CRITERIA)
-        plt.show()
-        fig.savefig(Utils.Configuration.GANTT_FIGURES_BATCHES, format="pdf")
+        plt.suptitle(config.CJM_CRITERIA.__class__.__name__ + " " +
+                     config.SCHEDULING_OPTIMIZATION_CRITERIA + " " +
+                     config.VMA_CRITERIA.__class__.__name__ + " " +
+                     config.ALLOCATION_OPTIMIZATION_CRITERIA)
+        # plt.show()
+        fig.savefig(figure_name, format="pdf")
+        # fig.savefig(Utils.Configuration.GANTT_FIGURES_BATCHES, format="pdf", bbox_inches='tight')
 
+    def draw_batches_gantt_epsm(self, tasks, figure_name):
+        c_dict = {'Leader': '#E64646', 'Batch': '#34D05C', 'CPU 2': '#E69646', 'CPU 4': '#34D0C3', 'CPU 5': '#3475D0',
+                  'None': '#000000', 'IO': '#44D05C'}
+        for task in tasks:
+            task.color = '#E64646'
+
+        # plt.ion()
+        ##### PLOT #####
+        fig, (ax, ax1) = plt.subplots(2, figsize=(36, 16), gridspec_kw={'height_ratios': [15, 1]})
+
+        # bars
+        rownum = 0
+        for task in tasks:
+            ax.barh(rownum, task.interval, left=task.start, color=task.color, alpha=0.3)
+            # ax.barh(rownum, task.calc_time, left=task.latest_start, color=task.color)
+            # ax.barh(rownum, task.calc_time, left=task.latest_start, color=task.color, fill=False, hatch='///')
+
+            ax.text(task.start - 0.1, rownum, task.id, va='center', ha='right', alpha=0.7)
+            rownum += 1
+
+
+        # grid lines
+        ax.set_axisbelow(True)
+        ax.xaxis.grid(color='gray', linestyle='dashed', alpha=0.2, which='both')
+
+        # ticks
+        end_max = max(tasks, key=lambda x: x.end).end
+        xticks = np.arange(0, end_max + 1, int((end_max + 1) / 5))
+        # xticks_labels = pd.date_range(0, end=tasks.end.max()).strftime("%m/%d")
+        # xticks_minor = np.arange(0, tasks.end.max() + 1, 1)
+        ax.set_xticks(xticks)
+        # ax.set_xticks(xticks_minor, minor=True)
+        ax.set_yticks([])
+
+        # remove spines
+        ax.spines['right'].set_visible(False)
+        ax.spines['left'].set_visible(False)
+        ax.spines['left'].set_position(('outward', 10))
+        ax.spines['top'].set_visible(False)
+
+
+        ##### LEGENDS #####
+        # legend_elements = [Patch(facecolor='#E64646', label='Leader'),
+        #                    Patch(facecolor='#34D05C', label='Batch')]
+        #
+        # ax1.legend(handles=legend_elements, loc='upper center', ncol=5, frameon=False)
+
+        # clean second axis
+        ax1.spines['right'].set_visible(False)
+        ax1.spines['left'].set_visible(False)
+        ax1.spines['top'].set_visible(False)
+        ax1.spines['bottom'].set_visible(False)
+        ax1.set_xticks([])
+        ax1.set_yticks([])
+
+        plt.suptitle(config.CJM_CRITERIA.__class__.__name__ + " " +
+                     config.SCHEDULING_OPTIMIZATION_CRITERIA + " " +
+                     config.VMA_CRITERIA.__class__.__name__ + " " +
+                     config.ALLOCATION_OPTIMIZATION_CRITERIA)
+        # plt.show()
+        fig.savefig(figure_name, format="pdf")
+        # fig.savefig(Utils.Configuration.GANTT_FIGURES_BATCHES, format="pdf", bbox_inches='tight')
 
     def draw_batches_gantt_for_mixed(self, tasks):
         c_dict = {'Leader': '#E64646', 'Batch': '#34D05C', 'CPU 2': '#E69646', 'CPU 4': '#34D0C3', 'CPU 5': '#3475D0',
@@ -274,12 +337,14 @@ class PyvisDrawer(Drawer):
         ax1.set_xticks([])
         ax1.set_yticks([])
 
-        plt.suptitle(Utils.Configuration.CJM_CRITERIA.__class__.__name__ + " " +
-                     Utils.Configuration.SCHEDULING_OPTIMIZATION_CRITERIA + " " +
-                     Utils.Configuration.VMA_CRITERIA.__class__.__name__ + " " +
-                     Utils.Configuration.ALLOCATION_OPTIMIZATION_CRITERIA)
-        plt.show()
-        fig.savefig(Utils.Configuration.GANTT_FIGURES_BATCHES, format="pdf")
+        plt.suptitle(config.CJM_CRITERIA.__class__.__name__ + " " +
+                     config.SCHEDULING_OPTIMIZATION_CRITERIA + " " +
+                     config.VMA_CRITERIA.__class__.__name__ + " " +
+                     config.ALLOCATION_OPTIMIZATION_CRITERIA)
+        # plt.show()
+        fig.savefig(config.GANTT_FIGURES_BATCHES_ASAP_MOD, format="pdf")
+        # fig.savefig(Utils.config.GANTT_FIGURES_BATCHES_ASAP_MOD, format="pdf", bbox_inches='tight')
+
 
     def draw_big_batches_gantt(self, tasks, figure_name):
         c_dict = {'Leader': '#E64646', 'Batch': '#34D05C', 'CPU 2': '#E69646', 'CPU 4': '#34D0C3', 'CPU 5': '#3475D0',
@@ -289,7 +354,7 @@ class PyvisDrawer(Drawer):
 
         ##### PLOT #####
         # fig, (ax, ax1) = plt.subplots(2, figsize=(36, 16), gridspec_kw={'height_ratios': [15, 1]})
-        fig, ax = plt.subplots(figsize=(640, 640))
+        fig, ax = plt.subplots(figsize=(300, 300))
 
 
         # bars
@@ -323,10 +388,10 @@ class PyvisDrawer(Drawer):
         ax.spines['left'].set_position(('outward', 10))
         ax.spines['top'].set_visible(False)
 
-        plt.suptitle(Utils.Configuration.CJM_CRITERIA.__class__.__name__ + " " +
-                     Utils.Configuration.SCHEDULING_OPTIMIZATION_CRITERIA + " " +
-                     Utils.Configuration.VMA_CRITERIA.__class__.__name__ + " " +
-                     Utils.Configuration.ALLOCATION_OPTIMIZATION_CRITERIA)
+        plt.suptitle(config.CJM_CRITERIA.__class__.__name__ + " " +
+                     config.SCHEDULING_OPTIMIZATION_CRITERIA + " " +
+                     config.VMA_CRITERIA.__class__.__name__ + " " +
+                     config.ALLOCATION_OPTIMIZATION_CRITERIA)
 
         fig.savefig(figure_name, format="pdf", bbox_inches='tight')
 
@@ -334,7 +399,7 @@ class PyvisDrawer(Drawer):
     def draw_result_gantt(self, log, figure_name):
         # fig, (ax, ax1) = plt.subplots(2, figsize=(16, 6), gridspec_kw={'height_ratios': [6, 1]})
         # fig, ax = plt.subplots(figsize=(76, 46))
-        fig, ax = plt.subplots(figsize=(16, 6))
+        fig, ax = plt.subplots(figsize=(36, 16))
         # fig, ax = plt.subplots(figsize=(108, 48))
 
         # my_data = [
@@ -385,9 +450,9 @@ class PyvisDrawer(Drawer):
             if row.task_name[0] != 'o':
                 if row.vm_status == "new":
                     # ax.barh(rownum, row.vm_input_time, left=row.vm_start, color=row.color, alpha=0.6, fill=False, hatch='|||')
-                    ax.barh(rownum, Configuration.VM_PREP_TIME, left=row.vm_start, color=row.color, alpha=0.6, fill=False, hatch='|||')
+                    ax.barh(rownum, config.VM_PREP_TIME, left=row.vm_start, color=row.color, alpha=0.6, fill=False, hatch='|||')
             else:
-                ax.barh(rownum, Configuration.VM_SHUTDOWN_TIME, left=row.vm_start, color=row.color, alpha=0.6, fill=False, hatch='|||')
+                ax.barh(rownum, config.VM_SHUTDOWN_TIME, left=row.vm_start + (row.vm_end - row.vm_start) - config.VM_SHUTDOWN_TIME, color=row.color, alpha=0.6, fill=False, hatch='|||')
             # idle_time
             ax.barh(rownum, row.idle_time, left=row.vm_start - row.idle_time, color='#000000')
 
@@ -441,10 +506,85 @@ class PyvisDrawer(Drawer):
         # ax.spines['left'].set_visible(False)
         # ax.spines['top'].set_visible(False)
 
-        plt.suptitle(Utils.Configuration.CJM_CRITERIA.__class__.__name__ + " " +
-                     Utils.Configuration.SCHEDULING_OPTIMIZATION_CRITERIA + " " +
-                     Utils.Configuration.VMA_CRITERIA.__class__.__name__ + " " +
-                     Utils.Configuration.ALLOCATION_OPTIMIZATION_CRITERIA)
+        plt.suptitle(config.CJM_CRITERIA.__class__.__name__ + " " +
+                     config.SCHEDULING_OPTIMIZATION_CRITERIA + " " +
+                     config.VMA_CRITERIA.__class__.__name__ + " " +
+                     config.ALLOCATION_OPTIMIZATION_CRITERIA)
+        # plt.show()
+        fig.savefig(figure_name, format="pdf", bbox_inches='tight')
+
+
+    def draw_result_gantt_HEFT(self, log, figure_name):
+        fig, ax = plt.subplots(figsize=(36, 16))
+
+        rownum = 0
+        for index, row in log.iterrows():
+            # calc_time
+            ax.barh(rownum, row.task_end - row.task_start, left=row.task_start, color=row.color)
+            # vm_time
+            ax.barh(rownum, row.vm_end - row.vm_start, left=row.vm_start, color=row.color, alpha=0.6, fill=False,
+                    hatch='///') # fill=True, linewidth=10, edgecolor=log.color
+
+            ax.text(row.vm_end + 0.1, rownum, 'VM_' + str(row.vm_id) + '_' + row.vm_type, va='center')
+            ax.text(row.vm_start - 0.1, rownum, str(row.task_id) + '_' + str(row.workflow_id) + '_' + str(row.task_name), va='center', ha='right')
+            rownum += 1
+
+        # ticks
+        xticks = np.arange(0, log.task_end.max() + 1, int((log.task_end.max() + 1) / 5))
+        xticks_labels = pd.date_range(0, end=log.task_end.max()).strftime("%m/%d")
+        # xticks_minor = np.arange(0, tasks.end.max() + 1, 1)
+        ax.set_xticks(xticks)
+        # ax.set_xticks(xticks_minor, minor=True)
+        # ax.set_xticks(, labels=)
+        ax.set_yticks([])
+
+        plt.suptitle(config.CJM_CRITERIA.__class__.__name__ + " " +
+                     config.SCHEDULING_OPTIMIZATION_CRITERIA + " " +
+                     config.VMA_CRITERIA.__class__.__name__ + " " +
+                     config.ALLOCATION_OPTIMIZATION_CRITERIA)
+        # plt.show()
+        fig.savefig(figure_name, format="pdf", bbox_inches='tight')
+
+    def draw_result_gantt_HEFT_vms(self, vms, figure_name):
+        fig, ax = plt.subplots(figsize=(36, 16))
+
+        for i, vm in enumerate(vms):
+            for j, node in enumerate(vm.previous_tasks):
+                ax.barh(vm.id, node.eft - node.est, left=node.est)
+                ax.text(node.est + (node.eft - node.est) / 2, vm.id, node.id, va='center')
+
+
+        sorted_vms = sorted(vms, key=lambda vm: vm.current_time, reverse = True)
+        # ticks
+        xticks = np.arange(0, sorted_vms[0].current_time + 1, int((sorted_vms[0].current_time + 1) / 5))
+        # xticks_labels = pd.date_range(0, end=sorted_vms[0].current_time).strftime("%m/%d")
+        # xticks_minor = np.arange(0, tasks.end.max() + 1, 1)
+        ax.set_xticks(xticks)
+        # ax.set_xticks(xticks_minor, minor=True)
+        # ax.set_xticks(, labels=)
+        ax.set_yticks([])
+
+        # plt.show()
+        fig.savefig(figure_name, format="pdf", bbox_inches='tight')
+
+    def draw_result_gantt_HEFT_nodes(self, nodes, vms, figure_name):
+        fig, ax = plt.subplots(figsize=(36, 16))
+
+        for node in nodes:
+            ax.barh(node.id, node.eft - node.est, left=node.est)
+            ax.text(node.eft + 0.1, node.id, 'VM_' + str(node.vm.id) + '_' + node.vm.type, va='center')
+            ax.text(node.est + (node.eft - node.est) / 2, node.id, node.id, va='center')
+
+        sorted_vms = sorted(vms, key=lambda vm: vm.current_time, reverse=True)
+        # ticks
+        xticks = np.arange(0, sorted_vms[0].current_time + 1, int((sorted_vms[0].current_time + 1) / 5))
+        # xticks_labels = pd.date_range(0, end=sorted_vms[0].current_time).strftime("%m/%d")
+        # xticks_minor = np.arange(0, tasks.end.max() + 1, 1)
+        ax.set_xticks(xticks)
+        # ax.set_xticks(xticks_minor, minor=True)
+        # ax.set_xticks(, labels=)
+        ax.set_yticks([])
+
         # plt.show()
         fig.savefig(figure_name, format="pdf", bbox_inches='tight')
 
@@ -639,23 +779,63 @@ class PyvisDrawer(Drawer):
         print()
 
     def draw_big_gantt(self, log, figure_name):
-        fig, ax = plt.subplots(figsize=(640, 640))
+        fig, ax = plt.subplots(figsize=(300, 300))
 
         rownum = 0
         for index, row in log.iterrows():
+            # if row.task_name[:3] != "off":
+            #     ax.barh(rownum, row.vm_end - row.vm_start, left=row.vm_start, color=row.color) # VM time
+            #     ax.barh(rownum, row.task_allocation_start - row.vm_start, left=row.vm_start, color=row.color, alpha=0.6, fill=False, # data input transfer time
+            #             hatch='///')  # fill=True, linewidth=10, edgecolor=log.color
+            #     ax.barh(rownum, row.idle_time, left=row.vm_start - row.idle_time, color='#000000') # idle time
+            #     ax.text(row.vm_end + 0.1, rownum, 'VM_' + str(row.vm_id) + '_' + row.vm_type, va='center') # VM description
+            #     ax.text(row.vm_start - 0.1, rownum, str(row.task_id) + '_' + str(row.workflow_id) + '_' + str(row.task_name), va='center', ha='right') # task description
+            #     rownum += 1
+            # else:
+            #     ax.barh(rownum, row.vm_end - row.vm_start, left=row.vm_start, alpha=0.6, fill=False, # data output transfer time
+            #             hatch='///')  # fill=True, linewidth=10, edgecolor=log.color
+            #     ax.text(row.vm_end + 0.1, rownum, 'VM_' + str(row.vm_id) + '_' + row.vm_type, va='center')  # VM description
+            #     ax.text(row.vm_start - 0.1, rownum, str(row.task_id) + '_' + str(row.workflow_id) + '_' + str(row.task_name),
+            #             va='center', ha='right')  # task description
+
             if row.task_name[:3] != "off":
-                ax.barh(rownum, row.vm_end - row.vm_start, left=row.vm_start, color=row.color) # VM time
-                ax.barh(rownum, row.task_allocation_start - row.vm_start, left=row.vm_start, color=row.color, alpha=0.6, fill=False, # data input transfer time
+                # # calc_time
+                # ax.barh(rownum, row.task_allocation_end - row.task_allocation_start, left=row.task_allocation_start,
+                #         color=row.color)
+                # # interval
+                # ax.barh(rownum, row.interval, left=row.task_start, color=row.color, alpha=0.3)
+                # # vm_time
+                # ax.barh(rownum, row.vm_end - row.vm_start, left=row.vm_start, color=row.color, alpha=0.6, fill=False,
+                #         hatch='///')  # fill=True, linewidth=10, edgecolor=log.color
+                # VM time
+                ax.barh(rownum, row.vm_end - row.vm_start, left=row.vm_start, color=row.color, alpha=0.3)
+                # task_time
+                ax.barh(rownum, row.task_allocation_end - row.task_allocation_start, left=row.task_allocation_start,
+                        color=row.color)
+                # data input transfer time
+                ax.barh(rownum, row.task_allocation_start - row.vm_start, left=row.vm_start, color=row.color, alpha=0.3, fill=False,
                         hatch='///')  # fill=True, linewidth=10, edgecolor=log.color
-                ax.barh(rownum, row.idle_time, left=row.vm_start - row.idle_time, color='#000000') # idle time
-                ax.text(row.vm_end + 0.1, rownum, 'VM_' + str(row.vm_id) + '_' + row.vm_type, va='center') # VM description
-                ax.text(row.vm_start - 0.1, rownum, str(row.task_id) + '_' + str(row.workflow_id) + '_' + str(row.task_name), va='center', ha='right') # task description
+                if row.vm_status == "new":
+                    # vm_prep_time
+                    ax.barh(rownum, config.VM_PREP_TIME, left=row.vm_start, color=row.color, alpha=0.3, fill=False,
+                            hatch='|||')
+                # idle time
+                ax.barh(rownum, row.idle_time, left=row.vm_start - row.idle_time, color='#000000')
+                # VM description
+                ax.text(row.vm_end + 0.1, rownum, 'VM_' + str(row.vm_id) + '_' + row.vm_type, va='center')
+                # task description
+                ax.text(row.vm_start - 0.1, rownum, str(row.task_id) + '_' + str(row.workflow_id) + '_' + str(row.task_name), va='center', ha='right')
                 rownum += 1
             else:
-                ax.barh(rownum, row.vm_end - row.vm_start, left=row.vm_start, alpha=0.6, fill=False, # data output transfer time
+                # data output transfer time
+                ax.barh(rownum, row.vm_end - row.vm_start, left=row.vm_start, alpha=0.6, fill=False,
                         hatch='///')  # fill=True, linewidth=10, edgecolor=log.color
-                ax.text(row.vm_end + 0.1, rownum, 'VM_' + str(row.vm_id) + '_' + row.vm_type, va='center')  # VM description
-                ax.text(row.vm_start - 0.1, rownum, str(row.task_id) + '_' + str(row.workflow_id) + '_' + str(row.task_name),
+                # vm_shutdown_time
+                ax.barh(rownum, config.VM_SHUTDOWN_TIME, left=row.vm_start + (row.vm_end - row.vm_start) - config.VM_SHUTDOWN_TIME, color=row.color, alpha=0.6, fill=False, hatch='|||')
+                ax.text(row.vm_end + 0.1, rownum, 'VM_' + str(row.vm_id) + '_' + row.vm_type,
+                        va='center')  # VM description
+                ax.text(row.vm_start - 0.1, rownum,
+                        str(row.task_id) + '_' + str(row.workflow_id) + '_' + str(row.task_name),
                         va='center', ha='right')  # task description
                 rownum += 1
 

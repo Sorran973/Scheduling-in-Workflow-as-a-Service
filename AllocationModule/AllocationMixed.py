@@ -28,6 +28,7 @@ class AllocationMixed:
                      'task_allocation_end', 'vm_output_time', 'vm_end', 'allocation_cost', 'idle_time', 'vm_status'])
         self.num_workflow_deadline_met = None
         self.percentage_workflow_deadline_met = None
+        self.batches_size = None
         self.total_cost = None
         self.total_num_leased_vm = None
         self.total_idle_time = None
@@ -213,7 +214,7 @@ class AllocationMixed:
                 output_data_transfer_time_max = -sys.maxsize
                 for transfer in previous_task.output_transfers:
                     # transfer_time = transfer.transfer_time
-                    transfer_time = round(transfer.transfer_time * self.map_vm_perf_for_transfer[vm.perf])
+                    transfer_time = round(transfer.transfer_time / vm.perf)
                     transfer_end = previous_task.allocation_end + transfer_time
 
                     # meaning time between the time vm can be stopped and it finishes the longest data transfer
@@ -246,7 +247,7 @@ class AllocationMixed:
                         transfer_time = 0
                     else:
                         # transfer_time = transfer.transfer_time
-                        transfer_time = round(transfer.transfer_time * self.map_vm_perf_for_transfer[vm.perf])
+                        transfer_time = round(transfer.transfer_time / vm.perf)
 
                     if data_transfer_time_max < transfer_time:
                         data_transfer_time_max = transfer_time
@@ -302,13 +303,14 @@ class AllocationMixed:
         allocation_cost += 1
         if possible_assignment.task_allocation_start is not None:
             possible_assignment.allocation_cost = allocation_cost
-            task.possible_assignments.append(possible_assignment)
+            task.new_possible_assignments.append(possible_assignment)
             return True, allocation_cost, possible_assignment
         else:
             return False, allocation_cost, possible_assignment
 
     ########## CHOOSING THE BEST MATCHES (MUNKRES ALGORITHM) ##########
     def calcMinCostPairings(self, batch):
+        assignment_with_desired_cost = None
         vms = self.vms.copy()
         cost_matrix = []
         active_num = len(self.vms)
@@ -322,16 +324,22 @@ class AllocationMixed:
 
                 try:
                     if (self.criteria.optimization_criteria == "min"):
-                        assignment_with_min_cost = min(task.possible_assignments, key=lambda
-                            possible_assignment: possible_assignment.allocation_cost)
+                        # assignment_with_min_cost = min(task.possible_assignments, key=lambda
+                        #     possible_assignment: possible_assignment.allocation_cost)
+                        min_cost = sys.maxsize
+                        for assignment in task.new_possible_assignments:
+                            cost = assignment.allocation_cost
+                            if cost <= min_cost:
+                                assignment_with_desired_cost = assignment
+                                min_cost = cost
                     else:
-                        assignment_with_min_cost = max(task.possible_assignments, key=lambda
+                        assignment_with_desired_cost = max(task.new_possible_assignments, key=lambda
                             possible_assignment: possible_assignment.allocation_cost)
                 except:
                     print("Task(id={}, name={})".format(task.id, task.name))
 
-                best_cost_of_possible_vms = assignment_with_min_cost.allocation_cost
-                best_vm_of_possible_vms = assignment_with_min_cost.assigned_vm
+                best_cost_of_possible_vms = assignment_with_desired_cost.allocation_cost
+                best_vm_of_possible_vms = assignment_with_desired_cost.assigned_vm
                 vms.append(best_vm_of_possible_vms)
 
                 vm_costs_for_task = [DISALLOWED] * len(batch)
@@ -360,7 +368,7 @@ class AllocationMixed:
             cost_matrix.append(vm_costs_for_task)
 
             for i in range(1, len(off_tasks)):
-                off_tasks[i].possible_assignments = possible_assignments_for_off_tasks
+                off_tasks[i].new_possible_assignments = possible_assignments_for_off_tasks
                 cost_matrix.append(vm_costs_for_task)
 
         m = Munkres()
@@ -388,10 +396,10 @@ class AllocationMixed:
 
                 try:
                     if (self.criteria.optimization_criteria == "min"):
-                        assignment_with_min_time = min(task.possible_assignments, key=lambda
+                        assignment_with_min_time = min(task.new_possible_assignments, key=lambda
                             possible_assignment: possible_assignment.task_allocation_end)
                     else:
-                        assignment_with_min_time = max(task.possible_assignments, key=lambda
+                        assignment_with_min_time = max(task.new_possible_assignments, key=lambda
                             possible_assignment: possible_assignment.task_allocation_end)
                 except:
                     print("Task(id={}, name={})".format(task.id, task.name))
@@ -424,7 +432,7 @@ class AllocationMixed:
             time_matrix.append(vm_times_for_task)
 
             for i in range(1, len(off_tasks)):
-                off_tasks[i].possible_assignments = possible_assignments_for_off_tasks
+                off_tasks[i].new_possible_assignments = possible_assignments_for_off_tasks
                 time_matrix.append(vm_times_for_task)
 
         m = Munkres()
@@ -488,6 +496,7 @@ class AllocationMixed:
         for i, batch in enumerate(batches):
             self.allocateBatch(batch)
             print(f"Batch #{i} out of {n}")
+            print(f"{len(batch)} in the batch #{i}")
 
         self.allocateBatch([])
 

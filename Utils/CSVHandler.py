@@ -3,24 +3,19 @@ import csv
 from AllocationModule.Model.DataTransfer import DataTransfer
 from AllocationModule.Model.Task import Task
 from AllocationModule.Model.VMType import VMType
-from SchedulingModule.CJM.Model.Edge import Edge
-import Utils.Configuration
-
-PROCESSOR_TABLE_FILE = '/Users/artembulkhak/PycharmProjects/Dissertation/Output/processor_table.csv'
-TASK_TIME_TABLE_FILE = '/Users/artembulkhak/PycharmProjects/Dissertation/Output/task_time_table.csv'
-TRANSFER_SIZE_TABLE_FILE = '/Users/artembulkhak/PycharmProjects/Dissertation/Output/transfer_size_table.csv'
+import config
 
 
 class CSVHandler:
 
     @staticmethod
     def write_headers():
-        with open(TASK_TIME_TABLE_FILE, 'w') as f:
+        with open(config.TASK_TIME_TABLE_FILE, 'w') as f:
             fieldnames = ['task_id', 'task_name', 'volume', 'workflow_id', 'start_time', 'finish_time']
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
 
-        with open(TRANSFER_SIZE_TABLE_FILE, 'w') as f:
+        with open(config.TRANSFER_SIZE_TABLE_FILE, 'w') as f:
             fieldnames = ['transfer_id', 'task_from', 'task_to', 'transfer_size', 'transfer_time']
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
@@ -44,7 +39,7 @@ class CSVHandler:
 
     @staticmethod
     def write_task_times_table(nodes, workflow_id):
-        with open(TASK_TIME_TABLE_FILE, 'a') as f:
+        with open(config.TASK_TIME_TABLE_FILE, 'a') as f:
             fieldnames = ['task_id', 'task_name', 'volume', 'workflow_id', 'start_time', 'finish_time']
 
             writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -60,7 +55,7 @@ class CSVHandler:
 
     @staticmethod
     def write_transfer_sizes_table(edges):
-        with open(TRANSFER_SIZE_TABLE_FILE, 'a') as f:
+        with open(config.TRANSFER_SIZE_TABLE_FILE, 'a') as f:
             fieldnames = ['transfer_id', 'task_from', 'task_to', 'transfer_size', 'transfer_time']
 
             writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -80,7 +75,7 @@ class CSVHandler:
             reader = csv.reader(csvfile, delimiter=',', quotechar='|')
             headers = next(reader)
             for row in reader:
-                vm_types.append(VMType(row[0], float(row[1]), float(row[2])))
+                vm_types.append(VMType(row[0], float(row[1]), float(row[2]), float(row[3])))
 
         return vm_types
 
@@ -145,12 +140,12 @@ class CSVHandler:
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
 
-            file_row = {fieldnames[0]: Utils.Configuration.MULTIPLE_STRATEGIES,
-                        fieldnames[1]: Utils.Configuration.CJM_CRITERIA.__class__.__name__,
-                        fieldnames[2]: Utils.Configuration.SCHEDULING_OPTIMIZATION_CRITERIA,
-                        fieldnames[3]: "None" if Utils.Configuration.T is None else Utils.Configuration.T,
-                        fieldnames[4]: Utils.Configuration.DATA_TRANSFER_CHANNEL_SPEED,
-                        fieldnames[5]: Utils.Configuration.ALLOCATION_OPTIMIZATION_CRITERIA}
+            file_row = {fieldnames[0]: Configuration.MULTIPLE_STRATEGIES,
+                        fieldnames[1]: Configuration.CJM_CRITERIA.__class__.__name__,
+                        fieldnames[2]: Configuration.SCHEDULING_OPTIMIZATION_CRITERIA,
+                        fieldnames[3]: "None" if Configuration.T is None else Configuration.T,
+                        fieldnames[4]: Configuration.DATA_TRANSFER_CHANNEL_SPEED,
+                        fieldnames[5]: Configuration.ALLOCATION_OPTIMIZATION_CRITERIA}
             writer.writerow(file_row)
 
 

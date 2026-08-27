@@ -7,7 +7,7 @@ class Strategy:
 
     def __init__(self, num_nodes, T, strategy=None):
         self.id = Strategy.count
-        Strategy.count = + 1
+        Strategy.count += 1
 
         if strategy is None:
             self.time = [-math.inf] * num_nodes
@@ -26,3 +26,6 @@ class Strategy:
         perform_time = self.time[node_id] = time
         self.criteria[node_id] = criteria
         return perform_time
+
+    def add_dict_element(self, node_id, start_time, finish_time):
+        self.dict[node_id] = [start_time, finish_time]

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<adag name="leadmm" jobCount="2" fileCount="0" childCount="1">
+	<job id="1" namespace="leadmm" name="TerrainPreProcessor" runtime="20" cores="1">
+		<uses file="p1.txt" link="output" size="140672"/>
+	</job>
+</adag>
